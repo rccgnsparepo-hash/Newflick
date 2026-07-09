@@ -1,0 +1,297 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Space Grotesk", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Hard Brutalist Neon Custom Properties */
+:root {
+  --neon-green: #00ff66;
+  --neon-green-rgb: 0, 255, 102;
+  --neon-green-glow: rgba(0, 255, 102, 0.15);
+  --neon-green-border: rgba(0, 255, 102, 0.25);
+  --neon-green-glow-intense: rgba(0, 255, 102, 0.6);
+  --brutalist-black: #050505;
+}
+
+/* Custom scrollbars for side panels in neon styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neon-green);
+  border: 1px solid #000000;
+}
+
+/* Base custom styles */
+body {
+  background-color: #050505;
+  color: #f4f4f5;
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Prevent body scrolling globally when an overlay is open */
+body:has([data-overlay="true"]),
+body:has(.global-overlay) {
+  overflow: hidden !important;
+}
+
+/* Rebrand entire page selection values */
+::selection {
+  background-color: var(--neon-green);
+  color: #000000;
+}
+
+/* Liquid Glass panels combining high backdrop blur and sleek neon borders */
+.liquid-glass {
+  background: rgba(10, 10, 10, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--neon-green-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.liquid-glass-glowing {
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: blur(20px);
+  border: 2px solid var(--neon-green);
+  box-shadow: 0 0 20px var(--neon-green-glow), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+/* Brutalist thick borders and offsets */
+.brutalist-card {
+  background-color: #0d0d0d;
+  border: 2.5px solid var(--neon-green);
+  border-radius: 0px;
+  box-shadow: 6px 6px 0px 0px #000000;
+}
+
+.brutalist-card-green {
+  background-color: #0d0d0d;
+  border: 2.5px solid var(--neon-green);
+  border-radius: 0px;
+  box-shadow: 5px 5px 0px 0px var(--neon-green);
+}
+
+.brutalist-button-green {
+  background-color: var(--neon-green);
+  color: #000000;
+  border: 2px solid #000000;
+  border-radius: 0px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  box-shadow: 4px 4px 0px 0px #000000;
+  transition: all 0.15s ease-in-out;
+}
+
+.brutalist-button-green:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px #000000;
+}
+
+.brutalist-button-green:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px #000000;
+}
+
+/* Glass inputs */
+.glass-input {
+  background: rgba(5, 5, 5, 0.8);
+  border: 1px solid var(--neon-green-border);
+  color: #ffffff;
+  font-family: var(--font-mono);
+}
+
+.glass-input:focus {
+  border-color: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green-glow);
+  outline: none;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.tracking-widest-plus {
+  letter-spacing: 0.25em;
+}
+
+/* Interactive custom elements */
+.pulse-green {
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--neon-green-glow);
+    border-color: var(--neon-green-border);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--neon-green-glow-intense);
+    border-color: var(--neon-green);
+  }
+}
+
+/* Brutalist Glitch Hover Effects */
+.glitch-hover {
+  transition: text-shadow 0.1s ease, transform 0.1s ease;
+}
+
+.glitch-hover:hover {
+  animation: brutal-glitch 0.2s steps(2, start) infinite;
+  text-shadow: 0.05em 0 0 rgba(255, 0, 85, 0.75),
+              -0.025em -0.05em 0 rgba(0, 255, 102, 0.75),
+              0.025em 0.05em 0 rgba(0, 240, 255, 0.75);
+  color: #ffffff;
+}
+
+@keyframes brutal-glitch {
+  0% {
+    text-shadow: 0.05em 0 0 rgba(255, 0, 85, 0.75), -0.05em -0.025em 0 rgba(0, 255, 102, 0.75), -0.025em 0.05em 0 rgba(0, 240, 255, 0.75);
+    transform: translate(1px, -0.5px) skew(-1.5deg);
+  }
+  50% {
+    text-shadow: -0.05em -0.025em 0 rgba(255, 0, 85, 0.75), 0.025em 0.025em 0 rgba(0, 255, 102, 0.75), -0.05em -0.05em 0 rgba(0, 240, 255, 0.75);
+    transform: translate(-1px, 0.5px) skew(1.5deg);
+  }
+  100% {
+    text-shadow: 0.025em 0.05em 0 rgba(255, 0, 85, 0.75), -0.025em -0.05em 0 rgba(0, 255, 102, 0.75), 0.05em -0.025em 0 rgba(0, 240, 255, 0.75);
+    transform: translate(0.5px, 1px) skew(0deg);
+  }
+}
+
+.container-glitch-hover {
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease;
+}
+
+.container-glitch-hover:hover {
+  animation: container-brutal-glitch 0.2s steps(2, start) infinite;
+}
+
+@keyframes container-brutal-glitch {
+  0% {
+    transform: translate(1px, -1px);
+    border-color: #ff0055;
+    box-shadow: 2px -2px 0px 0px var(--neon-green);
+  }
+  50% {
+    transform: translate(-1px, 1px);
+    border-color: #00f0ff;
+    box-shadow: -2px 2px 0px 0px #ff0055;
+  }
+  100% {
+    transform: translate(0px, 0px);
+    border-color: var(--neon-green);
+  }
+}
+
+/* ==========================================================================
+   PREMIUM MORPHIC & SQUIRCLE STYLING (Inspired by Reference Designs)
+   ========================================================================== */
+
+/* Dark, warm charcoal background inspired by reference image */
+.bg-morphic-dark {
+  background-color: #0c0c0e;
+}
+
+/* Glass & Depth Morphic Frame */
+.morphic-frame {
+  background: rgba(18, 18, 20, 0.9);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.8),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Morphic Capsule/Pill (Inset Depth Look) */
+.morphic-capsule {
+  background: #151518;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(255, 255, 255, 0.03);
+  border-radius: 28px;
+}
+
+/* Morphic Glass Button (Interactive Accent) */
+.morphic-btn-red {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  color: #ffffff;
+  box-shadow: 
+    0 4px 14px rgba(225, 29, 72, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.morphic-btn-red:hover {
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 
+    0 6px 20px rgba(225, 29, 72, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.morphic-btn-red:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 
+    0 2px 6px rgba(225, 29, 72, 0.3);
+}
+
+/* Perfect Inverted Curved Junctions (CSS Morph) */
+.morphic-junction-tr {
+  position: absolute;
+  top: 0;
+  right: -32px;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border-top-left-radius: 32px;
+  box-shadow: -16px -16px 0 16px #0c0c0e;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.morphic-junction-br {
+  position: absolute;
+  bottom: 0;
+  right: -32px;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border-bottom-left-radius: 32px;
+  box-shadow: -16px 16px 0 16px #0c0c0e;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Retro Cyberpunk Technical Grid Overlay (Inspired by Image 2) */
+.retro-cyber-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.cyber-red-border {
+  border-color: rgba(225, 29, 72, 0.3);
+}
+
+.cyber-red-text {
+  color: #f43f5e;
+}
+
+
+

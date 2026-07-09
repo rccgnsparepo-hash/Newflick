@@ -1,0 +1,152 @@
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  photoURL: string;
+  email: string;
+  status: 'online' | 'offline';
+  publicKey: string; // Public Key JWK as JSON string
+  updatedAt: any; // Firestore Timestamp
+  bio?: string;
+  coverURL?: string;
+  soundEnabled?: boolean;
+  notifSocialFeed?: boolean;
+  notifMessagesAll?: boolean;
+  notifMessagesFrom?: string[];
+  lastSeen?: any; // Firestore Timestamp or serverTimestamp()
+  isDeleted?: boolean;
+  disabledReadReceipts?: string[];
+}
+
+export interface PrivateUserInfo {
+  email: string;
+  createdAt: any;
+}
+
+export interface Post {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhoto: string;
+  content: string;
+  imageUrl?: string;
+  videoUrl?: string; // Support for short-form clips
+  audioUrl?: string; // Support for voicenotes in social feeds
+  mediaType?: 'image' | 'video' | 'audio' | 'none';
+  likesCount: number;
+  createdAt: any;
+  updatedAt: any;
+  likedBy?: string[]; // list of userIds who liked it or client-checked state
+}
+
+export interface DirectChat {
+  id: string;
+  participantIds: string[];
+  lastMessage: string;
+  lastMessageAt: any;
+  typing?: { [userId: string]: boolean };
+  isGroup?: boolean;
+  name?: string;
+  ownerId?: string;
+  createdAt?: any;
+  disabledReadReceipts?: { [userId: string]: boolean };
+  avatarUrl?: string;
+  description?: string;
+  privacy?: 'public' | 'private';
+  inviteCode?: string;
+  roles?: { [userId: string]: 'owner' | 'admin' | 'moderator' | 'member' | 'muted' | 'guest' | 'bot' };
+  announcementsOnly?: boolean;
+  pinnedMessages?: string[];
+
+  // New WhatsApp-style group properties
+  groupType?: 'friends' | 'school' | 'church' | 'business' | 'community' | 'custom';
+  groupBannerUrl?: string;
+  permSend?: 'all' | 'admins';
+  permAdd?: 'all' | 'admins';
+  permPin?: boolean;
+  adminApprovalRequired?: boolean;
+  anonymousMode?: boolean;
+  approvalQueue?: string[]; // list of user UIDs waiting to join
+  voiceRoomActive?: boolean;
+  voiceRoomParticipants?: string[];
+  events?: any[];
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  participantIds: string[];
+  encryptedText: string; // AES-GCM ciphertext in Base64 or Hex
+  encryptedKey: string; // Receiver's RSA-encrypted AES key key package (Base64)
+  senderEncryptedKey: string; // Sender's RSA-encrypted AES key package for history recovery (Base64)
+  createdAt: any;
+  read?: boolean;
+  readBy?: string[];
+  senderDisplayName?: string;
+  expiresAt?: any;
+  pinned?: boolean;
+  readAt?: any;
+  isGroupMessage?: boolean;
+  plainText?: string;
+  messageType?: 'text' | 'system' | 'poll' | 'shared_post' | 'shared_profile';
+  mediaUrl?: string;
+  mediaType?: string;
+  mediaName?: string;
+  replyToId?: string;
+  replyToText?: string;
+  replyToSenderName?: string;
+  reactions?: { [userId: string]: string }; // map of userId -> emoji reactions
+  pollData?: {
+    question: string;
+    options: string[];
+    votes: { [userId: string]: number }; // map of userId -> optionIndex
+  };
+}
+
+export interface InAppNotification {
+  id: string;
+  receiverId: string;
+  senderName: string;
+  senderId?: string;
+  chatId?: string; // Target chat tunnel identifier for real-time inbox badge counts
+  type: 'message' | 'like';
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: any;
+}
+
+export interface MessageReaction {
+  id: string; // userId (document ID is the userId to enforce 1 reaction type/user maximum)
+  emoji: string;
+  userId: string;
+  userName: string;
+  createdAt: any;
+}
+
+export interface Story {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhoto: string;
+  content: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
+  mediaType: 'image' | 'video' | 'audio' | 'none';
+  viewsCount: number;
+  viewedBy: string[]; // List of user IDs who viewed this story
+  createdAt: any;
+  link?: string;
+  musicTitle?: string;
+  musicArtist?: string;
+  location?: string;
+  pollQuestion?: string;
+  pollOptions?: { id: string; text: string; votes: number }[];
+  pollVotes?: Record<string, string>; // userId -> optionId
+  stickers?: string[];
+  mentions?: string[];
+  hashtags?: string[];
+  gradientPreset?: string;
+}
+

@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Public user profile details for social finding and messaging key exchange.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Auth" },
+        "displayName": { "type": "string", "description": "Display name" },
+        "photoURL": { "type": "string", "description": "Avatar photo URL" },
+        "email": { "type": "string", "description": "User email address" },
+        "status": { "type": "string", "enum": ["online", "offline"], "description": "User realtime presence state" },
+        "publicKey": { "type": "string", "description": "Hex-encoded public key for end-to-end encryption key exchange" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last presence timestamp" },
+        "bio": { "type": "string", "description": "Bio text" },
+        "soundEnabled": { "type": "boolean", "description": "Global setting to enable or mute notification sounds" },
+        "notifSocialFeed": { "type": "boolean", "description": "Whether social feed notification alerts are enabled" },
+        "notifMessagesAll": { "type": "boolean", "description": "Whether all message alerts are enabled" },
+        "notifMessagesFrom": { "type": "array", "description": "Filtered sender user IDs for selective message alerts" },
+        "lastSeen": { "type": "string", "format": "date-time", "description": "Heartbeat last seen timestamp" },
+        "oneSignalId": { "type": "string", "description": "OneSignal active push subscription player identifier" },
+        "oneSignalSubscriptionId": { "type": "string", "description": "Alias for OneSignal current active subscription identifier" },
+        "oneSignalSubscriptionIds": { "type": "array", "description": "History list of registered OneSignal subscription IDs for redundant user delivery" }
+      },
+      "required": ["uid", "displayName", "email", "status", "publicKey", "updatedAt"]
+    },
+    "PrivateInfo": {
+      "title": "Private User Info",
+      "description": "Private sensitive user details isolated for security and privacy.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Private verified email address" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account registration timestamp" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Post": {
+      "title": "Feed Post",
+      "description": "User generated post for feed pagination.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Post document ID" },
+        "authorId": { "type": "string", "description": "Author user ID" },
+        "authorName": { "type": "string", "description": "Author display name" },
+        "authorPhoto": { "type": "string", "description": "Author avatar photo URL" },
+        "content": { "type": "string", "description": "Post body text content" },
+        "imageUrl": { "type": "string", "description": "Optional image URL attached to the post" },
+        "videoUrl": { "type": "string", "description": "Optional video URL attached to the post" },
+        "audioUrl": { "type": "string", "description": "Optional audio/voicenote URL attached to the post" },
+        "mediaType": { "type": "string", "enum": ["image", "video", "audio", "none"], "description": "Type of attached rich media file" },
+        "likesCount": { "type": "number", "description": "Total number of likes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Post creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Post modification timestamp" }
+      },
+      "required": ["id", "authorId", "authorName", "authorPhoto", "content", "likesCount", "createdAt", "updatedAt"]
+    },
+    "Reaction": {
+      "title": "Message Reaction",
+      "description": "Emoji reaction on a specific E2EE message sent by a participant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User ID of the reacting participant" },
+        "emoji": { "type": "string", "description": "The selected emoji character" },
+        "userId": { "type": "string", "description": "User ID of the reacting participant" },
+        "userName": { "type": "string", "description": "Display name of the reacting participant" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of reaction" }
+      },
+      "required": ["id", "emoji", "userId", "userName", "createdAt"]
+    },
+    "Chat": {
+      "title": "Direct Chat",
+      "description": "Conversation metadata between two users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Chat session ID" },
+        "participantIds": { "type": "array", "description": "Array of user IDs involved in this chat" },
+        "lastMessage": { "type": "string", "description": "Encrypted or obfuscated last sent message snippet" },
+        "lastMessageAt": { "type": "string", "format": "date-time", "description": "Timestamp of last message" },
+        "typing": { "type": "object", "description": "Realtime map of participant ID to typing boolean state" }
+      },
+      "required": ["id", "participantIds", "lastMessage", "lastMessageAt"]
+    },
+    "Message": {
+      "title": "Chat Message",
+      "description": "An end-to-end encrypted direct message.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Message document ID" },
+        "senderId": { "type": "string", "description": "Sender user ID" },
+        "receiverId": { "type": "string", "description": "Receiver user ID" },
+        "participantIds": { "type": "array", "description": "The sorted identifiers of both conversational participants" },
+        "encryptedText": { "type": "string", "description": "Encrypted text ciphertext payload" },
+        "encryptedKey": { "type": "string", "description": "AES key encrypted with receiver public key" },
+        "senderEncryptedKey": { "type": "string", "description": "AES key encrypted with sender public key for history recovery" },
+        "senderDisplayName": { "type": "string", "description": "Human display name associated with the message dispatcher" },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "The precise future timing when the self-destruct function activates" },
+        "readBy": { "type": "array", "description": "Array of participant user IDs who have read this message" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Message sending timestamp" }
+      },
+      "required": ["id", "senderId", "receiverId", "participantIds", "encryptedText", "encryptedKey", "senderEncryptedKey", "createdAt"]
+    },
+    "Notification": {
+      "title": "In-App Push Notification",
+      "description": "Track notifications to trigger real-time push-like alerts inside the application.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Notification ID" },
+        "receiverId": { "type": "string", "description": "Notification target user ID" },
+        "senderName": { "type": "string", "description": "Initiator user's display name" },
+        "type": { "type": "string", "enum": ["message", "like"], "description": "Notification category" },
+        "title": { "type": "string", "description": "Alert notification title" },
+        "body": { "type": "string", "description": "Alert notification body text" },
+        "read": { "type": "boolean", "description": "Notification status indicator" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Notification trigger time" }
+      },
+      "required": ["id", "receiverId", "senderName", "type", "title", "body", "read", "createdAt"]
+    },
+    "Story": {
+      "title": "User Story",
+      "description": "User shared short-lived story placed down on the navigation tab area.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Story document ID" },
+        "authorId": { "type": "string", "description": "Story author user ID" },
+        "authorName": { "type": "string", "description": "Story author display name" },
+        "authorPhoto": { "type": "string", "description": "Story author avatar/profile picture" },
+        "content": { "type": "string", "description": "Story text caption" },
+        "imageUrl": { "type": "string", "description": "Base64 or external url of story background or graphic" },
+        "mediaType": { "type": "string", "enum": ["image", "none"], "description": "Story media category details" },
+        "viewsCount": { "type": "number", "description": "Current story views tally" },
+        "viewedBy": { "type": "array", "description": "User identifiers who have read this story in realtime" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Story creation timestamp" }
+      },
+      "required": ["id", "authorId", "authorName", "authorPhoto", "content", "mediaType", "viewsCount", "viewedBy", "createdAt"]
+    },
+    "News": {
+      "title": "Broadcast News Alert",
+      "description": "System broadcasted cybersecurity alert news item.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "News alert title" },
+        "category": { "type": "string", "description": "News alert category" },
+        "impactLevel": { "type": "string", "description": "Severity level of news" },
+        "summary": { "type": "string", "description": "Short description of the alert" },
+        "body": { "type": "string", "description": "Full content body text" },
+        "source": { "type": "string", "description": "Signal source publisher" },
+        "url": { "type": "string", "description": "Reference URL or deep link" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of broadcast dispatch" }
+      },
+      "required": ["title", "category", "impactLevel", "summary", "body", "source", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/users/{userId}/private/info": {
+      "schema": "PrivateInfo",
+      "description": "Isolated private sensitive user details."
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Social feed posts with security ownership verification."
+    },
+    "/chats/{chatId}": {
+      "schema": "Chat",
+      "description": "Direct session meta."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Scalable subcollection of direct chat messages."
+    },
+    "/chats/{chatId}/messages/{messageId}/message_reactions/{userId}": {
+      "schema": "Reaction",
+      "description": "User-specific message reactions subcollection."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Push-like system notifications."
+    },
+    "/stories/{storyId}": {
+      "schema": "Story",
+      "description": "Realtime user published temporary narrative stories."
+    },
+    "/news/{newsId}": {
+      "schema": "News",
+      "description": "Cybersecurity news feed alert system broadcasts."
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+	"appId": "com.faratech.flick",
+	"appName": "FARA FLICK",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"plugins": {
+		"LocalNotifications": {
+			"smallIcon": "ic_stat_flick_logo",
+			"iconColor": "#39FF14"
+		}
+	}
+}
