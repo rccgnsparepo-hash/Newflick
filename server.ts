@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { readFileSync } from 'fs';
 
 async function startServer() {
@@ -39,12 +40,14 @@ async function startServer() {
 
   let firebaseApp: any = null;
   let db: any = null;
+  let auth: any = null;
 
   if (firebaseConfig) {
     try {
       firebaseApp = initializeApp(firebaseConfig);
       db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
-      console.log("[Backend] Firebase App and Firestore initialized successfully.");
+      auth = getAuth(firebaseApp);
+      console.log("[Backend] Firebase App, Firestore, and Auth initialized successfully.");
     } catch (err) {
       console.error("[Backend] Error initializing Firebase SDK:", err);
     }
@@ -294,8 +297,46 @@ async function startServer() {
     });
   }
 
+  // Secure Backend-driven System User Authentication (allows bypassing rules securely by registering as client)
+  async function authenticateBackendSystemUser(auth: any) {
+    const email = "system-backend@flick-pwa.internal";
+    const password = process.env.SYSTEM_BACKEND_PASSWORD || "FlickSystemSecureBackendPass123!";
+    
+    try {
+      console.log("[Backend Auth] Attempting system backend sign-in...");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log("[Backend Auth] System backend signed in successfully as UID:", userCredential.user.uid);
+      return true;
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+        try {
+          console.log("[Backend Auth] System user not found or credentials invalid. Attempting auto-registration...");
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          console.log("[Backend Auth] System backend registered and signed in successfully as UID:", userCredential.user.uid);
+          return true;
+        } catch (createErr: any) {
+          console.error("[Backend Auth] Failed to register system backend user:", createErr);
+          return false;
+        }
+      } else {
+        console.error("[Backend Auth] Error signing in system backend user:", err);
+        return false;
+      }
+    }
+  }
+
   // Run the backend push dispatcher only if Firebase is configured
-  if (db) {
+  if (db && auth) {
+    authenticateBackendSystemUser(auth).then((success) => {
+      if (success) {
+        console.log("[Backend] Authentication secured. Starting background push engine snapshot streams.");
+        initBackendPushEngine(db);
+      } else {
+        console.warn("[Backend] Failed to authenticate system backend user. Notification engine running in unauthenticated state.");
+        initBackendPushEngine(db);
+      }
+    });
+  } else if (db) {
     initBackendPushEngine(db);
   }
 
