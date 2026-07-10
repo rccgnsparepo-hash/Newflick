@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { readFileSync } from 'fs';
 
@@ -45,7 +45,9 @@ async function startServer() {
   if (firebaseConfig) {
     try {
       firebaseApp = initializeApp(firebaseConfig);
-      db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+      db = initializeFirestore(firebaseApp, {
+        experimentalForceLongPolling: true,
+      }, firebaseConfig.firestoreDatabaseId || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2");
       auth = getAuth(firebaseApp);
       console.log("[Backend] Firebase App, Firestore, and Auth initialized successfully.");
     } catch (err) {
@@ -160,6 +162,8 @@ async function startServer() {
           }
         }
       }
+    }, (error) => {
+      console.warn("[Backend Push Dispatcher] Notifications subscription warning/error (likely unauthenticated):", error.message || error);
     });
 
     // 2. Listen to posts collection (to broadcast New Post notifications to all other users)
@@ -229,6 +233,8 @@ async function startServer() {
           }
         }
       }
+    }, (error) => {
+      console.warn("[Backend Push Dispatcher] Posts subscription warning/error:", error.message || error);
     });
 
     // 3. Listen to news collection (to broadcast global news wire notifications to all users)
@@ -294,6 +300,8 @@ async function startServer() {
           }
         }
       }
+    }, (error) => {
+      console.warn("[Backend Push Dispatcher] News subscription warning/error:", error.message || error);
     });
   }
 
