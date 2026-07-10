@@ -24,6 +24,7 @@ interface AuthContextType {
   profile: UserProfile | null; // Firestore Profile
   localPrivateKey: string | null; // RSA private key string stored client side
   loading: boolean;
+  isAuthReady: boolean; // Tracks whether initial auth check is finished
   loginWithGoogle: () => Promise<void>;
   registerWithEmail: (email: string, password: string, displayName: string, avatarSeed: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
@@ -74,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     return true;
   });
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   // Synchronous key verification and generation logic
   const handleKeyVerification = async (uid: string, userDisplayName: string, userEmail: string, userPhotoUrl: string) => {
@@ -219,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLocalPrivateKey(null);
       }
       setLoading(false);
+      setIsAuthReady(true);
     });
 
     // Handle offline status trigger tab/window exit
@@ -474,6 +477,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         localPrivateKey,
         loading,
+        isAuthReady,
         loginWithGoogle,
         registerWithEmail,
         loginWithEmail,

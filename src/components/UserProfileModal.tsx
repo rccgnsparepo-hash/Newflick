@@ -23,12 +23,12 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
   const [isInCall, setIsInCall] = useState(false);
   const [activeCallDetails, setActiveCallDetails] = useState<any>(null);
 
-  const { profile: myProfile } = useAuth();
+  const { profile: myProfile, isAuthReady } = useAuth();
   const [chatData, setChatData] = useState<any | null>(null);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
 
   useEffect(() => {
-    if (!uid || !myProfile?.uid) return;
+    if (!isAuthReady || !uid || !myProfile?.uid) return;
     const chatId = getDeterministicChatId(myProfile.uid, uid);
     const chatRef = doc(db, 'chats', chatId);
     const unsub = onSnapshot(chatRef, (snap) => {
@@ -76,7 +76,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
   };
 
   useEffect(() => {
-    if (!uid) return;
+    if (!isAuthReady || !uid || !myProfile?.uid) return;
     
     const qCalls = query(collection(db, 'calls'));
     const unsubscribeCalls = onSnapshot(qCalls, (snap) => {
@@ -91,7 +91,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
     });
 
     return () => unsubscribeCalls();
-  }, [uid]);
+  }, [uid, isAuthReady, myProfile?.uid]);
 
   useEffect(() => {
     if (!uid) return;

@@ -114,12 +114,12 @@ function Dashboard() {
     };
   }, []);
 
-  const { profile, logout, localPrivateKey, loading } = useAuth();
+  const { profile, logout, localPrivateKey, loading, isAuthReady } = useAuth();
   const { triggerInAppNotification } = useNotificationSystem();
 
   // Subscribe to incoming call requests
   React.useEffect(() => {
-    if (!profile?.uid) return;
+    if (!isAuthReady || !profile?.uid) return;
 
     const unsubscribeIncoming = subscribeToIncomingCall(profile.uid, (incomingCall) => {
       if (incomingCall) {
@@ -514,12 +514,12 @@ function Dashboard() {
 
   // Subscribe to unread messages or likes notifications alerts (simulated pushes)
   React.useEffect(() => {
-    if (!profile) return;
+    if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToNotifications(profile.uid, (unread) => {
       setNotifications(unread);
     });
     return () => unsubscribe();
-  }, [profile?.uid]);
+  }, [isAuthReady, profile?.uid]);
 
   // Welcome back feedback on login showing pending notifications
   const isInitialNotifAlert = React.useRef(true);
@@ -582,7 +582,7 @@ function Dashboard() {
 
   // Dispatch real push notifications for new posts on Social Feed
   React.useEffect(() => {
-    if (!profile) return;
+    if (!isAuthReady || !profile) return;
     const wasLoaded = isFeedInitialLoaded.current;
     const unsubscribe = subscribeToFeed((posts) => {
       posts.forEach((p) => {
@@ -606,11 +606,11 @@ function Dashboard() {
       console.warn("Feed subscription warning:", err);
     });
     return () => unsubscribe();
-  }, [profile?.uid, profile?.notifSocialFeed]);
+  }, [isAuthReady, profile?.uid, profile?.notifSocialFeed]);
 
   // Dispatch real push notifications for user presence sign ins
   React.useEffect(() => {
-    if (!profile) return;
+    if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToUsers((allUsers) => {
       usersRef.current = allUsers;
       allUsers.forEach((u) => {
@@ -632,7 +632,7 @@ function Dashboard() {
       console.warn("User status subscription warning:", err);
     });
     return () => unsubscribe();
-  }, [profile?.uid]);
+  }, [isAuthReady, profile?.uid]);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
