@@ -77,7 +77,7 @@ async function startServer() {
   });
 
   // --- Real-time Backend-driven OneSignal Push Dispatch Engine ---
-  function initBackendPushEngine(db: any) {
+  function initBackendPushEngine(db: any, isAuthenticated: boolean) {
     let initialLoadComplete = false;
     setTimeout(() => {
       initialLoadComplete = true;
@@ -85,86 +85,90 @@ async function startServer() {
     }, 5000);
 
     // 1. Listen to notifications collection (covers: Messages, Likes, Comments, Mentions, Follows)
-    onSnapshot(collection(db, 'notifications'), async (snapshot) => {
-      if (!initialLoadComplete) return;
+    if (isAuthenticated) {
+      onSnapshot(collection(db, 'notifications'), async (snapshot) => {
+        if (!initialLoadComplete) return;
 
-      for (const change of snapshot.docChanges()) {
-        if (change.type === 'added') {
-          const notifData = change.doc.data();
-          const { receiverId, senderName, title, body, type, chatId, id } = notifData;
-          if (!receiverId) continue;
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added') {
+            const notifData = change.doc.data();
+            const { receiverId, senderName, title, body, type, chatId, id } = notifData;
+            if (!receiverId) continue;
 
-          console.log(`[Backend Push Dispatcher] New notification detected for recipient ${receiverId}: "${title}" - "${body}"`);
+            console.log(`[Backend Push Dispatcher] New notification detected for recipient ${receiverId}: "${title}" - "${body}"`);
 
-          try {
-            const userSnap = await getDoc(doc(db, 'users', receiverId));
-            if (userSnap.exists()) {
-              const userData = userSnap.data();
-              let playerIds: string[] = [];
-              if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
-              if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
-              if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
-                playerIds.push(...userData.oneSignalSubscriptionIds);
+            try {
+              const userSnap = await getDoc(doc(db, 'users', receiverId));
+              if (userSnap.exists()) {
+                const userData = userSnap.data();
+                let playerIds: string[] = [];
+                if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
+                if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
+                if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
+                  playerIds.push(...userData.oneSignalSubscriptionIds);
+                }
+
+                playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
+
+                const ONESIGNAL_APP_ID = "050ecfbd-c43d-453d-a578-2f3ece4649ea";
+                const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
+
+                let channelId = "messages";
+                if (type === 'message' || type === 'group_message') channelId = "messages";
+                else if (type === 'call') channelId = "calls";
+                else if (type === 'like' || type === 'comment' || type === 'follow' || type === 'mention') channelId = "mentions";
+
+                const payload: any = {
+                  app_id: ONESIGNAL_APP_ID,
+                  headings: { en: title || `Notification from ${senderName}` },
+                  contents: { en: body || "New encrypted update available." },
+                  data: {
+                    id,
+                    receiverId,
+                    senderName,
+                    chatId,
+                    type
+                  },
+                  priority: 10,
+                  ttl: 259200,
+                  android_visibility: 1,
+                  android_sound: "default",
+                  ios_sound: "default",
+                  android_channel_id: channelId,
+                  small_icon: "ic_stat_flick_logo",
+                  android_accent_color: "FF39FF14"
+                };
+
+                if (playerIds.length > 0) {
+                  payload.include_subscription_ids = playerIds;
+                } else {
+                  payload.include_aliases = { external_id: [receiverId] };
+                  payload.target_channel = "push";
+                }
+
+                const osResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
+                  },
+                  body: JSON.stringify(payload)
+                });
+
+                const osResult = await osResponse.json();
+                console.log(`[Backend Push Dispatcher] OneSignal REST API Response Status: ${osResponse.status}`, osResult);
               }
-
-              playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
-
-              const ONESIGNAL_APP_ID = "050ecfbd-c43d-453d-a578-2f3ece4649ea";
-              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
-
-              let channelId = "messages";
-              if (type === 'message' || type === 'group_message') channelId = "messages";
-              else if (type === 'call') channelId = "calls";
-              else if (type === 'like' || type === 'comment' || type === 'follow' || type === 'mention') channelId = "mentions";
-
-              const payload: any = {
-                app_id: ONESIGNAL_APP_ID,
-                headings: { en: title || `Notification from ${senderName}` },
-                contents: { en: body || "New encrypted update available." },
-                data: {
-                  id,
-                  receiverId,
-                  senderName,
-                  chatId,
-                  type
-                },
-                priority: 10,
-                ttl: 259200,
-                android_visibility: 1,
-                android_sound: "default",
-                ios_sound: "default",
-                android_channel_id: channelId,
-                small_icon: "ic_stat_flick_logo",
-                android_accent_color: "FF39FF14"
-              };
-
-              if (playerIds.length > 0) {
-                payload.include_subscription_ids = playerIds;
-              } else {
-                payload.include_aliases = { external_id: [receiverId] };
-                payload.target_channel = "push";
-              }
-
-              const osResponse = await fetch("https://onesignal.com/api/v1/notifications", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json; charset=utf-8",
-                  "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
-                },
-                body: JSON.stringify(payload)
-              });
-
-              const osResult = await osResponse.json();
-              console.log(`[Backend Push Dispatcher] OneSignal REST API Response Status: ${osResponse.status}`, osResult);
+            } catch (err) {
+              console.error(`[Backend Push Dispatcher] Error processing notification push:`, err);
             }
-          } catch (err) {
-            console.error(`[Backend Push Dispatcher] Error processing notification push:`, err);
           }
         }
-      }
-    }, (error) => {
-      console.warn("[Backend Push Dispatcher] Notifications subscription warning/error (likely unauthenticated):", error.message || error);
-    });
+      }, (error) => {
+        console.warn("[Backend Push Dispatcher] Notifications subscription warning/error (likely unauthenticated):", error.message || error);
+      });
+    } else {
+      console.warn("[Backend Notification Engine] Skipping 'notifications' subscription since engine is unauthenticated (unauthenticated clients are denied read access to private notifications).");
+    }
 
     // 2. Listen to posts collection (to broadcast New Post notifications to all other users)
     onSnapshot(collection(db, 'posts'), async (snapshot) => {
@@ -316,19 +320,29 @@ async function startServer() {
       console.log("[Backend Auth] System backend signed in successfully as UID:", userCredential.user.uid);
       return true;
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
-        try {
-          console.log("[Backend Auth] System user not found or credentials invalid. Attempting auto-registration...");
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          console.log("[Backend Auth] System backend registered and signed in successfully as UID:", userCredential.user.uid);
-          return true;
-        } catch (createErr: any) {
-          console.error("[Backend Auth] Failed to register system backend user:", createErr);
+      console.log(`[Backend Auth] Primary sign-in failed (code: ${err.code || err}). Attempting fallback or registration...`);
+      
+      // Try to register the primary system user
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        console.log("[Backend Auth] System backend registered and signed in successfully as UID:", userCredential.user.uid);
+        return true;
+      } catch (createErr: any) {
+        if (createErr.code === 'auth/email-already-in-use') {
+          console.log("[Backend Auth] Primary system email already in use with a different password. Creating a dynamic fallback system user...");
+          try {
+            const fallbackEmail = `system-backend-${Date.now()}-${Math.floor(Math.random() * 1000)}@flick-pwa.internal`;
+            const userCredential = await createUserWithEmailAndPassword(auth, fallbackEmail, password);
+            console.log("[Backend Auth] Fallback system backend registered and signed in successfully as UID:", userCredential.user.uid);
+            return true;
+          } catch (fallbackErr: any) {
+            console.error("[Backend Auth] Failed to register fallback system backend user:", fallbackErr);
+            return false;
+          }
+        } else {
+          console.error("[Backend Auth] Failed to register primary system backend user:", createErr);
           return false;
         }
-      } else {
-        console.error("[Backend Auth] Error signing in system backend user:", err);
-        return false;
       }
     }
   }
@@ -338,14 +352,14 @@ async function startServer() {
     authenticateBackendSystemUser(auth).then((success) => {
       if (success) {
         console.log("[Backend] Authentication secured. Starting background push engine snapshot streams.");
-        initBackendPushEngine(db);
+        initBackendPushEngine(db, true);
       } else {
         console.warn("[Backend] Failed to authenticate system backend user. Notification engine running in unauthenticated state.");
-        initBackendPushEngine(db);
+        initBackendPushEngine(db, false);
       }
     });
   } else if (db) {
-    initBackendPushEngine(db);
+    initBackendPushEngine(db, false);
   }
 
   // API Route for sending OneSignal push notifications securely (no CORS preflight issue!)
