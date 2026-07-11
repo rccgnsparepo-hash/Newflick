@@ -20,7 +20,8 @@
         "lastSeen": { "type": "string", "format": "date-time", "description": "Heartbeat last seen timestamp" },
         "oneSignalId": { "type": "string", "description": "OneSignal active push subscription player identifier" },
         "oneSignalSubscriptionId": { "type": "string", "description": "Alias for OneSignal current active subscription identifier" },
-        "oneSignalSubscriptionIds": { "type": "array", "description": "History list of registered OneSignal subscription IDs for redundant user delivery" }
+        "oneSignalSubscriptionIds": { "type": "array", "description": "History list of registered OneSignal subscription IDs for redundant user delivery" },
+        "sportsNotificationPrefs": { "type": "object", "description": "Durable sports real-time alert configurations" }
       },
       "required": ["uid", "displayName", "email", "status", "publicKey", "updatedAt"]
     },

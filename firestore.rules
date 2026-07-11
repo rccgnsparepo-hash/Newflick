@@ -70,6 +70,7 @@ service cloud.firestore {
         && (!('unreadBadgeCount' in data) || data.unreadBadgeCount == null || data.unreadBadgeCount is int)
         && (!('disabledReadReceipts' in data) || data.disabledReadReceipts == null || (data.disabledReadReceipts is list && data.disabledReadReceipts.size() <= 1000))
         && (!('isDeleted' in data) || data.isDeleted == null || data.isDeleted is bool)
+        && (!('sportsNotificationPrefs' in data) || data.sportsNotificationPrefs == null || data.sportsNotificationPrefs is map)
         && (data.updatedAt is timestamp || data.updatedAt == null || data.updatedAt is string);
     }
 

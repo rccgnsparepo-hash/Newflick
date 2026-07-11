@@ -1177,19 +1177,20 @@ export default function ChatSection({
   useEffect(() => {
     if (!profile?.uid) return;
     const unsub = subscribeToChats(profile.uid, (chats) => {
+      const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
       const myAIChat: DirectChat = {
-        id: 'my-ai-chat-id',
+        id: aiChatId,
         participantIds: [profile.uid, 'my-ai-bot-uid'],
         lastMessage: localStorage.getItem(`flick_my_ai_last_message_${profile.uid}`) || 'Hi! I am your AI buddy. Ask me anything! 🌟',
         lastMessageAt: { toDate: () => new Date() } as any,
         isGroup: false
       };
       
-      if (!chats.some(c => c.id === 'my-ai-chat-id')) {
+      if (!chats.some(c => c.id === aiChatId)) {
         setActiveChatTunnels([myAIChat, ...chats]);
       } else {
         // Maintain the latest message from Firestore/local persistence
-        const existingMyAI = chats.find(c => c.id === 'my-ai-chat-id');
+        const existingMyAI = chats.find(c => c.id === aiChatId);
         if (existingMyAI) {
           setActiveChatTunnels(chats);
         } else {
@@ -1607,7 +1608,7 @@ export default function ChatSection({
     if (peer.uid === 'my-ai-bot-uid') {
       setSelectedPeer(peer);
       setCurrentChat({
-        id: 'my-ai-chat-id',
+        id: `chat_my-ai-bot-uid_${profile.uid}`,
         participantIds: [profile.uid, 'my-ai-bot-uid'],
         lastMessage: localStorage.getItem(`flick_my_ai_last_message_${profile.uid}`) || 'Hi! I am your AI buddy. Ask me anything! 🌟',
         lastMessageAt: { toDate: () => new Date() } as any,
@@ -1772,18 +1773,19 @@ export default function ChatSection({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      if (currentChat.id !== 'my-ai-chat-id') {
+      const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
+      if (currentChat.id !== aiChatId) {
         setFirestoreTypingStatus(currentChat.id, profile.uid, false);
       }
       isCurrentlyTypingRef.current = false;
 
       // Intercept My AI Chat Tunnel
-      if (currentChat.id === 'my-ai-chat-id') {
+      if (currentChat.id === aiChatId) {
         operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
         await new Promise(r => setTimeout(r, 150));
 
         // Create user message in Firestore
-        const userMessageId = doc(collection(db, 'chats', 'my-ai-chat-id', 'messages')).id;
+        const userMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
         const userMessageData = {
           id: userMessageId,
           senderId: profile.uid,
@@ -1794,7 +1796,7 @@ export default function ChatSection({
           createdAt: serverTimestamp(),
           read: true
         };
-        await setDoc(doc(db, 'chats', 'my-ai-chat-id', 'messages', userMessageId), userMessageData);
+        await setDoc(doc(db, 'chats', aiChatId, 'messages', userMessageId), userMessageData);
 
         operations.updateTask(taskId, { state: 'SERVER ACKNOWLEDGED', progress: 60 });
         playSendMessageSound();
@@ -1812,7 +1814,7 @@ export default function ChatSection({
           const aiReplyText = aiData.reply || "I am right here, but my thoughts are temporarily scrambled! Let's try again. ✨";
 
           // Create AI message in Firestore
-          const aiMessageId = doc(collection(db, 'chats', 'my-ai-chat-id', 'messages')).id;
+          const aiMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
           const aiMessageData = {
             id: aiMessageId,
             senderId: 'my-ai-bot-uid',
@@ -1823,15 +1825,15 @@ export default function ChatSection({
             createdAt: serverTimestamp(),
             read: false
           };
-          await setDoc(doc(db, 'chats', 'my-ai-chat-id', 'messages', aiMessageId), aiMessageData);
+          await setDoc(doc(db, 'chats', aiChatId, 'messages', aiMessageId), aiMessageData);
 
           // Update local storage for last message
           localStorage.setItem(`flick_my_ai_last_message_${profile.uid}`, aiReplyText);
 
         } catch (aiErr) {
           console.error("AI reply retrieval failed", aiErr);
-          const fallbackId = doc(collection(db, 'chats', 'my-ai-chat-id', 'messages')).id;
-          await setDoc(doc(db, 'chats', 'my-ai-chat-id', 'messages', fallbackId), {
+          const fallbackId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
+          await setDoc(doc(db, 'chats', aiChatId, 'messages', fallbackId), {
             id: fallbackId,
             senderId: 'my-ai-bot-uid',
             receiverId: profile.uid,
