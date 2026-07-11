@@ -768,6 +768,41 @@ async function startServer() {
     }
   });
 
+  // My AI Snapchat chatbot endpoint using gemini-3.5-flash
+  app.post("/api/myai", async (req, res) => {
+    try {
+      const { message } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "Message is required." });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.json({ 
+          reply: "Hi! I'm your Snapchat-style AI buddy here on Flick. 🌟 I'd love to chat more, but the team hasn't set up the GEMINI_API_KEY in the environment yet! Please ask them to add it so we can have deep conversations." 
+        });
+      }
+
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `You are My AI, a friendly, witty, and helpful AI chatbot built inside a Snapchat-style chat interface on Flick. You love sending short, fun messages with emojis, and you are extremely helpful. Respond to the user's message in a concise, friendly Snapchat-like tone: "${message}"` }]
+          }
+        ]
+      });
+
+      const replyText = response.text || "I'm a bit speechbound right now, but let's keep chatting! 🌟";
+      res.json({ reply: replyText });
+    } catch (err: any) {
+      console.error("[My AI Error]", err);
+      res.json({ reply: "Oh no! My neural pathways crossed. Let's try that again! 🔮" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

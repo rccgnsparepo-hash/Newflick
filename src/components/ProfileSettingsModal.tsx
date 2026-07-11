@@ -249,7 +249,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
       const payload = {
         id: testId,
         receiverId: profile.uid,
-        senderId: 'system-diagnostic-node',
+        senderId: profile.uid,
         senderName: 'Diagnostic Node',
         type: 'message',
         title: 'FARA FLICK PUSH VERIFICATION',

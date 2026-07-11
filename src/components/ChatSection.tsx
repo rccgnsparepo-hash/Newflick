@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
+import { db } from '../lib/firebase';
+import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { UserProfile, ChatMessage, DirectChat, MessageReaction, InAppNotification } from '../types';
 import {
   subscribeToUsers,
@@ -32,7 +34,8 @@ import {
   Smile, Paperclip, Mic, Square, Trash, Play, Pause, ZoomIn, CornerUpLeft, Eye, VolumeX, Volume2,
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
-  Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard
+  Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard,
+  UserPlus, ChevronLeft, CornerUpRight, Edit3
 } from 'lucide-react';
 import {
   subscribeToPeersStatus
@@ -1174,7 +1177,25 @@ export default function ChatSection({
   useEffect(() => {
     if (!profile?.uid) return;
     const unsub = subscribeToChats(profile.uid, (chats) => {
-      setActiveChatTunnels(chats);
+      const myAIChat: DirectChat = {
+        id: 'my-ai-chat-id',
+        participantIds: [profile.uid, 'my-ai-bot-uid'],
+        lastMessage: localStorage.getItem(`flick_my_ai_last_message_${profile.uid}`) || 'Hi! I am your AI buddy. Ask me anything! 🌟',
+        lastMessageAt: { toDate: () => new Date() } as any,
+        isGroup: false
+      };
+      
+      if (!chats.some(c => c.id === 'my-ai-chat-id')) {
+        setActiveChatTunnels([myAIChat, ...chats]);
+      } else {
+        // Maintain the latest message from Firestore/local persistence
+        const existingMyAI = chats.find(c => c.id === 'my-ai-chat-id');
+        if (existingMyAI) {
+          setActiveChatTunnels(chats);
+        } else {
+          setActiveChatTunnels([myAIChat, ...chats]);
+        }
+      }
     });
     return unsub;
   }, [profile?.uid]);
@@ -1503,7 +1524,18 @@ export default function ChatSection({
     if (!profile) return;
     
     const unsubscribeUsers = subscribeToUsers((all) => {
-      setUsers(all.filter(u => u.uid !== profile.uid));
+      const filtered = all.filter(u => u.uid !== profile.uid);
+      const myAIPeer: UserProfile = {
+        uid: 'my-ai-bot-uid',
+        displayName: 'My AI 🌟',
+        photoURL: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
+        email: 'myai@flick.internal',
+        status: 'online',
+        lastSeen: { toDate: () => new Date() } as any,
+        updatedAt: { toDate: () => new Date() } as any,
+        publicKey: ''
+      };
+      setUsers([myAIPeer, ...filtered]);
     }, (err) => {
       console.warn("User fetch thread error", err);
     });
@@ -1571,6 +1603,18 @@ export default function ChatSection({
     peerNotifications.forEach(n => {
       markNotificationAsRead(n.id).catch(e => console.warn("Failed clearing notification on click:", e));
     });
+
+    if (peer.uid === 'my-ai-bot-uid') {
+      setSelectedPeer(peer);
+      setCurrentChat({
+        id: 'my-ai-chat-id',
+        participantIds: [profile.uid, 'my-ai-bot-uid'],
+        lastMessage: localStorage.getItem(`flick_my_ai_last_message_${profile.uid}`) || 'Hi! I am your AI buddy. Ask me anything! 🌟',
+        lastMessageAt: { toDate: () => new Date() } as any,
+        isGroup: false
+      });
+      return;
+    }
 
     try {
       const chat = await getOrCreateDirectChat(profile.uid, peer.uid);
@@ -1728,8 +1772,86 @@ export default function ChatSection({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      setFirestoreTypingStatus(currentChat.id, profile.uid, false);
+      if (currentChat.id !== 'my-ai-chat-id') {
+        setFirestoreTypingStatus(currentChat.id, profile.uid, false);
+      }
       isCurrentlyTypingRef.current = false;
+
+      // Intercept My AI Chat Tunnel
+      if (currentChat.id === 'my-ai-chat-id') {
+        operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
+        await new Promise(r => setTimeout(r, 150));
+
+        // Create user message in Firestore
+        const userMessageId = doc(collection(db, 'chats', 'my-ai-chat-id', 'messages')).id;
+        const userMessageData = {
+          id: userMessageId,
+          senderId: profile.uid,
+          receiverId: 'my-ai-bot-uid',
+          participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+          plainText: textRestoreValue,
+          senderDisplayName: profile.displayName || 'You',
+          createdAt: serverTimestamp(),
+          read: true
+        };
+        await setDoc(doc(db, 'chats', 'my-ai-chat-id', 'messages', userMessageId), userMessageData);
+
+        operations.updateTask(taskId, { state: 'SERVER ACKNOWLEDGED', progress: 60 });
+        playSendMessageSound();
+
+        // Trigger AI reply typing state!
+        setTypingUsers(prev => ({ ...prev, 'my-ai-bot-uid': 'pulse' }));
+
+        try {
+          const aiResponse = await fetch('/api/myai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: textRestoreValue })
+          });
+          const aiData = await aiResponse.json();
+          const aiReplyText = aiData.reply || "I am right here, but my thoughts are temporarily scrambled! Let's try again. ✨";
+
+          // Create AI message in Firestore
+          const aiMessageId = doc(collection(db, 'chats', 'my-ai-chat-id', 'messages')).id;
+          const aiMessageData = {
+            id: aiMessageId,
+            senderId: 'my-ai-bot-uid',
+            receiverId: profile.uid,
+            participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+            plainText: aiReplyText,
+            senderDisplayName: 'My AI 🌟',
+            createdAt: serverTimestamp(),
+            read: false
+          };
+          await setDoc(doc(db, 'chats', 'my-ai-chat-id', 'messages', aiMessageId), aiMessageData);
+
+          // Update local storage for last message
+          localStorage.setItem(`flick_my_ai_last_message_${profile.uid}`, aiReplyText);
+
+        } catch (aiErr) {
+          console.error("AI reply retrieval failed", aiErr);
+          const fallbackId = doc(collection(db, 'chats', 'my-ai-chat-id', 'messages')).id;
+          await setDoc(doc(db, 'chats', 'my-ai-chat-id', 'messages', fallbackId), {
+            id: fallbackId,
+            senderId: 'my-ai-bot-uid',
+            receiverId: profile.uid,
+            participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+            plainText: "Oh no! Flick's neural link suffered a temporary interruption. Let's try again! ☄️",
+            senderDisplayName: 'My AI 🌟',
+            createdAt: serverTimestamp(),
+            read: false
+          });
+        } finally {
+          // Clear typing status
+          setTypingUsers(prev => ({ ...prev, 'my-ai-bot-uid': false }));
+        }
+
+        operations.updateTask(taskId, { state: 'FINALIZING', progress: 95 });
+        operations.successTask(taskId);
+        showBrutalistToast('MESSAGE TRANSMITTED', 'AI neural reply successfully processed.', 'success', undefined, toastId);
+        setSending(false);
+        return;
+      }
 
       // Group dispatch
       if (currentChat.isGroup) {
@@ -2062,46 +2184,49 @@ export default function ChatSection({
       {/* Contact Panel sidebar - spans 4 cols */}
       <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[#050505] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* Compact WhatsApp-style Sidebar Header */}
-        <div className="p-3 border-b border-zinc-900/60 bg-[#090909] flex-shrink-0 flex items-center justify-between select-none">
-          <div className="flex items-center space-x-2">
-            <img 
-              src={profile?.photoURL || "https://api.dicebear.com/7.x/fun-emoji/svg?seed=flick"}
-              alt="My Avatar"
-              className="w-8 h-8 rounded-full border border-[var(--neon-green)]/35 object-cover cursor-pointer hover:border-[var(--neon-green)] transition-all"
-              onClick={() => {
-                playGlitchClickSound();
-                triggerVibration('light');
-                triggerViewProfile(profile?.uid || '');
-              }}
-              referrerPolicy="no-referrer"
-            />
+        {/* Compact Snapchat-inspired Sidebar Header */}
+        <div className="p-4 border-b border-zinc-900/40 bg-neutral-950 flex-shrink-0 flex items-center justify-between select-none">
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <img 
+                src={profile?.photoURL || "https://api.dicebear.com/7.x/fun-emoji/svg?seed=flick"}
+                alt="My Avatar"
+                className="w-10 h-10 rounded-full border-2 border-[var(--neon-green)] object-cover cursor-pointer hover:scale-105 transition duration-150 shadow-[0_0_8px_rgba(0,255,102,0.15)]"
+                onClick={() => {
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  triggerViewProfile(profile?.uid || '');
+                }}
+                referrerPolicy="no-referrer"
+              />
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black" title="System secured" />
+            </div>
             <div className="min-w-0">
-              <h2 className="font-serif text-[11.5px] font-black uppercase text-[var(--neon-green)] tracking-tight leading-none">CONVERGENCES</h2>
-              <span className="text-[6.5px] uppercase tracking-widest font-mono text-zinc-500 mt-0.5 block truncate">SECURE DIRECT ARCHITECTURE</span>
+              <h2 className="font-sans font-black tracking-tight text-white text-base leading-none uppercase">CHAT</h2>
+              <span className="text-[7.5px] uppercase tracking-widest font-mono text-zinc-500 mt-0.5 block truncate">SECURE DIRECT ARCHITECTURE</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
                 playGlitchClickSound();
                 setIsShortcutModalOpen(true);
               }}
-              className="p-1 border border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700 transition cursor-pointer"
+              className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
               title="Keyboard hotkeys"
             >
-              <Keyboard className="w-3.5 h-3.5" />
+              <Keyboard className="w-4 h-4" />
             </button>
             <button
               onClick={() => {
                 playGlitchClickSound();
                 setShowQrShareModal(true);
               }}
-              className="p-1 border border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700 transition cursor-pointer"
+              className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
               title="My QR code"
             >
-              <QrCode className="w-3.5 h-3.5" />
+              <QrCode className="w-4 h-4" />
             </button>
             <button
               onClick={() => {
@@ -2109,10 +2234,10 @@ export default function ChatSection({
                 setShowQrScanModal(true);
                 startScanning();
               }}
-              className="p-1 border border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700 transition cursor-pointer"
+              className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
               title="Scan peer QR"
             >
-              <ScanLine className="w-3.5 h-3.5" />
+              <ScanLine className="w-4 h-4" />
             </button>
             <button
               onClick={() => {
@@ -2120,10 +2245,10 @@ export default function ChatSection({
                 setIsCreateGroupOpen(!isCreateGroupOpen);
                 setIsJoinGroupOpen(false);
               }}
-              className={`p-1 border transition cursor-pointer ${isCreateGroupOpen ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] font-black' : 'border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700'}`}
+              className={`p-2 rounded-full transition cursor-pointer ${isCreateGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
               title="Create Group Concourse"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={() => {
@@ -2131,10 +2256,10 @@ export default function ChatSection({
                 setIsJoinGroupOpen(!isJoinGroupOpen);
                 setIsCreateGroupOpen(false);
               }}
-              className={`p-1 border transition cursor-pointer ${isJoinGroupOpen ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] font-black' : 'border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700'}`}
+              className={`p-2 rounded-full transition cursor-pointer ${isJoinGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
               title="Join Group Concourse"
             >
-              <Users className="w-3.5 h-3.5" />
+              <Users className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -2161,14 +2286,15 @@ export default function ChatSection({
           </div>
         </div>
 
-        {/* Horizontal filter capsules like WhatsApp Desktop */}
-        <div className="flex gap-1.5 px-3 py-2 overflow-x-auto scrollbar-none select-none border-b border-zinc-950 bg-black/20 shrink-0">
+        {/* Horizontal filter capsules Snapchat-inspired Layout */}
+        <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-none select-none border-b border-zinc-900/40 bg-neutral-950 shrink-0">
           {[
-            { id: 'all', label: 'All' },
-            { id: 'unread', label: 'Unread' },
-            { id: 'favorites', label: 'Favorites' },
-            { id: 'groups', label: 'Groups' },
-            { id: 'all-nodes', label: 'Nodes' }
+            { id: 'all', label: 'All 💬' },
+            { id: 'unread', label: 'Unread 🔴' },
+            { id: 'my-ai', label: 'My AI 🌟' },
+            { id: 'groups', label: 'Groups 👥' },
+            { id: 'favorites', label: 'Favorites ⭐' },
+            { id: 'all-nodes', label: 'Directory 🔍' }
           ].map((pill) => {
             const isActive = filterType === pill.id;
             let badgeCount = 0;
@@ -2183,18 +2309,33 @@ export default function ChatSection({
                 key={pill.id}
                 onClick={() => {
                   playGlitchClickSound();
+                  triggerVibration('light');
+                  if (pill.id === 'my-ai') {
+                    const myAIPeer: UserProfile = {
+                      uid: 'my-ai-bot-uid',
+                      displayName: 'My AI 🌟',
+                      photoURL: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
+                      email: 'myai@flick.internal',
+                      status: 'online',
+                      lastSeen: { toDate: () => new Date() } as any,
+                      updatedAt: { toDate: () => new Date() } as any,
+                      publicKey: ''
+                    };
+                    openChatRoom(myAIPeer);
+                    return;
+                  }
                   setFilterType(pill.id as any);
                 }}
-                className={`px-2.5 py-1 text-[8px] uppercase font-black tracking-wider transition-all duration-150 shrink-0 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full text-[10px] font-sans font-semibold tracking-normal transition-all duration-150 shrink-0 cursor-pointer ${
                   isActive 
-                    ? 'bg-[var(--neon-green)] text-black border border-transparent shadow-[1px_1px_0px_#000000]' 
-                    : 'bg-zinc-950 border border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-800'
+                    ? 'bg-white text-black font-extrabold shadow-sm' 
+                    : 'bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
                 }`}
               >
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   {pill.label}
                   {badgeCount > 0 && (
-                    <span className={`px-1 text-[7px] ${isActive ? 'bg-black text-[var(--neon-green)] font-black' : 'bg-[var(--neon-green)] text-black font-black'}`}>
+                    <span className={`px-1.5 py-0.5 text-[8.5px] rounded-full font-bold ${isActive ? 'bg-black text-white font-black' : 'bg-red-500 text-white font-black'}`}>
                       {badgeCount}
                     </span>
                   )}
@@ -2745,6 +2886,11 @@ export default function ChatSection({
               const isSelected = currentChat?.id === chat.id;
               const isFavorite = favoriteChats.includes(chat.id);
 
+              const getStreakNum = (uid: string) => {
+                const seed = uid.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                return (seed % 14) + 3; // Stable streak between 3 and 16
+              };
+
               if (chat.isGroup) {
                 // Group Chat Item
                 const chatName = chat.name || 'GLOBAL CONCOURSE';
@@ -2766,61 +2912,65 @@ export default function ChatSection({
                       setSelectedPeer(null);
                       setCurrentChat(chat);
                     }}
-                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-950 cursor-pointer ${
+                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer ${
                       isSelected 
-                        ? 'bg-[var(--neon-green)] text-black font-extrabold border-l-4 border-black' 
-                        : 'hover:bg-[var(--neon-green)]/10 text-zinc-100'
+                        ? 'bg-zinc-900/60 border-l-4 border-[var(--neon-green)]' 
+                        : 'hover:bg-zinc-900/30 text-zinc-100'
                     }`}
                   >
                     <div className="relative flex-shrink-0">
                       <img
                         src={avatarUrl}
                         alt={chatName}
-                        className={`w-9 h-9 rounded-full border object-cover transition-all ${isSelected ? 'border-black' : 'border-[var(--neon-green)]/35'}`}
+                        className={`w-12 h-12 rounded-full border-2 object-cover transition-all ${unreadCount > 0 ? 'border-sky-450 scale-105' : 'border-zinc-800'}`}
                         referrerPolicy="no-referrer"
                       />
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black bg-purple-500" title="Group Conduit" />
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black bg-sky-400" title="Group Conduit" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                          <p className={`text-xs font-bold truncate uppercase ${isSelected ? 'text-black' : 'text-zinc-100'}`}>
+                          <p className="text-[13px] font-sans font-bold truncate text-zinc-100">
                             👥 {chatName}
                           </p>
-                          {unreadCount > 0 && (
-                            <span className={`animate-pulse px-1.5 py-0.5 text-[8px] font-black leading-none rounded-none border ${isSelected ? 'bg-black text-[var(--neon-green)] border-[var(--neon-green)]' : 'bg-[var(--neon-green)] text-black border-black'}`}>
-                              {unreadCount} NEW
-                            </span>
-                          )}
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               playGlitchClickSound();
                               toggleFavoriteChat(chat.id);
                             }}
-                            className={`p-0.5 hover:scale-110 transition ${isSelected ? 'text-black hover:opacity-80' : 'text-zinc-500 hover:text-yellow-400'}`}
+                            className={`p-0.5 hover:scale-110 transition ${isSelected ? 'text-[var(--neon-green)]' : 'text-zinc-500 hover:text-yellow-400'}`}
                           >
-                            <Star className={`w-3 h-3 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
+                            <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
                           </button>
-                          {timeString && (
-                            <span className={`text-[8px] font-mono tracking-tighter capitalize ${isSelected ? 'text-black/80 font-black' : 'text-zinc-500'}`}>
-                              {timeString.toUpperCase()}
-                            </span>
-                          )}
+                          <span className="text-[11px] font-sans text-zinc-400 font-semibold shrink-0">
+                            ✨
+                          </span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between mt-0.5 min-w-0">
+                      <div className="flex items-center justify-between mt-1 min-w-0">
                         {isGroupTyping ? (
-                          <span className={`text-[8.5px] font-mono font-black animate-pulse uppercase tracking-wider ${isSelected ? 'text-black/90' : 'text-[var(--neon-green)] font-extrabold'}`}>
-                            [ SOMEONE IS TRANSMITTING... ]
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            <span className="text-[11px] font-sans font-semibold text-emerald-400 animate-pulse uppercase">
+                              typing...
+                            </span>
+                          </div>
                         ) : (
-                          <p className={`text-[9px] font-sans truncate ${isSelected ? 'text-black/75' : 'text-zinc-450'}`}>
-                            {chat.lastMessage || 'Channel empty.'}
-                          </p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {unreadCount > 0 ? (
+                              <span className="w-3 h-3 bg-sky-400 rounded-[3px] flex-shrink-0 animate-pulse" title="Unread Group chat" />
+                            ) : (
+                              <span className="w-3 h-3 border-2 border-sky-400 rounded-[3px] flex-shrink-0" title="Opened Group chat" />
+                            )}
+                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadCount > 0 ? 'text-zinc-100 font-extrabold' : 'text-zinc-400'}`}>
+                              {unreadCount > 0 ? 'New Chat' : (chat.lastMessage || 'Channel empty')}
+                              {timeString && `  •  ${timeString}`}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2855,10 +3005,10 @@ export default function ChatSection({
                   <div
                     key={chat.id}
                     onClick={() => openChatRoom(peer)}
-                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-950 cursor-pointer ${
+                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer ${
                       isSelected 
-                        ? 'bg-[var(--neon-green)] text-black font-extrabold border-l-4 border-black' 
-                        : 'hover:bg-[var(--neon-green)]/10 text-zinc-100'
+                        ? 'bg-zinc-900/60 border-l-4 border-[var(--neon-green)]' 
+                        : 'hover:bg-zinc-900/30 text-zinc-100'
                     }`}
                   >
                     <div className="relative flex-shrink-0">
@@ -2871,65 +3021,59 @@ export default function ChatSection({
                           playGlitchClickSound();
                           triggerViewProfile(peer.uid);
                         }}
-                        className={`w-9 h-9 rounded-full border object-cover cursor-pointer hover:scale-105 transition-all ${isSelected ? 'border-black' : 'border-[var(--neon-green)]/35'}`}
+                        className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadFromPeer > 0 ? 'border-rose-500 scale-105' : 'border-zinc-800'}`}
                         referrerPolicy="no-referrer"
                       />
                       <span
-                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${
-                          isOnline ? 'bg-[var(--neon-green)]' : 'bg-red-500'
+                        className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black ${
+                          peer.uid === 'my-ai-bot-uid' || isOnline ? 'bg-emerald-500' : 'bg-red-500'
                         }`}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                          <p className={`text-xs font-bold truncate ${isSelected ? 'text-black' : 'text-zinc-100'}`}>
+                          <p className="text-[13px] font-sans font-bold truncate text-zinc-100">
                             {renamedNicknames[peer.uid] ? `${renamedNicknames[peer.uid]} *` : peer.displayName}
                           </p>
-                          {unreadFromPeer > 0 && (
-                            <span 
-                              className={`animate-pulse px-1.5 py-0.5 text-[8px] font-black leading-none rounded-none border ${
-                                isSelected 
-                                  ? 'bg-black text-[var(--neon-green)] border-[var(--neon-green)]' 
-                                  : 'bg-[var(--neon-green)] text-black border-black'
-                              }`}
-                            >
-                              {unreadFromPeer} NEW
-                            </span>
-                          )}
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               playGlitchClickSound();
                               toggleFavoriteChat(chat.id);
                             }}
-                            className={`p-0.5 hover:scale-110 transition ${isSelected ? 'text-black hover:opacity-80' : 'text-zinc-500 hover:text-yellow-400'}`}
+                            className={`p-0.5 hover:scale-110 transition ${isSelected ? 'text-[var(--neon-green)]' : 'text-zinc-500 hover:text-yellow-400'}`}
                           >
-                            <Star className={`w-3 h-3 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
+                            <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
                           </button>
-                          {timeString ? (
-                            <span className={`text-[8px] font-mono tracking-tighter capitalize ${isSelected ? 'text-black/80 font-black' : 'text-zinc-500'}`}>
-                              {timeString.toUpperCase()}
-                            </span>
-                          ) : (
-                            <span className={`text-[8px] font-mono tracking-tighter capitalize ${isSelected ? 'text-black/80 font-black' : 'text-zinc-500'}`}>
-                              {statusText}
-                            </span>
-                          )}
+                          <span className="text-[11px] font-sans text-zinc-400 font-semibold shrink-0" title="Conversation streak">
+                            {peer.uid === 'my-ai-bot-uid' ? '🌟' : `🔥 ${getStreakNum(peer.uid)}`}
+                          </span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between mt-0.5 min-w-0">
+                      <div className="flex items-center justify-between mt-1 min-w-0">
                         {isPeerTyping ? (
-                          <span className={`text-[8.5px] font-mono font-black animate-pulse uppercase tracking-wider ${isSelected ? 'text-black/95' : 'text-[var(--neon-green)]'}`}>
-                            [ TRANSMITTING DATA... ]
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            <span className="text-[11px] font-sans font-semibold text-emerald-400 animate-pulse uppercase">
+                              typing...
+                            </span>
+                          </div>
                         ) : (
-                          <p className={`text-[9px] font-sans truncate ${isSelected ? 'text-black/75' : 'text-zinc-450'}`}>
-                            {chat.lastMessage || 'Channel empty.'}
-                          </p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {unreadFromPeer > 0 ? (
+                              <span className="w-3.5 h-3.5 bg-rose-500 rounded-[3px] flex-shrink-0 animate-pulse animate-duration-1000" title="Unread chat" />
+                            ) : (
+                              <span className="w-3.5 h-3.5 border-2 border-rose-500 rounded-[3px] flex-shrink-0" title="Opened chat" />
+                            )}
+                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadFromPeer > 0 ? 'text-zinc-100 font-extrabold' : 'text-zinc-400'}`}>
+                              {unreadFromPeer > 0 ? 'New Chat' : (chat.lastMessage || 'Tap to chat')}
+                              {timeString && `  •  ${timeString}`}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2976,7 +3120,7 @@ export default function ChatSection({
         {currentChat ? (
           <>
             {/* Conversation Header */}
-            <div className="p-4 sm:p-6 bg-[#080808] border-b border-[var(--neon-green)]/15 flex items-center justify-between flex-shrink-0 font-mono">
+            <div className="p-4 bg-neutral-950 border-b border-zinc-900/45 flex items-center justify-between flex-shrink-0 font-sans">
               <div className="flex items-center space-x-3 w-full min-w-0">
                 {/* Back Button for Mobile View responsive toggle */}
                 <button
@@ -2985,10 +3129,10 @@ export default function ChatSection({
                     setSelectedPeer(null);
                     setCurrentChat(null);
                   }}
-                  className="md:hidden p-1.5 border border-[var(--neon-green)]/40 bg-black text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition uppercase font-bold text-[10px] shrink-0"
+                  className="md:hidden p-1.5 rounded-full bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 transition shrink-0"
                   title="Back to conversations"
                 >
-                  ← BACK
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
 
                 <img
@@ -3001,7 +3145,7 @@ export default function ChatSection({
                       triggerViewProfile(selectedPeer.uid);
                     }
                   }}
-                  className="w-9 h-9 border border-[var(--neon-green)]/30 object-cover shrink-0 cursor-pointer hover:border-[var(--neon-green)] transition-all"
+                  className="w-10 h-10 rounded-full border border-zinc-800 object-cover shrink-0 cursor-pointer hover:scale-105 transition duration-150"
                   referrerPolicy="no-referrer"
                 />
                 <div className="min-w-0 flex-1">
@@ -3013,12 +3157,12 @@ export default function ChatSection({
                         triggerViewProfile(selectedPeer.uid);
                       }
                     }}
-                    className={`text-sm font-serif font-extrabold uppercase text-white truncate ${!currentChat.isGroup && selectedPeer ? 'cursor-pointer hover:underline' : ''}`}
+                    className={`text-sm font-sans font-bold text-white truncate ${!currentChat.isGroup && selectedPeer ? 'cursor-pointer hover:underline' : ''}`}
                   >
                     {currentChat.isGroup ? currentChat.name : (selectedPeer ? (renamedNicknames[selectedPeer.uid] ? `${renamedNicknames[selectedPeer.uid]} [${selectedPeer.displayName}]` : selectedPeer.displayName) : '')}
                   </h3>
                   {currentChat.isGroup ? (
-                    <p className="text-[8px] uppercase tracking-widest font-black text-purple-400 flex items-center mt-0.5">
+                    <p className="text-[9px] font-sans font-semibold text-purple-400 flex items-center mt-0.5">
                       <Users className="w-3 h-3 mr-1 text-purple-400 shrink-0" /> SECURE CONDUIT ONLINE ({(currentChat.participantIds || []).length} NODES)
                     </p>
                   ) : (
@@ -3058,9 +3202,12 @@ export default function ChatSection({
                         })()}
                       </span>
                     ) : (
-                      <p className="text-[8px] uppercase tracking-widest font-black text-emerald-500 flex items-center mt-0.5">
-                        <ShieldCheck className="w-3 h-3 mr-1 text-emerald-500 shrink-0" /> SECURE TUNNEL ONLINE
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${selectedPeer?.uid === 'my-ai-bot-uid' || (selectedPeer && rtdbStatuses[selectedPeer.uid]?.state === 'online') ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-550'}`} />
+                        <span className="text-[9px] font-sans font-medium text-zinc-400 uppercase tracking-wide">
+                          {selectedPeer?.uid === 'my-ai-bot-uid' ? 'AI BOT ONLINE' : (selectedPeer && rtdbStatuses[selectedPeer.uid]?.state === 'online' ? 'ACTIVE NOW' : 'SECURE TUNNEL ONLINE')}
+                        </span>
+                      </div>
                     )
                   )}
                 </div>
