@@ -235,7 +235,9 @@ service cloud.firestore {
       // 4. Subcollection messages of direct chats.
       match /messages/{messageId} {
         allow read: if isParentChatParticipant(chatId);
-        allow create: if isParentChatParticipant(chatId) && request.resource.data.senderId == request.auth.uid && isValidMessage(request.resource.data);
+        allow create: if isParentChatParticipant(chatId) 
+          && (request.resource.data.senderId == request.auth.uid || (chatId.matches('^chat_my-ai-bot-uid_.*') && request.resource.data.senderId == 'my-ai-bot-uid')) 
+          && isValidMessage(request.resource.data);
         allow update: if false;
         allow delete: if false;
 
