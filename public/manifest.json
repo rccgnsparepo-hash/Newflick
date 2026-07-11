@@ -10,21 +10,21 @@
   "categories": ["social", "messenger", "utilities"],
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=flick&backgroundColor=050505&size=192",
+      "src": "/flick_pwa_logo.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=flick&backgroundColor=050505&size=512",
+      "src": "/flick_pwa_logo.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "https://api.dicebear.com/7.x/shapes/png?seed=flick&backgroundColor=050505&size=512",
+      "src": "/flick_pwa_logo.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "maskable"
     }
   ],

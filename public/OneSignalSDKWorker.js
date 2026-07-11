@@ -48,8 +48,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip firestore or live api routes to ensure direct backend database consistency
-  if (url.hostname.includes('firebase') || url.hostname.includes('firestore') || url.pathname.startsWith('/api/')) {
+  // Skip firestore, onesignal, or live api routes to ensure direct backend database consistency and unblocked SDK communications
+  if (url.hostname.includes('firebase') || url.hostname.includes('firestore') || url.hostname.includes('onesignal') || url.pathname.startsWith('/api/')) {
     return;
   }
 
@@ -92,18 +92,29 @@ self.addEventListener('fetch', (event) => {
 // Fallback background push event listener to guarantee native pushes are caught and shown under all conditions
 self.addEventListener('push', (event) => {
   console.log('[PWA Service Worker] Push message received:', event);
+  
+  // Detect if push is from OneSignal to let the official OneSignal SDK listener handle it cleanly
+  let isOneSignal = false;
   let payload = {};
   try {
     payload = event.data ? event.data.json() : {};
+    if (payload && (payload.custom || payload.os_data || payload.notificationId || payload.isOneSignal || (payload.data && (payload.data.custom || payload.data.os_data)))) {
+      isOneSignal = true;
+    }
   } catch (err) {
-    payload = { body: event.data ? event.data.text() : 'New encrypted dialogue message received.' };
+    // If it's not valid JSON, it could be a raw text push (which is fallback/custom)
+  }
+
+  if (isOneSignal) {
+    console.log('[PWA Service Worker] OneSignal payload detected. Handing over to OneSignal SDK listener.');
+    return;
   }
 
   const title = payload.title || 'New Flick Signal';
   const options = {
     body: payload.body || payload.content || 'Decrypt handshake established. Unlock communication.',
-    icon: payload.icon || '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/icon-72x72.png',
+    icon: payload.icon || '/flick_pwa_logo.jpg',
+    badge: '/flick_pwa_logo.jpg',
     data: payload.data || payload,
     vibrate: [100, 50, 100],
     actions: [

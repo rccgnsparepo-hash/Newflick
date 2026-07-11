@@ -141,8 +141,10 @@ async function startServer() {
 
                 if (playerIds.length > 0) {
                   payload.include_subscription_ids = playerIds;
+                  payload.include_player_ids = playerIds; // Fallback for older API versions
                 } else {
                   payload.include_aliases = { external_id: [receiverId] };
+                  payload.include_external_user_ids = [receiverId]; // Fallback for older API versions
                   payload.target_channel = "push";
                 }
 

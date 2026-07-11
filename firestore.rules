@@ -37,11 +37,13 @@ service cloud.firestore {
     function isParentChatParticipant(chatId) {
       return isSignedIn() && (
         chatId == 'global-node-concourse'
+        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
+        || chatId.matches('^chat_.*' + request.auth.uid + '.*')
         || (
           exists(/databases/$(database)/documents/chats/$(chatId))
+          && 'participantIds' in get(/databases/$(database)/documents/chats/$(chatId)).data
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
         )
-        || chatId.matches('^chat_.*' + request.auth.uid + '.*')
       );
     }
 
@@ -227,10 +229,28 @@ service cloud.firestore {
 
     // 3. Direct Chats metadata collection
     match /chats/{chatId} {
-      allow read: if isSignedIn() && (request.auth.uid in resource.data.participantIds || chatId == 'global-node-concourse');
-      allow create: if isSignedIn() && (request.auth.uid in request.resource.data.participantIds || chatId == 'global-node-concourse') && isValidChat(request.resource.data);
-      allow update: if isSignedIn() && (request.auth.uid in resource.data.participantIds || chatId == 'global-node-concourse') && isValidChat(request.resource.data);
-      allow delete: if isSignedIn() && (request.auth.uid in resource.data.participantIds || resource.data.ownerId == request.auth.uid);
+      allow read: if isSignedIn() && (
+        resource == null 
+        || chatId == 'global-node-concourse'
+        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
+        || (request.auth.uid in resource.data.participantIds)
+      );
+      allow create: if isSignedIn() && (
+        chatId == 'global-node-concourse'
+        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
+        || (request.resource.data != null && 'participantIds' in request.resource.data && request.auth.uid in request.resource.data.participantIds)
+      ) && isValidChat(request.resource.data);
+      allow update: if isSignedIn() && (
+        chatId == 'global-node-concourse'
+        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
+        || (resource != null && 'participantIds' in resource.data && request.auth.uid in resource.data.participantIds)
+      ) && isValidChat(request.resource.data);
+      allow delete: if isSignedIn() && (
+        chatId == 'global-node-concourse'
+        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
+        || (resource != null && 'participantIds' in resource.data && request.auth.uid in resource.data.participantIds)
+        || (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid)
+      );
          
       // 4. Subcollection messages of direct chats.
       match /messages/{messageId} {
