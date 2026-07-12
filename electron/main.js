@@ -22,7 +22,7 @@ Menu.setApplicationMenu(null);
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GITHUB_OWNER = "rccgnsparepo-hash";
-const GITHUB_REPO = "Gi";
+const GITHUB_REPO = "Newflick";
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
 let mainWindow = null;
