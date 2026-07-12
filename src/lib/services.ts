@@ -533,19 +533,9 @@ export async function sendE2EEMessage(params: {
 
     await batch.commit();
 
-    // Trigger background native push notification via OneSignal REST pipeline
-    try {
-      const { sendOneSignalPush } = await import('./pushNotifications');
-      await sendOneSignalPush(receiverId, `E2EE Message from ${senderDisplayName}`, 'Click to unlock private message', {
-        chatId,
-        senderId,
-        senderName: senderDisplayName,
-        type: 'message'
-      });
-    } catch (e) {
-      console.warn('[sendE2EEMessage] OneSignal Push delivery bypassed:', e);
-    }
-
+    // Note: Background native push notification dispatch is now fully delegated to the 
+    // secure, authenticated backend system snapshot trigger engine (server.ts) to eliminate
+    // duplicate alerts and secure REST api credentials.
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -868,18 +858,8 @@ export async function sendGroupMessageService(params: {
             InAppNotificationSchema.parse(notifyPayload);
             await setDoc(notificationRef, notifyPayload);
 
-            // Trigger background native push notification via OneSignal REST pipeline
-            try {
-              const { sendOneSignalPush } = await import('./pushNotifications');
-              await sendOneSignalPush(destUid, `Group ${chatSnap.data().name || 'Chat'}`, `${senderDisplayName}: ${snippet.slice(0, 75)}`, {
-                chatId,
-                senderId,
-                senderName: senderDisplayName,
-                type: 'group_message'
-              });
-            } catch (e) {
-              console.warn('[sendGroupMessageService] OneSignal Push skipped:', e);
-            }
+            // Note: Native push notification dispatch is fully managed by the server listener (server.ts) 
+            // when notification is written above.
           }
         }
       }
@@ -994,17 +974,8 @@ export async function triggerLikeNotification(senderName: string, receiverId: st
     InAppNotificationSchema.parse(payload);
     await setDoc(doc(db, 'notifications', notificationId), payload);
 
-    // Trigger background native push notification via OneSignal REST pipeline
-    try {
-      const { sendOneSignalPush } = await import('./pushNotifications');
-      await sendOneSignalPush(receiverId, `${senderName} liked your post`, `"${postSnippet.slice(0, 40)}${postSnippet.length > 40 ? '...' : ''}"`, {
-        senderId,
-        senderName,
-        type: 'like'
-      });
-    } catch (e) {
-      console.warn('[triggerLikeNotification] Push skipped:', e);
-    }
+    // Note: Background push notification dispatch is fully delegated to the 
+    // backend system snapshot trigger engine (server.ts) to avoid duplications.
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
   }
@@ -1631,18 +1602,8 @@ export async function triggerCommentNotification(senderName: string, receiverId:
     
     await setDoc(doc(db, 'notifications', notificationId), payload);
 
-    // Trigger background native push notification via OneSignal REST pipeline
-    try {
-      const { sendOneSignalPush } = await import('./pushNotifications');
-      await sendOneSignalPush(receiverId, `${senderName} commented on your post`, `"${commentSnippet.slice(0, 40)}${commentSnippet.length > 40 ? '...' : ''}"`, {
-        senderId,
-        senderName,
-        type: 'comment',
-        postId
-      });
-    } catch (e) {
-      console.warn('[triggerCommentNotification] Push skipped:', e);
-    }
+    // Note: Background push notification dispatch is fully delegated to the 
+    // backend system snapshot trigger engine (server.ts) to avoid duplications.
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
   }

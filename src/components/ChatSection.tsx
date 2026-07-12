@@ -34,7 +34,7 @@ import {
   Smile, Paperclip, Mic, Square, Trash, Play, Pause, ZoomIn, CornerUpLeft, Eye, VolumeX, Volume2,
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
-  Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard,
+  Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard, Archive,
   UserPlus, ChevronLeft, CornerUpRight, Edit3
 } from 'lucide-react';
 import {
@@ -1029,16 +1029,22 @@ export default function ChatSection({
   };
   // ==========================================================
 
-  // Restore partially typed messages drafts from localStorage when switching peers
+  // Restore partially typed messages drafts from localStorage when switching chats
   useEffect(() => {
-    if (!profile) return;
-    if (selectedPeer) {
+    if (!profile || !currentChat) {
+      setText('');
+      return;
+    }
+    if (currentChat.isGroup) {
+      const savedDraft = localStorage.getItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`);
+      setText(savedDraft || '');
+    } else if (selectedPeer) {
       const savedDraft = localStorage.getItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
       setText(savedDraft || '');
     } else {
       setText('');
     }
-  }, [selectedPeer?.uid, profile?.uid]);
+  }, [currentChat?.id, selectedPeer?.uid, profile?.uid]);
 
   // Synchronize active group metadata into edit states when current chat changes
   useEffect(() => {
@@ -1060,21 +1066,32 @@ export default function ChatSection({
 
   // Save partially typed messages drafts to localStorage as typing progresses
   useEffect(() => {
-    if (!profile || !selectedPeer) return;
-    if (text.trim()) {
-      localStorage.setItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`, text);
-    } else {
-      localStorage.removeItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
+    if (!profile || !currentChat) return;
+    if (currentChat.isGroup) {
+      if (text.trim()) {
+        localStorage.setItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`, text);
+      } else {
+        localStorage.removeItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`);
+      }
+    } else if (selectedPeer) {
+      if (text.trim()) {
+        localStorage.setItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`, text);
+      } else {
+        localStorage.removeItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
+      }
     }
-  }, [text, selectedPeer?.uid, profile?.uid]);
+  }, [text, currentChat?.id, selectedPeer?.uid, profile?.uid]);
 
   // Sync per-chat brutalist background or theme settings when starting/switching conversation channels
   useEffect(() => {
     if (currentChat?.id) {
       const savedTheme = localStorage.getItem(`fara_accent_${currentChat.id}`);
       setChatAccentTheme(savedTheme || 'cyber-poison');
+      const savedWall = localStorage.getItem(`flick_wallpaper_${currentChat.id}`) || localStorage.getItem('flick_global_wallpaper') || 'none';
+      setChatWallpaper(savedWall);
     } else {
       setChatAccentTheme('cyber-poison');
+      setChatWallpaper(localStorage.getItem('flick_global_wallpaper') || 'none');
     }
     // Auto-close info drawer temporarily to keep workspace fluid and focused
     setIsChatInfoOpen(false);
@@ -1099,7 +1116,8 @@ export default function ChatSection({
   const [activeChatTunnels, setActiveChatTunnels] = useState<DirectChat[]>([]);
   const groups = activeChatTunnels.filter(chat => chat.isGroup || chat.id === 'global-node-concourse');
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
-  const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business'>('all');
+  
   const [favoriteChats, setFavoriteChats] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('fara_favorites') || '[]');
@@ -1108,10 +1126,106 @@ export default function ChatSection({
     }
   });
 
+  const [pinnedChats, setPinnedChats] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fara_pinned_chats') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [archivedChats, setArchivedChats] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fara_archived_chats') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [mutedChats, setMutedChats] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fara_muted_chats') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [chatFolders, setChatFolders] = useState<Record<string, string[]>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fara_chat_folders') || '{"Personal":[],"Work":[],"Family":[]}');
+    } catch {
+      return {"Personal":[],"Work":[],"Family":[]};
+    }
+  });
+
+  const [chatLabels, setChatLabels] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fara_chat_labels') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const [selectedFolder, setSelectedFolder] = useState<string>('All');
+  const [multiSelectMode, setMultiSelectMode] = useState<boolean>(false);
+  const [selectedChatIds, setSelectedChatIds] = useState<string[]>([]);
+
   const toggleFavoriteChat = (chatId: string) => {
     setFavoriteChats(prev => {
       const next = prev.includes(chatId) ? prev.filter(id => id !== chatId) : [...prev, chatId];
       localStorage.setItem('fara_favorites', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const togglePinChat = (chatId: string) => {
+    setPinnedChats(prev => {
+      const next = prev.includes(chatId) ? prev.filter(id => id !== chatId) : [...prev, chatId];
+      localStorage.setItem('fara_pinned_chats', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const toggleArchiveChat = (chatId: string) => {
+    setArchivedChats(prev => {
+      const next = prev.includes(chatId) ? prev.filter(id => id !== chatId) : [...prev, chatId];
+      localStorage.setItem('fara_archived_chats', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const toggleMuteChat = (chatId: string) => {
+    setMutedChats(prev => {
+      const next = prev.includes(chatId) ? prev.filter(id => id !== chatId) : [...prev, chatId];
+      localStorage.setItem('fara_muted_chats', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const addChatToFolder = (chatId: string, folder: string) => {
+    setChatFolders(prev => {
+      const folderList = prev[folder] || [];
+      const updatedFolder = folderList.includes(chatId) ? folderList : [...folderList, chatId];
+      const next = { ...prev, [folder]: updatedFolder };
+      localStorage.setItem('fara_chat_folders', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeChatFromFolder = (chatId: string, folder: string) => {
+    setChatFolders(prev => {
+      const folderList = prev[folder] || [];
+      const updatedFolder = folderList.filter(id => id !== chatId);
+      const next = { ...prev, [folder]: updatedFolder };
+      localStorage.setItem('fara_chat_folders', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const updateChatLabel = (chatId: string, label: string) => {
+    setChatLabels(prev => {
+      const next = { ...prev, [chatId]: label };
+      localStorage.setItem('fara_chat_labels', JSON.stringify(next));
       return next;
     });
   };
@@ -2296,6 +2410,9 @@ export default function ChatSection({
             { id: 'my-ai', label: 'My AI 🌟' },
             { id: 'groups', label: 'Groups 👥' },
             { id: 'favorites', label: 'Favorites ⭐' },
+            { id: 'archived', label: 'Archived 📥' },
+            { id: 'muted', label: 'Muted 🔕' },
+            { id: 'business', label: 'Business 🏢' },
             { id: 'all-nodes', label: 'Directory 🔍' }
           ].map((pill) => {
             const isActive = filterType === pill.id;
@@ -2304,6 +2421,10 @@ export default function ChatSection({
               badgeCount = notifications.filter(n => n.type === 'message').length;
             } else if (pill.id === 'groups') {
               badgeCount = activeChatTunnels.filter(chat => chat.isGroup).length;
+            } else if (pill.id === 'archived') {
+              badgeCount = archivedChats.length;
+            } else if (pill.id === 'muted') {
+              badgeCount = mutedChats.length;
             }
             
             return (
@@ -2346,6 +2467,138 @@ export default function ChatSection({
             );
           })}
         </div>
+
+        {/* Chat folders secondary filter bar */}
+        <div className="flex gap-1 px-3 py-1.5 overflow-x-auto scrollbar-none select-none border-b border-zinc-950 bg-[#090909] shrink-0 items-center">
+          <span className="text-[7.5px] text-zinc-500 font-mono tracking-wider font-extrabold mr-1 uppercase">FOLDERS:</span>
+          {['All', 'Personal', 'Work', 'Family'].map((folder) => {
+            const isSelected = selectedFolder === folder;
+            return (
+              <button
+                key={folder}
+                onClick={() => {
+                  playGlitchClickSound();
+                  setSelectedFolder(folder);
+                }}
+                className={`px-2 py-0.5 border text-[8px] uppercase tracking-wider font-mono font-bold transition duration-150 cursor-pointer ${
+                  isSelected
+                    ? 'bg-[var(--neon-green)] text-black border-transparent font-black'
+                    : 'border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900'
+                }`}
+              >
+                {folder}
+              </button>
+            );
+          })}
+          
+          {/* Multi-Select Toggle Button */}
+          <button
+            onClick={() => {
+              playGlitchClickSound();
+              setMultiSelectMode(!multiSelectMode);
+              setSelectedChatIds([]);
+            }}
+            className={`ml-auto px-2 py-0.5 border text-[8px] uppercase tracking-wider font-mono font-bold transition duration-150 cursor-pointer ${
+              multiSelectMode
+                ? 'bg-red-500 text-white border-transparent animate-pulse'
+                : 'border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            {multiSelectMode ? 'CANCEL SELECT' : 'SELECT 🗳️'}
+          </button>
+        </div>
+
+        {/* Bulk operations select bar if selection mode active */}
+        {multiSelectMode && (
+          <div className="p-3 bg-neutral-900 border-b border-[var(--neon-green)]/20 space-y-1.5 shrink-0 select-none">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-mono font-bold text-white uppercase">
+                🗳️ SELECTION: <span className="text-[var(--neon-green)]">{selectedChatIds.length} SELECTED</span>
+              </span>
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  setSelectedChatIds(activeChatTunnels.map(c => c.id));
+                }}
+                className="text-[8px] uppercase text-[var(--neon-green)] hover:underline font-mono"
+              >
+                Select All
+              </button>
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  selectedChatIds.forEach(id => {
+                    if (!pinnedChats.includes(id)) togglePinChat(id);
+                  });
+                  setSelectedChatIds([]);
+                  setMultiSelectMode(false);
+                }}
+                disabled={selectedChatIds.length === 0}
+                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-[var(--neon-green)] disabled:opacity-40 transition cursor-pointer"
+              >
+                Pin
+              </button>
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  selectedChatIds.forEach(id => {
+                    if (!favoriteChats.includes(id)) toggleFavoriteChat(id);
+                  });
+                  setSelectedChatIds([]);
+                  setMultiSelectMode(false);
+                }}
+                disabled={selectedChatIds.length === 0}
+                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-yellow-400 disabled:opacity-40 transition cursor-pointer"
+              >
+                Star
+              </button>
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  selectedChatIds.forEach(id => {
+                    if (!archivedChats.includes(id)) toggleArchiveChat(id);
+                  });
+                  setSelectedChatIds([]);
+                  setMultiSelectMode(false);
+                }}
+                disabled={selectedChatIds.length === 0}
+                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-blue-400 disabled:opacity-40 transition cursor-pointer"
+              >
+                Archive
+              </button>
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  selectedChatIds.forEach(id => {
+                    if (!mutedChats.includes(id)) toggleMuteChat(id);
+                  });
+                  setSelectedChatIds([]);
+                  setMultiSelectMode(false);
+                }}
+                disabled={selectedChatIds.length === 0}
+                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-orange-400 disabled:opacity-40 transition cursor-pointer"
+              >
+                Mute
+              </button>
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  selectedChatIds.forEach(id => {
+                    addChatToFolder(id, 'Work');
+                  });
+                  setSelectedChatIds([]);
+                  setMultiSelectMode(false);
+                }}
+                disabled={selectedChatIds.length === 0}
+                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-purple-400 disabled:opacity-40 transition cursor-pointer"
+              >
+                + Work
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Main Sidebar Scroll Area */}
         <div className="flex-1 overflow-y-auto divide-y divide-zinc-950 bg-black/40">
@@ -2834,8 +3087,22 @@ export default function ChatSection({
               }
 
               // Filter by pill selection
+              const isArchived = archivedChats.includes(chat.id);
+              if (filterType === 'archived') {
+                if (!isArchived) return false;
+              } else {
+                if (isArchived) return false;
+              }
+
+              const isMuted = mutedChats.includes(chat.id);
+              if (filterType === 'muted' && !isMuted) return false;
+
               if (filterType === 'groups' && !chat.isGroup) return false;
               if (filterType === 'favorites' && !favoriteChats.includes(chat.id)) return false;
+
+              if (filterType === 'business') {
+                if (!chat.isGroup || chat.groupType !== 'business') return false;
+              }
               
               const peerId = chat.participantIds.find(id => id !== profile?.uid);
               const peer = users.find(u => u.uid === peerId);
@@ -2847,6 +3114,12 @@ export default function ChatSection({
               ).length;
               
               if (filterType === 'unread' && unreadCount === 0) return false;
+
+              // Filter by folders
+              if (selectedFolder !== 'All') {
+                const folderChats = chatFolders[selectedFolder] || [];
+                if (!folderChats.includes(chat.id)) return false;
+              }
 
               // Filter by search query
               if (searchQuery.trim() !== '') {
@@ -2865,6 +3138,12 @@ export default function ChatSection({
               }
               return true;
             }).sort((a, b) => {
+              // 1. Pinned chats sort to the very top
+              const isPinnedA = pinnedChats.includes(a.id);
+              const isPinnedB = pinnedChats.includes(b.id);
+              if (isPinnedA && !isPinnedB) return -1;
+              if (isPinnedB && !isPinnedA) return 1;
+
               const getUnread = (c: typeof a) => {
                 if (c.isGroup) {
                   return notifications.filter(n => n.type === 'message' && n.chatId === c.id).length;
@@ -2887,6 +3166,49 @@ export default function ChatSection({
             }).map((chat) => {
               const isSelected = currentChat?.id === chat.id;
               const isFavorite = favoriteChats.includes(chat.id);
+              const isPinned = pinnedChats.includes(chat.id);
+              const isMuted = mutedChats.includes(chat.id);
+
+              // Draft retrieval
+              let draftText: string | null = null;
+              if (profile) {
+                if (chat.isGroup) {
+                  draftText = localStorage.getItem(`fara_flick_draft_${profile.uid}_group_${chat.id}`);
+                } else {
+                  const pId = chat.participantIds.find(id => id !== profile?.uid);
+                  if (pId) {
+                    draftText = localStorage.getItem(`fara_flick_draft_${profile.uid}_${pId}`);
+                  }
+                }
+              }
+
+              // Folder retrieval
+              let folderLabel = '';
+              Object.entries(chatFolders).forEach(([folder, chatIds]) => {
+                const ids = chatIds as string[];
+                if (ids.includes(chat.id)) {
+                  folderLabel = folder.toUpperCase();
+                }
+              });
+
+              const isChatSelected = selectedChatIds.includes(chat.id);
+              const handleChatClick = () => {
+                if (multiSelectMode) {
+                  setSelectedChatIds(prev =>
+                    prev.includes(chat.id) ? prev.filter(id => id !== chat.id) : [...prev, chat.id]
+                  );
+                } else {
+                  if (chat.isGroup) {
+                    setSelectedGroup(chat);
+                    setSelectedPeer(null);
+                    setCurrentChat(chat);
+                  } else {
+                    const peerId = chat.participantIds.find(id => id !== profile?.uid);
+                    const peer = users.find(u => u.uid === peerId);
+                    if (peer) openChatRoom(peer);
+                  }
+                }
+              };
 
               const getStreakNum = (uid: string) => {
                 const seed = uid.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -2907,19 +3229,25 @@ export default function ChatSection({
                 return (
                   <div
                     key={chat.id}
-                    onClick={() => {
-                      playGlitchClickSound();
-                      triggerVibration('medium');
-                      setSelectedGroup(chat);
-                      setSelectedPeer(null);
-                      setCurrentChat(chat);
-                    }}
-                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer ${
+                    onClick={handleChatClick}
+                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer relative group/item ${
                       isSelected 
                         ? 'bg-zinc-900/60 border-l-4 border-[var(--neon-green)]' 
                         : 'hover:bg-zinc-900/30 text-zinc-100'
-                    }`}
+                    } ${isChatSelected ? 'bg-[var(--neon-green)]/10' : ''}`}
                   >
+                    {/* Checkbox for selection mode */}
+                    {multiSelectMode && (
+                      <div className="flex-shrink-0 flex items-center pr-1 select-none">
+                        <input
+                          type="checkbox"
+                          checked={isChatSelected}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded border-zinc-800 text-[var(--neon-green)] focus:ring-[var(--neon-green)] bg-black accent-[var(--neon-green)] cursor-pointer"
+                        />
+                      </div>
+                    )}
+
                     <div className="relative flex-shrink-0">
                       <img
                         src={avatarUrl}
@@ -2929,14 +3257,60 @@ export default function ChatSection({
                       />
                       <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black bg-sky-400" title="Group Conduit" />
                     </div>
+                    
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
                           <p className="text-[13px] font-sans font-bold truncate text-zinc-100">
                             👥 {chatName}
                           </p>
+                          {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
+                          {isMuted && <VolumeX className="w-3 h-3 text-orange-400 flex-shrink-0" />}
+                          {folderLabel && (
+                            <span className="px-1 py-0.2 text-[7px] font-black font-mono bg-purple-950/80 text-purple-300 border border-purple-500/30">
+                              {folderLabel}
+                            </span>
+                          )}
                         </div>
+                        
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Hover action overlay panel */}
+                          <div className="opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 flex items-center gap-1 mr-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                togglePinChat(chat.id);
+                              }}
+                              className={`p-0.5 hover:text-[var(--neon-green)] transition ${isPinned ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}
+                              title="Toggle Pin"
+                            >
+                              <Pin className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                toggleMuteChat(chat.id);
+                              }}
+                              className={`p-0.5 hover:text-orange-400 transition ${isMuted ? 'text-orange-400' : 'text-zinc-500'}`}
+                              title="Toggle Mute"
+                            >
+                              <VolumeX className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                toggleArchiveChat(chat.id);
+                              }}
+                              className="p-0.5 hover:text-blue-400 text-zinc-500 transition"
+                              title="Archive Chat"
+                            >
+                              <Archive className="w-3 h-3" />
+                            </button>
+                          </div>
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2947,9 +3321,6 @@ export default function ChatSection({
                           >
                             <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
                           </button>
-                          <span className="text-[11px] font-sans text-zinc-400 font-semibold shrink-0">
-                            ✨
-                          </span>
                         </div>
                       </div>
                       
@@ -2960,6 +3331,13 @@ export default function ChatSection({
                             <span className="text-[11px] font-sans font-semibold text-emerald-400 animate-pulse uppercase">
                               typing...
                             </span>
+                          </div>
+                        ) : draftText ? (
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-[10px] uppercase font-mono tracking-wider text-amber-500 font-black shrink-0">[DRAFT]</span>
+                            <p className="text-[11px] font-sans truncate text-amber-500/80 flex-1">
+                              {draftText}
+                            </p>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 min-w-0">
@@ -3006,13 +3384,25 @@ export default function ChatSection({
                 return (
                   <div
                     key={chat.id}
-                    onClick={() => openChatRoom(peer)}
-                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer ${
+                    onClick={handleChatClick}
+                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer relative group/item ${
                       isSelected 
                         ? 'bg-zinc-900/60 border-l-4 border-[var(--neon-green)]' 
                         : 'hover:bg-zinc-900/30 text-zinc-100'
-                    }`}
+                    } ${isChatSelected ? 'bg-[var(--neon-green)]/10' : ''}`}
                   >
+                    {/* Checkbox for selection mode */}
+                    {multiSelectMode && (
+                      <div className="flex-shrink-0 flex items-center pr-1 select-none">
+                        <input
+                          type="checkbox"
+                          checked={isChatSelected}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded border-zinc-800 text-[var(--neon-green)] focus:ring-[var(--neon-green)] bg-black accent-[var(--neon-green)] cursor-pointer"
+                        />
+                      </div>
+                    )}
+
                     <div className="relative flex-shrink-0">
                       <img
                         src={peer.photoURL}
@@ -3032,14 +3422,60 @@ export default function ChatSection({
                         }`}
                       />
                     </div>
+                    
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
                           <p className="text-[13px] font-sans font-bold truncate text-zinc-100">
                             {renamedNicknames[peer.uid] ? `${renamedNicknames[peer.uid]} *` : peer.displayName}
                           </p>
+                          {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
+                          {isMuted && <VolumeX className="w-3 h-3 text-orange-400 flex-shrink-0" />}
+                          {folderLabel && (
+                            <span className="px-1 py-0.2 text-[7px] font-black font-mono bg-purple-950/80 text-purple-300 border border-purple-500/30">
+                              {folderLabel}
+                            </span>
+                          )}
                         </div>
+                        
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Hover actions panel */}
+                          <div className="opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 flex items-center gap-1 mr-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                togglePinChat(chat.id);
+                              }}
+                              className={`p-0.5 hover:text-[var(--neon-green)] transition ${isPinned ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}
+                              title="Toggle Pin"
+                            >
+                              <Pin className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                toggleMuteChat(chat.id);
+                              }}
+                              className={`p-0.5 hover:text-orange-400 transition ${isMuted ? 'text-orange-400' : 'text-zinc-500'}`}
+                              title="Toggle Mute"
+                            >
+                              <VolumeX className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                toggleArchiveChat(chat.id);
+                              }}
+                              className="p-0.5 hover:text-blue-400 text-zinc-500 transition"
+                              title="Archive Chat"
+                            >
+                              <Archive className="w-3 h-3" />
+                            </button>
+                          </div>
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -3050,6 +3486,7 @@ export default function ChatSection({
                           >
                             <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
                           </button>
+                          
                           <span className="text-[11px] font-sans text-zinc-400 font-semibold shrink-0" title="Conversation streak">
                             {peer.uid === 'my-ai-bot-uid' ? '🌟' : `🔥 ${getStreakNum(peer.uid)}`}
                           </span>
@@ -3063,6 +3500,13 @@ export default function ChatSection({
                             <span className="text-[11px] font-sans font-semibold text-emerald-400 animate-pulse uppercase">
                               typing...
                             </span>
+                          </div>
+                        ) : draftText ? (
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-[10px] uppercase font-mono tracking-wider text-amber-500 font-black shrink-0">[DRAFT]</span>
+                            <p className="text-[11px] font-sans truncate text-amber-500/80 flex-1">
+                              {draftText}
+                            </p>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 min-w-0">
@@ -4252,7 +4696,11 @@ export default function ChatSection({
                               onClick={() => {
                                 playGlitchClickSound();
                                 setChatWallpaper(wall.value);
-                                localStorage.setItem('flick_global_wallpaper', wall.value);
+                                if (currentChat?.id) {
+                                  localStorage.setItem(`flick_wallpaper_${currentChat.id}`, wall.value);
+                                } else {
+                                  localStorage.setItem('flick_global_wallpaper', wall.value);
+                                }
                               }}
                               className={`p-1.5 border text-center text-[8px] uppercase tracking-wider font-bold cursor-pointer transition ${
                                 isActive
