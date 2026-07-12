@@ -126,6 +126,7 @@ export default function StoriesBar() {
 
   // Subscribe to all users to resolve profiles
   useEffect(() => {
+    if (!profile) return;
     const unsubscribe = subscribeToUsers((usersList) => {
       const map: Record<string, any> = {};
       usersList.forEach(u => {
@@ -134,10 +135,11 @@ export default function StoriesBar() {
       setUsersMap(map);
     });
     return () => unsubscribe();
-  }, []);
+  }, [profile]);
 
   // Subscribe to stories real-time feed
   useEffect(() => {
+    if (!profile) return;
     const unsubscribe = subscribeToStories((newList) => {
       const now = new Date().getTime();
       

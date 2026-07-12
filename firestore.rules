@@ -73,6 +73,8 @@ service cloud.firestore {
         && (!('disabledReadReceipts' in data) || data.disabledReadReceipts == null || (data.disabledReadReceipts is list && data.disabledReadReceipts.size() <= 1000))
         && (!('isDeleted' in data) || data.isDeleted == null || data.isDeleted is bool)
         && (!('sportsNotificationPrefs' in data) || data.sportsNotificationPrefs == null || data.sportsNotificationPrefs is map)
+        && (!('platform' in data) || data.platform == null || data.platform is string)
+        && (!('lastActive' in data) || data.lastActive == null || data.lastActive is timestamp || data.lastActive is string || data.lastActive is int)
         && (data.updatedAt is timestamp || data.updatedAt == null || data.updatedAt is string);
     }
 
@@ -84,6 +86,7 @@ service cloud.firestore {
         && (!('authorPhoto' in data) || data.authorPhoto == null || data.authorPhoto is string)
         && data.content is string
         && data.likesCount is int
+        && (!('commentsCount' in data) || data.commentsCount == null || data.commentsCount is int)
         && (!('imageUrl' in data) || data.imageUrl == null || data.imageUrl is string)
         && (!('videoUrl' in data) || data.videoUrl == null || data.videoUrl is string)
         && (!('audioUrl' in data) || data.audioUrl == null || data.audioUrl is string)
@@ -187,8 +190,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data)
-        && (!('publicKey' in resource.data) || request.resource.data.publicKey == resource.data.publicKey);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
       allow delete: if isOwner(userId);
         
       // Nested Private Info
@@ -203,7 +205,9 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid && isValidPost(request.resource.data);
       allow update: if isSignedIn() && (
         (resource.data.authorId == request.auth.uid && request.resource.data.authorId == request.auth.uid && request.resource.data.createdAt == resource.data.createdAt && isValidPost(request.resource.data))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'updatedAt']) && request.resource.data.likesCount is int)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'commentsCount', 'updatedAt']) 
+            && (!('likesCount' in request.resource.data) || request.resource.data.likesCount is int)
+            && (!('commentsCount' in request.resource.data) || request.resource.data.commentsCount is int))
       );
       allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
   
@@ -244,6 +248,7 @@ service cloud.firestore {
         chatId == 'global-node-concourse'
         || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
         || (resource != null && 'participantIds' in resource.data && request.auth.uid in resource.data.participantIds)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvalQueue']))
       ) && isValidChat(request.resource.data);
       allow delete: if isSignedIn() && (
         chatId == 'global-node-concourse'
@@ -258,7 +263,7 @@ service cloud.firestore {
         allow create: if isParentChatParticipant(chatId) 
           && (request.resource.data.senderId == request.auth.uid || (chatId.matches('^chat_my-ai-bot-uid_.*') && request.resource.data.senderId == 'my-ai-bot-uid')) 
           && isValidMessage(request.resource.data);
-        allow update: if false;
+        allow update: if isParentChatParticipant(chatId) && isValidMessage(request.resource.data);
         allow delete: if false;
 
         // --- Message Reactions Subcollection ---
@@ -292,7 +297,11 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid && isValidStory(request.resource.data);
       allow update: if isSignedIn() && (
         (resource.data.authorId == request.auth.uid && isValidStory(request.resource.data))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'viewedBy']) && request.resource.data.viewsCount is int && request.resource.data.viewedBy is list)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'viewedBy', 'pollVotes', 'pollOptions'])
+            && (!('viewsCount' in request.resource.data) || request.resource.data.viewsCount is int)
+            && (!('viewedBy' in request.resource.data) || request.resource.data.viewedBy is list)
+            && (!('pollVotes' in request.resource.data) || request.resource.data.pollVotes is map)
+            && (!('pollOptions' in request.resource.data) || request.resource.data.pollOptions is list))
       );
       allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
         
@@ -317,7 +326,8 @@ service cloud.firestore {
     // 9. Broadcast News collection
     match /news/{newsId} {
       allow read: if true;
-      allow create, update, delete: if isSignedIn() && (request.auth.token != null && 'email' in request.auth.token && request.auth.token.email.matches('^system-backend.*@flick-pwa\\.internal$'));
+      allow create: if isSignedIn() && isValidNews(request.resource.data);
+      allow update, delete: if isSignedIn() && (request.auth.token != null && 'email' in request.auth.token && request.auth.token.email.matches('^system-backend.*@flick-pwa\\.internal$'));
     }
   }
 }

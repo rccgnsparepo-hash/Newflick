@@ -252,6 +252,7 @@ export default function FeedSection({
 
   // Sync real-time feeds
   useEffect(() => {
+    if (!profile) return;
     const unsubFeed = subscribeToFeed((loaded) => {
       setFirebasePosts(loaded);
       setIsFeedLoading(false);
@@ -280,7 +281,7 @@ export default function FeedSection({
       unsubStories();
       unsubUsers();
     };
-  }, []);
+  }, [profile]);
 
   // Save campus choice to local storage
   const handleCampusChange = (campus: string) => {
