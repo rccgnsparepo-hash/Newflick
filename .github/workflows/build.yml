@@ -1,0 +1,118 @@
+name: Build & Release Flick for Windows
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ── Auto-version: 1.0.<total commit count> ─────────────────────────
+      - name: Generate version number
+        id: ver
+        shell: bash
+        run: |
+          BUILD=$(git rev-list --count HEAD)
+          VERSION="1.0.$BUILD"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Flick version: $VERSION"
+
+      - name: Bump version in electron/package.json
+        shell: bash
+        run: |
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.ver.outputs.version }}\"/" electron/package.json
+
+      # ── Fix vite base path so assets work with file:// in Electron ─────
+      - name: Patch vite.config.ts for Electron
+        shell: bash
+        run: |
+          cat > vite.config.ts << 'VITE'
+          import tailwindcss from '@tailwindcss/vite';
+          import react from '@vitejs/plugin-react';
+          import path from 'path';
+          import { defineConfig } from 'vite';
+          export default defineConfig(() => ({
+            base: './',
+            plugins: [react(), tailwindcss()],
+            resolve: { alias: { '@': path.resolve(__dirname, '.') } },
+          }));
+          VITE
+
+      # ── Build React app ────────────────────────────────────────────────
+      - name: Install React dependencies
+        run: npm install
+
+      - name: Build React app
+        run: npm run build
+
+      # Write a version stamp into the build so the updater knows what's installed
+      - name: Write version stamp into React dist
+        shell: bash
+        run: |
+          echo "{\"version\":\"v${{ steps.ver.outputs.version }}\"}" > dist/flick-version.json
+
+      # ── Create the small (~3-5 MB) update-only zip ─────────────────────
+      # Users who already have Flick installed download THIS instead of
+      # the full 190 MB installer. The app swaps react-dist and restarts.
+      - name: Zip React dist for lightweight update
+        shell: bash
+        run: |
+          cd dist
+          7z a -tzip ../react-dist.zip .
+          cd ..
+          echo "Update zip size: $(du -sh react-dist.zip | cut -f1)"
+
+      # ── Build Windows installer ────────────────────────────────────────
+      - name: Install Electron dependencies
+        run: npm install
+        working-directory: electron
+
+      - name: Copy React dist into Electron build
+        shell: bash
+        run: |
+          rm -rf electron/react-dist
+          cp -r dist electron/react-dist
+
+      # ── Tag the commit so electron-builder can publish the release ─────
+      - name: Create git tag
+        shell: bash
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions [Flick Bot]"
+          git tag ${{ steps.ver.outputs.tag }}
+          git push origin ${{ steps.ver.outputs.tag }}
+
+      # electron-builder publishes the NSIS installer + latest.yml
+      - name: Build Windows installer and publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
+        working-directory: electron
+
+      # Also upload the small react-dist.zip to the same release
+      # so the in-app updater can download just ~3-5 MB instead of 190 MB
+      - name: Upload lightweight update zip to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload ${{ steps.ver.outputs.tag }} react-dist.zip --clobber
