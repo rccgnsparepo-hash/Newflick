@@ -54,7 +54,7 @@
     "publish": {
       "provider": "github",
       "owner": "rccgnsparepo-hash",
-      "repo": "Gi",
+      "repo": "NewFlick",
       "releaseType": "release"
     }
   }
