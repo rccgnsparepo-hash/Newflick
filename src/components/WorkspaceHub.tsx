@@ -11,7 +11,7 @@ export default function WorkspaceHub() {
       const newToken = await connectWorkspace();
       setToken(newToken);
     } catch (err) {
-      console.error(err);
+      console.warn(err);
       alert('Failed to connect workspace');
     }
   };
@@ -100,7 +100,7 @@ function DriveSection({ token }: { token: string }) {
     })
       .then(r => r.json())
       .then(d => { setFiles(d.files || []); setLoading(false); })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => { console.warn(e); setLoading(false); });
   }, [token]);
 
   if (loading) return <div className="p-6 text-zinc-500 font-mono text-xs uppercase animate-pulse">Scanning Drive Matrix...</div>;
@@ -138,7 +138,7 @@ function TasksSection({ token }: { token: string }) {
           setLoading(false);
         }
       })
-      .catch(e => console.error(e));
+      .catch(e => console.warn(e));
   }, [token]);
 
   useEffect(() => {
@@ -149,7 +149,7 @@ function TasksSection({ token }: { token: string }) {
     })
       .then(r => r.json())
       .then(d => { setTasks(d.items || []); setLoading(false); })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => { console.warn(e); setLoading(false); });
   }, [token, activeList]);
 
   const addTask = async (e: React.FormEvent) => {
@@ -165,7 +165,7 @@ function TasksSection({ token }: { token: string }) {
       setTasks([data, ...tasks]);
       setNewTaskTitle('');
     } catch (e) {
-      console.error(e);
+      console.warn(e);
     }
   };
 
@@ -178,7 +178,7 @@ function TasksSection({ token }: { token: string }) {
       });
       setTasks(tasks.map(t => t.id === task.id ? { ...t, status: task.status === 'completed' ? 'needsAction' : 'completed' } : t));
     } catch (e) {
-      console.error(e);
+      console.warn(e);
     }
   };
 
@@ -224,7 +224,7 @@ function ChatSection({ token }: { token: string }) {
     })
       .then(r => r.json())
       .then(d => { setSpaces(d.spaces || []); setLoading(false); })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => { console.warn(e); setLoading(false); });
   }, [token]);
 
   if (loading) return <div className="p-6 text-[#ff0055] font-mono text-xs uppercase animate-pulse">Connecting to Comms...</div>;
@@ -271,7 +271,7 @@ function GmailSection({ token }: { token: string }) {
         }
         setLoading(false); 
       })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => { console.warn(e); setLoading(false); });
   }, [token]);
 
   if (loading) return <div className="p-6 text-[#ea4335] font-mono text-xs uppercase animate-pulse">Syncing Inbox...</div>;
@@ -308,7 +308,7 @@ function CalendarSection({ token }: { token: string }) {
     })
       .then(r => r.json())
       .then(d => { setEvents(d.items || []); setLoading(false); })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => { console.warn(e); setLoading(false); });
   }, [token]);
 
   if (loading) return <div className="p-6 text-[#4285f4] font-mono text-xs uppercase animate-pulse">Scanning Schedule...</div>;
@@ -340,7 +340,7 @@ function ContactsSection({ token }: { token: string }) {
     })
       .then(r => r.json())
       .then(d => { setContacts(d.connections || []); setLoading(false); })
-      .catch(e => { console.error(e); setLoading(false); });
+      .catch(e => { console.warn(e); setLoading(false); });
   }, [token]);
 
   if (loading) return <div className="p-6 text-[#fbbc05] font-mono text-xs uppercase animate-pulse">Loading Contacts...</div>;

@@ -154,7 +154,7 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void, onErr
       if (onError) {
         onError(parsedErr);
       } else {
-        console.error("Users list stream error:", parsedErr);
+        console.warn("Users list stream error:", parsedErr);
       }
     }
   });
@@ -909,7 +909,7 @@ export function subscribeToMessages(chatId: string, callback: (messages: ChatMes
     try {
       handleFirestoreError(err, OperationType.LIST, path);
     } catch (e) {
-      console.error("Messages stream subscription error:", e);
+      console.warn("Messages stream subscription error:", e);
     }
   });
 }
@@ -939,7 +939,7 @@ export function subscribeToNotifications(userId: string, callback: (notifs: InAp
     try {
       handleFirestoreError(err, OperationType.LIST, path);
     } catch (e) {
-      console.error("Notifications stream subscription error:", e);
+      console.warn("Notifications stream subscription error:", e);
     }
   });
 }
@@ -1041,7 +1041,7 @@ export function subscribeToMessageReactions(
     if (onError) {
       onError(err);
     } else {
-      console.error("Failed to fetch message reactions:", err);
+      console.warn("Failed to fetch message reactions:", err);
     }
   });
 }
@@ -1103,7 +1103,7 @@ export function subscribeToPostReactions(
     if (onError) {
       onError(err);
     } else {
-      console.error("Failed to fetch post reactions:", err);
+      console.warn("Failed to fetch post reactions:", err);
     }
   });
 }
@@ -1227,7 +1227,7 @@ export function subscribeToStories(
         onError(parsedErr);
       }
     } else {
-      console.error("Failed to subscribe to stories:", err);
+      console.warn("Failed to subscribe to stories:", err);
     }
   });
 }
@@ -1351,7 +1351,7 @@ export function subscribeToStoryReactions(
     const reactions = snap.docs.map(doc => doc.data() as MessageReaction);
     callback(reactions);
   }, (err) => {
-    console.error("Failed to fetch story reactions:", err);
+    console.warn("Failed to fetch story reactions:", err);
   });
 }
 
@@ -1426,7 +1426,7 @@ export function subscribeToIncomingCall(userId: string, callback: (call: any | n
     try {
       handleFirestoreError(err, OperationType.LIST, path);
     } catch (e) {
-      console.error("Incoming calls stream error:", e);
+      console.warn("Incoming calls stream error:", e);
     }
   });
 }
@@ -1448,7 +1448,7 @@ export function subscribeToOutgoingCall(callerId: string, callback: (call: any |
     try {
       handleFirestoreError(err, OperationType.LIST, path);
     } catch (e) {
-      console.error("Outgoing calls stream error:", e);
+      console.warn("Outgoing calls stream error:", e);
     }
   });
 }
@@ -1465,7 +1465,7 @@ export function subscribeToCallState(callId: string, callback: (call: any | null
     try {
       handleFirestoreError(err, OperationType.GET, path);
     } catch (e) {
-      console.error("Call state stream error:", e);
+      console.warn("Call state stream error:", e);
     }
   });
 }
@@ -1578,7 +1578,7 @@ export function subscribeToComments(postId: string, callback: (comments: any[]) 
     try {
       handleFirestoreError(err, OperationType.LIST, path);
     } catch (e) {
-      console.error("Comments stream subscription error:", e);
+      console.warn("Comments stream subscription error:", e);
     }
   });
 }

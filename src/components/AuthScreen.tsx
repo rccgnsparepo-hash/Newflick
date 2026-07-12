@@ -103,7 +103,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
         showBrutalistToast('SUCCESS ✓', 'Authenticated successfully! Linking node...', 'success');
       }
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       const cleanErr = cleanFirebaseError(err?.message || String(err));
       setError(cleanErr);
       showBrutalistToast('ERROR ×', cleanErr, 'error');
@@ -127,7 +127,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
       setResetSuccess(successMsg);
       showBrutalistToast('SUCCESS ✓', successMsg, 'success');
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       const cleanErr = err?.message || "Failed broadcasting reset packet.";
       setError(cleanErr);
       showBrutalistToast('ERROR ×', cleanErr, 'error');
@@ -143,7 +143,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
       await loginWithGoogle();
       showBrutalistToast('SUCCESS ✓', 'Authenticated with Google! Syncing core node...', 'success');
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       const cleanErr = cleanFirebaseError(err?.message || String(err));
       setError(cleanErr);
       showBrutalistToast('ERROR ×', cleanErr, 'error');

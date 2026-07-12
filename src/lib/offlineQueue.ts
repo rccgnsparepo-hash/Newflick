@@ -99,7 +99,7 @@ export async function syncOfflineMessages(): Promise<void> {
         await deleteQueuedMessage(msg.id);
         console.log(`[Offline Syncer] Message ${msg.id} delivered and cleared from cache.`);
       } catch (err) {
-        console.error(`[Offline Syncer] Delivery failed for message ${msg.id}:`, err);
+        console.warn(`[Offline Syncer] Delivery failed for message ${msg.id}:`, err);
         // If it was a network error, stop sending further messages to maintain order
         break;
       }
@@ -113,6 +113,6 @@ export async function syncOfflineMessages(): Promise<void> {
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     console.log("[Offline Syncer] Network connectivity RESTORED. Triggering queue drain.");
-    syncOfflineMessages().catch(console.error);
+    syncOfflineMessages().catch(console.warn);
   });
 }

@@ -71,7 +71,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
       });
       setReadReceiptsEnabled(nextVal);
     } catch (err) {
-      console.error("Failed to update read receipts preference:", err);
+      console.warn("Failed to update read receipts preference:", err);
     }
   };
 
@@ -126,7 +126,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
         } as Post));
         setPosts(loadedPosts);
       } catch (err: any) {
-        console.error('[Profile Fetch] DB query failure:', err);
+        console.warn('[Profile Fetch] DB query failure:', err);
         setError(err.message || 'Lookup failure on remote cluster.');
       } finally {
         setLoading(false);

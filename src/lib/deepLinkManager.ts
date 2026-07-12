@@ -68,7 +68,7 @@ class DeepLinkManager {
         id: params.id || `${Date.now()}-${Math.random()}`
       };
     } catch (e) {
-      console.error('[DeepLink Parser] Failed to parse url:', urlStr, e);
+      console.warn('[DeepLink Parser] Failed to parse url:', urlStr, e);
       return null;
     }
   }
@@ -121,7 +121,7 @@ class DeepLinkManager {
         id: rawData.id || rawData.notification_id || `${Date.now()}-${Math.random()}`
       };
     } catch (err) {
-      console.error('[DeepLink Parser] Exception parsing notification details:', err);
+      console.warn('[DeepLink Parser] Exception parsing notification details:', err);
       return null;
     }
   }
@@ -170,7 +170,7 @@ class DeepLinkManager {
       try {
         cb(payload);
       } catch (err) {
-        console.error('[DeepLink Manager] Listener navigation threw an error:', err);
+        console.warn('[DeepLink Manager] Listener navigation threw an error:', err);
       }
     });
     this.clearPersisted();
@@ -219,7 +219,7 @@ class DeepLinkManager {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
-      console.error('[DeepLink Manager] Storage write error:', err);
+      console.warn('[DeepLink Manager] Storage write error:', err);
     }
   }
 
@@ -231,7 +231,7 @@ class DeepLinkManager {
         console.log('[DeepLink Manager] Restored pending deep link from local storage:', this.pendingPayload);
       }
     } catch (err) {
-      console.error('[DeepLink Manager] Storage restore error:', err);
+      console.warn('[DeepLink Manager] Storage restore error:', err);
     }
   }
 

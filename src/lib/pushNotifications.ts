@@ -44,7 +44,7 @@ function notifyListeners() {
     try {
       cb([...pushDebugLogs]);
     } catch (e) {
-      console.error('[Push Debugger Listeners] Callback exception:', e);
+      console.warn('[Push Debugger Listeners] Callback exception:', e);
     }
   });
 }
@@ -206,7 +206,7 @@ async function saveOneSignalTokenToFirestore(uid: string, subscriptionId: string
     console.log('[OneSignal] Subscription ID successfully persisted in Firestore users collection.');
     addPushDebugLog('success', `Subscription mapped & written to Firestore: ${subscriptionId}`);
   } catch (err: any) {
-    console.error('[OneSignal] Failed to save OneSignal subscription ID to users collection:', err);
+    console.warn('[OneSignal] Failed to save OneSignal subscription ID to users collection:', err);
     addPushDebugLog('error', `Failed writing subscription token to Firestore: ${err.message}`, err);
   }
 }
@@ -424,7 +424,7 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
       return { success: true, response: result };
     }
   } catch (err: any) {
-    console.error(`${label} - Failed to send REST request via proxy:`, err);
+    console.warn(`${label} - Failed to send REST request via proxy:`, err);
     addPushDebugLog('error', `Proxy push dispatch failed: ${err.message || String(err)}`);
     return { success: false, error: err };
   }
@@ -455,7 +455,7 @@ export async function updateOneSignalUserTags(profile: any) {
     await OneSignal.User.addTags(tags);
     addPushDebugLog('success', 'OneSignal player tag configuration uploaded successfully.', tags);
   } catch (err: any) {
-    console.error('[OneSignal-Web] Failed to associate user tags:', err);
+    console.warn('[OneSignal-Web] Failed to associate user tags:', err);
     addPushDebugLog('error', `OneSignal tag upload failed: ${err.message || String(err)}`);
   }
 }
@@ -472,7 +472,7 @@ export async function logoutPushNotificationsCleanup(uid: string) {
       addPushDebugLog('success', 'OneSignal external User mapping scrubbed.');
     }
   } catch (err: any) {
-    console.error('[Push-Web-Cleanup] Error during logout cleanup:', err);
+    console.warn('[Push-Web-Cleanup] Error during logout cleanup:', err);
     addPushDebugLog('error', `Scrubbing session exception occurred: ${err.message || String(err)}`);
   }
 }

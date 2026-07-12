@@ -131,7 +131,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
         }
       }
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       if (!silent) showToast("ERROR", "Could not synchronize fixtures from real-time API.", "error");
     } finally {
       if (!silent) setIsLoadingFixtures(false);
@@ -147,7 +147,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
       const data: StandingRow[] = await res.json();
       setTableData(data);
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       showToast("ERROR", "Could not fetch standings table from live Sports API.", "error");
     } finally {
       setIsLoadingTable(false);
@@ -163,7 +163,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
       const data: NewsItem[] = await res.json();
       setNews(data);
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       showToast("ERROR", "Could not aggregate football news feeds.", "error");
     } finally {
       setIsLoadingNews(false);
@@ -335,7 +335,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
       setCustomTeamB('');
       setCustomVideoUrl('');
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       showToast('DEPLOY FAILURE', err.message || 'Could not launch broadcast.', 'error');
     }
   };
@@ -359,7 +359,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
       });
       showToast("SUCCESS ✓", "FCM / OneSignal subscription preferences stored successfully!", "success");
     } catch (err: any) {
-      console.error("Failed to update sports subscription prefs:", err);
+      console.warn("Failed to update sports subscription prefs:", err);
       showToast("WRITE ERROR", "Failed to persist sports subscriptions.", "error");
     } finally {
       setIsSavingAlerts(false);

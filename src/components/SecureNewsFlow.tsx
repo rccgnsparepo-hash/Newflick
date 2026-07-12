@@ -86,7 +86,7 @@ export default function SecureNewsFlow() {
       setShowPublisher(false);
       playLikeSound();
     } catch (err) {
-      console.error('Failed to publish custom news bullet:', err);
+      console.warn('Failed to publish custom news bullet:', err);
     } finally {
       setIsPublishing(false);
     }

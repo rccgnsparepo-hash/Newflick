@@ -194,7 +194,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log(`[Connectivity Sync] Executing queued task: ${req.id}`);
         await req.callback();
       } catch (err) {
-        console.error(`[Connectivity Sync] Failed to process queued request: ${req.id}. Postponing back to queue.`, err);
+        console.warn(`[Connectivity Sync] Failed to process queued request: ${req.id}. Postponing back to queue.`, err);
         failedRequests.push(req);
       }
     }

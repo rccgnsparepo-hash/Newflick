@@ -165,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(localFallback);
       }
     } catch (err) {
-      console.error("Failed to verify/generate cryptographic keypair:", err);
+      console.warn("Failed to verify/generate cryptographic keypair:", err);
     }
   };
 
@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser?.uid && db) {
         // Set offline in Firestore (runs best effort synchronously)
         const ref = doc(db, 'users', currentUser.uid);
-        updateDoc(ref, { status: 'offline', updatedAt: serverTimestamp() }).catch(console.error);
+        updateDoc(ref, { status: 'offline', updatedAt: serverTimestamp() }).catch(console.warn);
       }
     };
 
@@ -293,7 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("Google authentication failed:", error);
+      console.warn("Google authentication failed:", error);
       setLoading(false);
       throw error;
     }
@@ -322,7 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
     } catch (error) {
-      console.error("Email registration failed:", error);
+      console.warn("Email registration failed:", error);
       setLoading(false);
       throw error;
     }
@@ -341,7 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userCredential.user.photoURL || ''
       );
     } catch (error) {
-      console.error("Email login failed:", error);
+      console.warn("Email login failed:", error);
       setLoading(false);
       throw error;
     }
@@ -373,7 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       setLocalPrivateKey(null);
     } catch (error) {
-      console.error("Signout error:", error);
+      console.warn("Signout error:", error);
     } finally {
       setLoading(false);
     }
@@ -399,7 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const synced = await getUserProfile(currentUser.uid);
       setProfile(synced);
     } catch (error) {
-      console.error("Key regeneration failed:", error);
+      console.warn("Key regeneration failed:", error);
     } finally {
       setLoading(false);
     }
@@ -411,7 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const synced = await getUserProfile(currentUser.uid);
       setProfile(synced);
     } catch (error) {
-      console.error("Failed to reload user profile:", error);
+      console.warn("Failed to reload user profile:", error);
     }
   };
 
@@ -458,7 +458,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLocalPrivateKey(null);
       showBrutalistToast('NODE DEREGISTERED', 'Your terminal node has been wiped from the Flick network.', 'success');
     } catch (error: any) {
-      console.error("Account deletion failed:", error);
+      console.warn("Account deletion failed:", error);
       if (error?.code === 'auth/requires-recent-login') {
         showBrutalistToast('SECURITY ALERT', 'For security, please sign out and sign back in before de-registering your node.', 'error');
       } else {

@@ -77,7 +77,7 @@ try {
   }
 } catch (err: any) {
   firebaseInitError = err.message || String(err);
-  console.error("[Firebase Client] Fatal initialization error:", err);
+  console.warn("[Firebase Client] Fatal initialization error:", err);
 }
 
 // Verification tracking types
@@ -128,7 +128,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error Captured:', JSON.stringify(errInfo));
+  console.warn('Firestore Error Captured:', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 

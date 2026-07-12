@@ -48,7 +48,7 @@ export function SettingsAccountTab({
       await deleteAccount();
       onClose();
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setIsDeleting(false);
     }

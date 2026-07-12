@@ -264,7 +264,7 @@ service cloud.firestore {
           && (request.resource.data.senderId == request.auth.uid || (chatId.matches('^chat_my-ai-bot-uid_.*') && request.resource.data.senderId == 'my-ai-bot-uid')) 
           && isValidMessage(request.resource.data);
         allow update: if isParentChatParticipant(chatId) && isValidMessage(request.resource.data);
-        allow delete: if false;
+        allow delete: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
         // --- Message Reactions Subcollection ---
         match /message_reactions/{userId} {
@@ -282,10 +282,7 @@ service cloud.firestore {
 
     // 5. In-App Notifications collection
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && (
-        resource.data.receiverId == request.auth.uid
-        || (request.auth.token != null && 'email' in request.auth.token && request.auth.token.email.matches('^system-backend.*@flick-pwa\\.internal$'))
-      );
+      allow read: if isSignedIn() && resource.data.receiverId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && isValidNotification(request.resource.data);
       allow update: if isSignedIn() && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if false;

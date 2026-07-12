@@ -213,7 +213,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
       setDiagnosticLogs(prev => [`[${timeStr}] SUCCESS: PWA Push Node synchronization cycle executed.`, ...prev]);
       await reloadProfile();
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       setDiagnosticLogs(prev => [`[${timeStr}] ERROR: ${err.message || String(err)}`, ...prev]);
     } finally {
       setIsRegisteringPush(false);
@@ -268,7 +268,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
       ]);
       
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       setDiagnosticLogs(prev => [`[${timeStr}] ERROR creating trigger document: ${err.message || String(err)}`, ...prev]);
     } finally {
       setIsSendingCloudTest(false);

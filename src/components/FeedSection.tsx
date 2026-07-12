@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Post, DirectChat, UserProfile, Story } from '../types';
 import ChatSection from './ChatSection';
 import SecureNewsFlow from './SecureNewsFlow';
-import StoriesBar from './StoriesBar';
 import LiveSportsHub from './LiveSportsHub';
 import { triggerVibration, triggerEventVibration } from '../lib/haptics';
 import WorkspaceHub from "./WorkspaceHub";
@@ -257,7 +256,7 @@ export default function FeedSection({
       setFirebasePosts(loaded);
       setIsFeedLoading(false);
     }, (err) => {
-      console.error("Failed to sync posts:", err);
+      console.warn("Failed to sync posts:", err);
       setIsFeedLoading(false);
       showBrutalistToast('SYNC ERROR', 'Failed to synchronize feed packets.', 'error');
     });
@@ -388,7 +387,7 @@ export default function FeedSection({
       const isLiked = post.likes?.includes(profile.uid);
       showBrutalistToast('PACKET UPDATED', isLiked ? 'Removed like endorsement' : 'Added like endorsement to packet', 'success', undefined, toastId);
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       showBrutalistToast('ERROR ×', 'Failed to endorse packet: ' + sanitizeErrorMessage(err), 'error', undefined, toastId);
     }
   };
@@ -472,7 +471,7 @@ export default function FeedSection({
       setShowPostCreator(false);
       showBrutalistToast('SUCCESS ✓', 'Story successfully broadcasted to campus network!', 'success', undefined, toastId);
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       setIsUploadingStory(false);
       let errMsg = sanitizeErrorMessage(err);
       if (!navigator.onLine || errMsg.toLowerCase().includes('offline')) {
@@ -576,7 +575,7 @@ export default function FeedSection({
       setShowPostCreator(false);
       showBrutalistToast('SUCCESS ✓', 'Packet securely deployed to global feeds!', 'success', undefined, toastId);
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       let errMsg = sanitizeErrorMessage(err);
       if (!navigator.onLine || errMsg.toLowerCase().includes('offline')) {
         errMsg = 'offline: Peer disconnected from network terminal.';
@@ -678,7 +677,7 @@ export default function FeedSection({
       setShowCreateGroup(false);
       setActiveTab('groups'); // navigate to group tab
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     }
   };
 
@@ -1093,9 +1092,6 @@ export default function FeedSection({
               />
             ) : (
               <>
-                {/* =================================== SECTION 2 — STORIES ROW =================================== */}
-                <StoriesBar />
-
             {/* =================================== SECTION 3 — QUICK ACTION PILLS =================================== */}
             <div className="py-2">
               <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
@@ -2267,7 +2263,7 @@ export default function FeedSection({
                     );
                     showBrutalistToast('SUCCESS ✓', 'Reply packet successfully transmitted!', 'success', undefined, toastId);
                   } catch (err: any) {
-                    console.error("Failed to post comment:", err);
+                    console.warn("Failed to post comment:", err);
                     setNewCommentText(inputVal); // Restore text in draft so they never lose it!
                     showBrutalistToast('ERROR ×', 'Reply packet failed to send: ' + sanitizeErrorMessage(err), 'error', undefined, toastId);
                   } finally {

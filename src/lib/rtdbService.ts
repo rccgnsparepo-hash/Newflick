@@ -36,7 +36,7 @@ export function trackUserPresence(
         photoURL,
         email,
         uid
-      });
+      }).catch(err => console.warn("RTDB disconnect error", err));
 
       // Write active session online status
       await set(userStatusRef, {
@@ -46,7 +46,7 @@ export function trackUserPresence(
         photoURL,
         email,
         uid
-      });
+      }).catch(err => console.warn("RTDB set error", err));
 
       if (onConnectedStatus) {
         onConnectedStatus(true);
@@ -68,7 +68,7 @@ export function trackUserPresence(
       photoURL,
       email,
       uid
-    }).catch(console.error);
+    }).catch(err => console.warn("RTDB set error", err));
   };
 }
 

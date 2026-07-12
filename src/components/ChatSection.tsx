@@ -35,7 +35,7 @@ import {
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
   Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard, Archive,
-  UserPlus, ChevronLeft, CornerUpRight, Edit3
+  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw
 } from 'lucide-react';
 import {
   subscribeToPeersStatus
@@ -953,7 +953,7 @@ export default function ChatSection({
       setSelectedPeer(null);
       setCurrentChat(newGroupObj as any);
     } catch (err) {
-      console.error("Failed to deploy group conduit on Firestore:", err);
+      console.warn("Failed to deploy group conduit on Firestore:", err);
       setError("Failed to deploy group conduit on security servers.");
     }
   };
@@ -1006,7 +1006,7 @@ export default function ChatSection({
         await voteOnPollMessage(currentChat.id, msgId, profile.uid, optionIdx);
         return;
       } catch (e) {
-        console.error("Failed to cast Firestore poll vote:", e);
+        console.warn("Failed to cast Firestore poll vote:", e);
         setError("Failed to register your group vote in security systems.");
       }
     }
@@ -1116,7 +1116,15 @@ export default function ChatSection({
   const [activeChatTunnels, setActiveChatTunnels] = useState<DirectChat[]>([]);
   const groups = activeChatTunnels.filter(chat => chat.isGroup || chat.id === 'global-node-concourse');
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
-  const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business' | 'trash'>('all');
+  
+  const [deletedChats, setDeletedChats] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fara_deleted_chats') || '[]');
+    } catch {
+      return [];
+    }
+  });
   
   const [favoriteChats, setFavoriteChats] = useState<string[]>(() => {
     try {
@@ -1202,6 +1210,24 @@ export default function ChatSection({
     });
   };
 
+  const deleteChatLocally = (chatId: string) => {
+    setDeletedChats(prev => {
+      const next = prev.includes(chatId) ? prev : [...prev, chatId];
+      localStorage.setItem('fara_deleted_chats', JSON.stringify(next));
+      return next;
+    });
+    showBrutalistToast('CHAT TRASHED', 'Chat moved to Trash.', 'success');
+  };
+
+  const restoreChatLocally = (chatId: string) => {
+    setDeletedChats(prev => {
+      const next = prev.filter(id => id !== chatId);
+      localStorage.setItem('fara_deleted_chats', JSON.stringify(next));
+      return next;
+    });
+    showBrutalistToast('CHAT RESTORED', 'Chat successfully restored.', 'success');
+  };
+
   const addChatToFolder = (chatId: string, folder: string) => {
     setChatFolders(prev => {
       const folderList = prev[folder] || [];
@@ -1283,7 +1309,7 @@ export default function ChatSection({
         color: { dark: '#00ff66', light: '#000000' } 
       })
         .then(url => setMyQrCodeUrl(url))
-        .catch(err => console.error("Cryptographic QR compilation failure:", err));
+        .catch(err => console.warn("Cryptographic QR compilation failure:", err));
     }
   }, [profile]);
 
@@ -1769,7 +1795,7 @@ export default function ChatSection({
       setSelectedPeer(peer);
       setCurrentChat(chat);
     } catch (err) {
-      console.error("Forwarding failed:", err);
+      console.warn("Forwarding failed:", err);
       setError("Failed to establish cryptographic secure handshakes for forwarded payload.");
     }
   };
@@ -1945,7 +1971,7 @@ export default function ChatSection({
           localStorage.setItem(`flick_my_ai_last_message_${profile.uid}`, aiReplyText);
 
         } catch (aiErr) {
-          console.error("AI reply retrieval failed", aiErr);
+          console.warn("AI reply retrieval failed", aiErr);
           const fallbackId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
           await setDoc(doc(db, 'chats', aiChatId, 'messages', fallbackId), {
             id: fallbackId,
@@ -2294,6 +2320,44 @@ export default function ChatSection({
 
   const unreadTunnelsCount = notifications.filter(n => n.type === 'message').length;
 
+  const filteredActiveTunnels = activeChatTunnels.filter(chat => {
+    // If it is a direct message chat, make sure the peer still exists in our registered users list
+    if (!chat.isGroup && chat.id !== 'global-node-concourse') {
+      const peerId = chat.participantIds.find(id => id !== profile?.uid);
+      if (peerId) {
+        const peerExists = users.some(u => u.uid === peerId);
+        if (!peerExists) return false;
+      }
+    }
+
+    // Filter by deleted/trash status
+    const isDeleted = deletedChats.includes(chat.id);
+    if (filterType === 'trash') {
+      if (!isDeleted) return false;
+    } else {
+      if (isDeleted) return false;
+      
+      const isArchived = archivedChats.includes(chat.id);
+      if (filterType === 'archived') {
+        if (!isArchived) return false;
+      } else {
+        if (isArchived) return false;
+      }
+    }
+
+    const isMuted = mutedChats.includes(chat.id);
+    if (filterType === 'muted' && !isMuted) return false;
+
+    if (filterType === 'groups' && !chat.isGroup) return false;
+    if (filterType === 'favorites' && !favoriteChats.includes(chat.id)) return false;
+
+    if (filterType === 'business') {
+      if (!chat.isGroup || chat.groupType !== 'business') return false;
+    }
+    
+    return true;
+  });
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 bg-[#0c0c0c] overflow-hidden h-full w-full font-mono">
       
@@ -2413,18 +2477,25 @@ export default function ChatSection({
             { id: 'archived', label: 'Archived 📥' },
             { id: 'muted', label: 'Muted 🔕' },
             { id: 'business', label: 'Business 🏢' },
-            { id: 'all-nodes', label: 'Directory 🔍' }
+            { id: 'all-nodes', label: 'Directory 🔍' },
+            { id: 'trash', label: 'Trash 🗑️' }
           ].map((pill) => {
             const isActive = filterType === pill.id;
             let badgeCount = 0;
             if (pill.id === 'unread') {
-              badgeCount = notifications.filter(n => n.type === 'message').length;
+              badgeCount = notifications.filter(n => {
+                if (n.type !== 'message') return false;
+                if (!n.chatId) return true;
+                return !deletedChats.includes(n.chatId);
+              }).length;
             } else if (pill.id === 'groups') {
-              badgeCount = activeChatTunnels.filter(chat => chat.isGroup).length;
+              badgeCount = activeChatTunnels.filter(chat => chat.isGroup && !deletedChats.includes(chat.id)).length;
             } else if (pill.id === 'archived') {
-              badgeCount = archivedChats.length;
+              badgeCount = archivedChats.filter(id => !deletedChats.includes(id)).length;
             } else if (pill.id === 'muted') {
-              badgeCount = mutedChats.length;
+              badgeCount = mutedChats.filter(id => !deletedChats.includes(id)).length;
+            } else if (pill.id === 'trash') {
+              badgeCount = deletedChats.length;
             }
             
             return (
@@ -2645,7 +2716,7 @@ export default function ChatSection({
                     setJoinGroupInputCode('');
                     setError(null);
                   } catch (e: any) {
-                    console.error("Failed to join group:", e);
+                    console.warn("Failed to join group:", e);
                     setError(e.message || "Failed to join group conduit. Verify access credentials.");
                   }
                 }}
@@ -2762,7 +2833,7 @@ export default function ChatSection({
                                 const base64 = await compressImage(file, 200, 200, 0.6);
                                 setNewGroupAvatarUrl(base64);
                               } catch (err) {
-                                console.error(err);
+                                console.warn(err);
                               }
                             }
                           }}
@@ -2795,7 +2866,7 @@ export default function ChatSection({
                                 const base64 = await compressImage(file, 400, 150, 0.6);
                                 setNewGroupBannerUrl(base64);
                               } catch (err) {
-                                console.error(err);
+                                console.warn(err);
                               }
                             }
                           }}
@@ -3076,34 +3147,7 @@ export default function ChatSection({
             })
           ) : (
             /* Render unified active conversations (chats & groups) */
-            activeChatTunnels.filter(chat => {
-              // If it is a direct message chat, make sure the peer still exists in our registered users list
-              if (!chat.isGroup && chat.id !== 'global-node-concourse') {
-                const peerId = chat.participantIds.find(id => id !== profile?.uid);
-                if (peerId) {
-                  const peerExists = users.some(u => u.uid === peerId);
-                  if (!peerExists) return false;
-                }
-              }
-
-              // Filter by pill selection
-              const isArchived = archivedChats.includes(chat.id);
-              if (filterType === 'archived') {
-                if (!isArchived) return false;
-              } else {
-                if (isArchived) return false;
-              }
-
-              const isMuted = mutedChats.includes(chat.id);
-              if (filterType === 'muted' && !isMuted) return false;
-
-              if (filterType === 'groups' && !chat.isGroup) return false;
-              if (filterType === 'favorites' && !favoriteChats.includes(chat.id)) return false;
-
-              if (filterType === 'business') {
-                if (!chat.isGroup || chat.groupType !== 'business') return false;
-              }
-              
+            filteredActiveTunnels.filter(chat => {
               const peerId = chat.participantIds.find(id => id !== profile?.uid);
               const peer = users.find(u => u.uid === peerId);
               const unreadCount = notifications.filter(n => 
@@ -3168,6 +3212,8 @@ export default function ChatSection({
               const isFavorite = favoriteChats.includes(chat.id);
               const isPinned = pinnedChats.includes(chat.id);
               const isMuted = mutedChats.includes(chat.id);
+              const isArchived = archivedChats.includes(chat.id);
+              const isDeleted = deletedChats.includes(chat.id);
 
               // Draft retrieval
               let draftText: string | null = null;
@@ -3304,11 +3350,36 @@ export default function ChatSection({
                                 playGlitchClickSound();
                                 toggleArchiveChat(chat.id);
                               }}
-                              className="p-0.5 hover:text-blue-400 text-zinc-500 transition"
-                              title="Archive Chat"
+                              className={`p-0.5 hover:text-blue-400 transition ${isArchived ? 'text-blue-400 font-extrabold' : 'text-zinc-500'}`}
+                              title={isArchived ? "Unarchive Chat" : "Archive Chat"}
                             >
                               <Archive className="w-3 h-3" />
                             </button>
+                            {isDeleted ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playGlitchClickSound();
+                                  restoreChatLocally(chat.id);
+                                }}
+                                className="p-0.5 text-emerald-500 hover:text-emerald-400 transition animate-pulse"
+                                title="Restore Chat"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playGlitchClickSound();
+                                  deleteChatLocally(chat.id);
+                                }}
+                                className="p-0.5 text-zinc-500 hover:text-red-500 transition"
+                                title="Move to Trash"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
 
                           <button
@@ -3469,11 +3540,36 @@ export default function ChatSection({
                                 playGlitchClickSound();
                                 toggleArchiveChat(chat.id);
                               }}
-                              className="p-0.5 hover:text-blue-400 text-zinc-500 transition"
-                              title="Archive Chat"
+                              className={`p-0.5 hover:text-blue-400 transition ${isArchived ? 'text-blue-400 font-extrabold' : 'text-zinc-500'}`}
+                              title={isArchived ? "Unarchive Chat" : "Archive Chat"}
                             >
                               <Archive className="w-3 h-3" />
                             </button>
+                            {isDeleted ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playGlitchClickSound();
+                                  restoreChatLocally(chat.id);
+                                }}
+                                className="p-0.5 text-emerald-500 hover:text-emerald-400 transition animate-pulse"
+                                title="Restore Chat"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  playGlitchClickSound();
+                                  deleteChatLocally(chat.id);
+                                }}
+                                className="p-0.5 text-zinc-500 hover:text-red-500 transition"
+                                title="Move to Trash"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
 
                           <button
@@ -3528,11 +3624,20 @@ export default function ChatSection({
               }
             })
           )}
-          {filterType !== 'all-nodes' && activeChatTunnels.length === 0 && (
+          {filterType !== 'all-nodes' && filteredActiveTunnels.length === 0 && (
             <div className="p-8 text-center text-zinc-555 select-none">
               <Group className="w-8 h-8 text-zinc-600 mx-auto mb-2 animate-pulse" />
-              <p className="text-[10px] uppercase font-bold tracking-wider mb-1">NO ACTIVE CONVERGENCES FOUND</p>
-              <p className="text-[8px] text-zinc-500 max-w-xs mx-auto uppercase">Toggle "NODES" above to discover peer frequencies and launch secure direct lines.</p>
+              <p className="text-[10px] uppercase font-bold tracking-wider mb-1">
+                {filterType === 'trash' ? 'TRASH CONCOURSE EMPTY' : 
+                 filterType === 'archived' ? 'NO ARCHIVED CONVERGENCES' :
+                 filterType === 'muted' ? 'NO MUTED CONVERGENCES' :
+                 'NO ACTIVE CONVERGENCES FOUND'}
+              </p>
+              <p className="text-[8px] text-zinc-500 max-w-xs mx-auto uppercase font-mono">
+                {filterType === 'trash' ? 'Deleted conversations will reside here. You can restore them anytime.' :
+                 filterType === 'archived' ? 'Archived conversations reside here to keep your main concourse clean.' :
+                 'Toggle "NODES" above to discover peer frequencies and launch secure direct lines.'}
+              </p>
             </div>
           )}
         </div>
@@ -4093,7 +4198,7 @@ export default function ChatSection({
                                                 roles: nextRoles
                                               });
                                             } catch (err: any) {
-                                              console.error(err);
+                                              console.warn(err);
                                               setError(err.message);
                                             }
                                           }}
@@ -4112,7 +4217,7 @@ export default function ChatSection({
                                                 approvalQueue: nextQueue
                                               });
                                             } catch (err: any) {
-                                              console.error(err);
+                                              console.warn(err);
                                               setError(err.message);
                                             }
                                           }}
@@ -4269,7 +4374,7 @@ export default function ChatSection({
                                           const base64 = await compressImage(file, 200, 200, 0.6);
                                           setEditGroupAvatarUrl(base64);
                                         } catch (err) {
-                                          console.error(err);
+                                          console.warn(err);
                                         }
                                       }
                                     }}
@@ -4306,7 +4411,7 @@ export default function ChatSection({
                                             const base64 = await compressImage(file, 400, 150, 0.6);
                                             setEditGroupBannerUrl(base64);
                                           } catch (err) {
-                                            console.error(err);
+                                            console.warn(err);
                                           }
                                         }
                                       }}
@@ -4367,7 +4472,7 @@ export default function ChatSection({
                                       });
                                       setError(null);
                                     } catch (err: any) {
-                                      console.error("Failed to update group settings:", err);
+                                      console.warn("Failed to update group settings:", err);
                                       setError(err.message || "Failed to persist conduit adjustments.");
                                     }
                                   }}

@@ -5,7 +5,6 @@ import { OperationProvider } from './contexts/OperationContext';
 import AuthScreen from './components/AuthScreen';
 import ChatSection from './components/ChatSection';
 import FeedSection from './components/FeedSection';
-import StoriesBar from './components/StoriesBar';
 import SecureNewsFlow from './components/SecureNewsFlow';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
@@ -201,7 +200,7 @@ function Dashboard() {
           isIncoming: false
         });
       } catch (err) {
-        console.error('[Realtime Call] Failed to initiate outgoing call:', err);
+        console.warn('[Realtime Call] Failed to initiate outgoing call:', err);
       }
     };
 
@@ -697,7 +696,7 @@ function Dashboard() {
     try {
       await markNotificationAsRead(id);
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     }
   };
 
