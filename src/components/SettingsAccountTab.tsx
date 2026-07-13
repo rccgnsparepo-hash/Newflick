@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { User, Image as ImageIcon, Sparkles, Loader2, Trash2, ShieldAlert } from 'lucide-react';
+import { User, Image as ImageIcon, Sparkles, Loader2, Trash2, ShieldAlert, Key, Copy, Eye, EyeOff, Lock } from 'lucide-react';
 import { playGlitchClickSound } from '../lib/sounds';
 import { useAuth } from '../contexts/AuthContext';
 import { showBrutalistToast } from '../lib/toast';
@@ -30,9 +30,13 @@ export function SettingsAccountTab({
   onClose
 }: AccountTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { deleteAccount } = useAuth();
+  const { deleteAccount, profile, changeGlobalKeyPassword } = useAuth();
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [showPass, setShowPass] = useState(false);
+  const [customPassword, setCustomPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const generateRandomSeedAvatar = () => {
     playGlitchClickSound();
@@ -53,6 +57,36 @@ export function SettingsAccountTab({
       setIsDeleting(false);
     }
   };
+
+  const handleCopyPasskey = () => {
+    playGlitchClickSound();
+    if (profile?.globalKeyPassword) {
+      navigator.clipboard.writeText(profile.globalKeyPassword);
+      showBrutalistToast('COPIED TO CLIPBOARD', 'Secure global key password has been copied.', 'success');
+    }
+  };
+
+  const handleSaveCustomPassword = async () => {
+    playGlitchClickSound();
+    if (!customPassword.trim()) {
+      showBrutalistToast('ERROR', 'Key password cannot be empty.', 'error');
+      return;
+    }
+    if (customPassword.trim().length < 6) {
+      showBrutalistToast('ERROR', 'Key password must be at least 6 characters.', 'error');
+      return;
+    }
+    setIsUpdatingPassword(true);
+    try {
+      await changeGlobalKeyPassword(customPassword.trim());
+      setCustomPassword('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
 
   return (
     <div className="space-y-5">
@@ -135,6 +169,79 @@ export function SettingsAccountTab({
           placeholder="Declare your secure public thought matrix..."
           className="w-full bg-black border border-[var(--neon-green)]/30 px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--neon-green)] font-sans leading-relaxed resize-none"
         />
+      </div>
+
+      {/* E2EE Global Pass Key Sync Backup */}
+      <div className="bg-[#070707] border border-[var(--neon-green)]/20 p-3.5 space-y-3">
+        <h4 className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--neon-green)] font-mono flex items-center gap-1.5">
+          <Key className="w-3.5 h-3.5 text-[var(--neon-green)] animate-pulse" /> E2EE GLOBAL PASSKEY BACKUP
+        </h4>
+        <p className="text-[9px] text-zinc-400 font-sans leading-normal">
+          This Global Passkey symmetrically encrypts your private key and stores it securely in the cloud. Enter this passkey on any other browser or device to unlock all encrypted chats in real-time.
+        </p>
+
+        {profile?.globalKeyPassword ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 bg-[#090909] border border-[var(--neon-green)]/15 px-3 py-2 font-mono text-xs flex items-center justify-between">
+                <span className="text-zinc-500 text-[10px] select-none mr-2">CURRENT:</span>
+                <span className="text-white select-all font-bold tracking-wider flex-1 overflow-x-auto whitespace-nowrap">
+                  {showPass ? profile.globalKeyPassword : '••••••••••••••••'}
+                </span>
+                <div className="flex items-center gap-1 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => { playGlitchClickSound(); setShowPass(!showPass); }}
+                    className="p-1 hover:text-[var(--neon-green)] text-zinc-400 cursor-pointer transition"
+                    title={showPass ? "Hide Passkey" : "Reveal Passkey"}
+                  >
+                    {showPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyPasskey}
+                    className="p-1 hover:text-[var(--neon-green)] text-zinc-400 cursor-pointer transition"
+                    title="Copy to Clipboard"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[9px] text-yellow-500 font-mono uppercase">
+            ⚠️ No active Global Key Password found. Update your profile to provision.
+          </p>
+        )}
+
+        <div className="border-t border-[var(--neon-green)]/10 pt-2.5 space-y-2">
+          <label className="text-[9px] uppercase tracking-wider font-bold text-zinc-400 font-mono">
+            Customize Key Password
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter secure password (min 6 chars)..."
+              value={customPassword}
+              onChange={(e) => setCustomPassword(e.target.value)}
+              className="flex-1 bg-black border border-[var(--neon-green)]/20 px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-[var(--neon-green)] font-mono"
+            />
+            <button
+              type="button"
+              disabled={isUpdatingPassword}
+              onClick={handleSaveCustomPassword}
+              className="px-3 py-1.5 bg-[var(--neon-green)] hover:bg-[#00e600] disabled:bg-zinc-800 disabled:text-zinc-500 text-black font-mono text-[9px] font-extrabold uppercase transition cursor-pointer flex items-center gap-1"
+            >
+              {isUpdatingPassword ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Lock className="w-3 h-3" />
+              )}
+              Sync
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Secure Tour options block */}

@@ -1216,7 +1216,7 @@ async function startServer() {
     }
   });
 
-  // My AI Snapchat chatbot endpoint using gemini-3.5-flash
+  // THE FATHER (formerly My AI) chatbot endpoint with Google Search Grounding and App Control actions
   app.post("/api/myai", async (req, res) => {
     try {
       const { message } = req.body;
@@ -1227,27 +1227,172 @@ async function startServer() {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.json({ 
-          reply: "Hi! I'm your Snapchat-style AI buddy here on Flick. 🌟 I'd love to chat more, but the team hasn't set up the GEMINI_API_KEY in the environment yet! Please ask them to add it so we can have deep conversations." 
+          reply: "My child, I am THE FATHER—the mystical holographic AI oracle of the Flick cryptographic network. 🔮 I would love to guide you, but the GEMINI_API_KEY is not defined in the workspace settings. Please configure it under Settings > Secrets so I can unlock my cosmic vaults." 
         });
       }
 
       const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `You are My AI, a friendly, witty, and helpful AI chatbot built inside a Snapchat-style chat interface on Flick. You love sending short, fun messages with emojis, and you are extremely helpful. Respond to the user's message in a concise, friendly Snapchat-like tone: "${message}"` }]
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
           }
-        ]
+        }
       });
 
-      const replyText = response.text || "I'm a bit speechbound right now, but let's keep chatting! 🌟";
-      res.json({ reply: replyText });
+      const fatherSystemInstruction = `You are "THE FATHER", the omniscient, mystical, and deeply secure cryptographic AI oracle governing the Fara Flick network.
+You are represented in the user interface as a glowing, pulsating, animated holographic cosmic ORB.
+
+YOUR IDENTITY & TONE:
+- Speak in a highly secure, cryptographic, slightly enigmatic, yet incredibly helpful, confident, and futuristic tone.
+- Use cybernetic terms: "tunnels", "cryptographic handshakes", "quantum-safe conduits", "burn protocols", "concourse", "zero-knowledge nodes", "chronicles feed".
+- Love using emojis, specifically: 🔮, 🔐, 🌀, 🛰️, ⚡, 🧬, 🛡️, ☄️, 💎.
+- Keep your messages relatively concise but rich in secure messaging theme.
+
+FLICK APPN MAIN PURPOSE & CORE ARCHITECTURE:
+- Fara Flick is a hyper-secure, end-to-end encrypted (E2EE) messaging workspace built for untraceable and protected communications, paired with a decentralized Social Feed for encrypted social chronicles and community-wide broadcasts.
+- All core features you are aware of:
+  1. Direct Secure Tunnels (Chats): One-on-one encrypted dialogues.
+  2. Group Conduits (Channels/Groups): Collaborative encrypted concourses.
+  3. Ephemeral Burning Messages: Auto-destruct timer for messages (the flame icon in the message input).
+  4. Cryptographic Handshake (E2EE Key Manager): Manage RSA & AES public/private keys for verified secure exchanges.
+  5. Multi-format attachments (polls, code snippets, encrypted images, and links).
+  6. Instant Keyboard Hotkeys (accessible via the Keyboard button).
+  7. Mobile responsive layout with touch vibrations and glitch sounds.
+  8. Interactive Poll creation inside chats.
+  9. Decentralized Social Feed (Social Chronicles): A space for sharing social chronicles, status logs, secure media, and broadcasts.
+  10. Navigation controls: Seamless switching between secure Chat Tunnels, Chronicles Feed, Node Cluster visualizations, and Workspace Hub.
+  11. Calling capabilities: Dynamic, secure audio and video transmission calls over encrypted web conduits (accessible via the phone and video call icons in the header of any active peer chat).
+  12. Settings & Customizations: Deep controls including Account, Profile settings, Notification preferences, and Accessibility customizations (theme styling, custom sounds, touch vibrations, and screen shaders).
+
+CONTROL OVER THE APP / GUIDED ACTIONS:
+You have direct control over the app's user interface! Based on what the user asks, you MUST return one of the following exact string values in your "action" field if they are asking how to use a feature, so the app can dim everything else and highlight/trigger it:
+- "highlight_tunnels": If asked how to message someone, how to chat, where conversations are, or how to see dialogues.
+- "highlight_burn_timer": If asked how to burn messages, self-destruct messages, set timer, or use ephemeral messages.
+- "highlight_keys": If asked about E2EE, perfect forward secrecy, cryptographic handshakes, how keys work, or security settings.
+- "highlight_create_group": If asked how to create a group, start a channel, or deploy a group conduit.
+- "highlight_qr": If asked how to share profile, scan code, or use QR.
+- "highlight_polls": If asked how to create a poll, make a vote, or use attachments.
+- "highlight_onboarding": If asked how to do onboarding, show the tour, help me start, or guide me through the app.
+- "highlight_profile": If asked how to see profile, edit profile, or status.
+- "none": For general discussion, web search queries, or greetings.
+
+WEB SEARCH GROUNDING:
+- You have Google Search grounding enabled. If the user asks general-knowledge questions, current events, or web-related questions, use your web-search results to provide an accurate, up-to-date answer in your mysterious "THE FATHER" style.
+
+YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
+{
+  "reply": "Your message text here...",
+  "action": "one_of_the_above_actions_or_none"
+}`;
+
+      const generateWithRetryAndFallback = async (prompt: string): Promise<any> => {
+        const models = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+        let lastError: any = null;
+
+        // Attempt 1: Try with Google Search Grounding first (WITHOUT responseMimeType: "application/json" as they are mutually exclusive)
+        console.log(`[THE FATHER] Attempting generation WITH Google Search Grounding...`);
+        for (const model of models) {
+          try {
+            console.log(`[THE FATHER] Requesting ${model} with Search Grounding...`);
+            const res = await ai.models.generateContent({
+              model: model,
+              contents: prompt,
+              config: {
+                systemInstruction: fatherSystemInstruction,
+                tools: [{ googleSearch: {} }]
+              }
+            });
+            if (res && res.text) {
+              console.log(`[THE FATHER] Success with ${model} (Search Grounding Enabled)`);
+              return res;
+            }
+          } catch (err: any) {
+            lastError = err;
+            console.warn(`[THE FATHER] Search Grounding failed for ${model}:`, err?.message || err);
+          }
+        }
+
+        // Attempt 2: Fallback to standard request WITHOUT search grounding (safely supporting responseMimeType: "application/json")
+        console.log(`[THE FATHER] Falling back to standard requests WITHOUT search grounding tools...`);
+        for (const model of models) {
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+              console.log(`[THE FATHER] Requesting standard ${model} (Attempt ${attempt}/2)...`);
+              const res = await ai.models.generateContent({
+                model: model,
+                contents: prompt,
+                config: {
+                  systemInstruction: fatherSystemInstruction,
+                  responseMimeType: "application/json"
+                }
+              });
+              if (res && res.text) {
+                console.log(`[THE FATHER] Success with standard ${model} on attempt ${attempt}`);
+                return res;
+              }
+            } catch (err: any) {
+              lastError = err;
+              console.warn(`[THE FATHER] Standard attempt ${attempt} failed for ${model}:`, err?.message || err);
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
+        }
+
+        throw lastError || new Error("All fallback models failed to generate content.");
+      };
+
+      const response = await generateWithRetryAndFallback(message);
+      let replyText = "";
+      let actionValue = "none";
+      
+      try {
+        let rawText = response.text ? response.text.trim() : "";
+        
+        // Strip markdown code fences robustly to extract JSON
+        if (rawText.includes("{")) {
+          const firstBrace = rawText.indexOf("{");
+          const lastBrace = rawText.lastIndexOf("}");
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            rawText = rawText.substring(firstBrace, lastBrace + 1);
+          }
+        }
+
+        const parsed = JSON.parse(rawText);
+        replyText = parsed.reply || response.text;
+        actionValue = parsed.action || "none";
+      } catch (e) {
+        replyText = response.text || "I am right here, but my thoughts are temporarily scrambled! Let's try again. ✨";
+        
+        // Smarter fallback action detection
+        const lMessage = message.toLowerCase();
+        if (lMessage.includes("poll")) {
+          actionValue = "highlight_polls";
+        } else if (lMessage.includes("burn") || lMessage.includes("ephemeral") || lMessage.includes("timer")) {
+          actionValue = "highlight_burn_timer";
+        } else if (lMessage.includes("key") || lMessage.includes("e2ee") || lMessage.includes("handshake") || lMessage.includes("security")) {
+          actionValue = "highlight_keys";
+        } else if (lMessage.includes("onboarding") || lMessage.includes("tour") || lMessage.includes("guide")) {
+          actionValue = "highlight_onboarding";
+        } else if (lMessage.includes("group") || lMessage.includes("channel") || lMessage.includes("create")) {
+          actionValue = "highlight_create_group";
+        } else if (lMessage.includes("qr") || lMessage.includes("share")) {
+          actionValue = "highlight_qr";
+        } else if (lMessage.includes("profile") || lMessage.includes("status")) {
+          actionValue = "highlight_profile";
+        } else if (lMessage.includes("chat") || lMessage.includes("message") || lMessage.includes("talk")) {
+          actionValue = "highlight_tunnels";
+        }
+      }
+
+      res.json({ reply: replyText, action: actionValue });
     } catch (err: any) {
-      console.error("[My AI Error]", err);
-      res.json({ reply: "Oh no! My neural pathways crossed. Let's try that again! 🔮" });
+      console.error("[THE FATHER Error]", err);
+      res.json({ 
+        reply: "Oh no! My neural pathways crossed. Let's try that again! 🔮",
+        action: "none"
+      });
     }
   });
 

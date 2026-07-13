@@ -31,19 +31,7 @@ import { encryptE2EEMessage } from './crypto';
 
 // --- User Profile Services ---
 
-export async function upsertUserProfile(uid: string, profileData: {
-  displayName: string;
-  photoURL: string;
-  email: string;
-  status: 'online' | 'offline';
-  publicKey: string;
-  bio?: string;
-  soundEnabled?: boolean;
-  notifSocialFeed?: boolean;
-  notifMessagesAll?: boolean;
-  notifMessagesFrom?: string[];
-  lastSeen?: any;
-}): Promise<void> {
+export async function upsertUserProfile(uid: string, profileData: Partial<UserProfile>): Promise<void> {
   const path = `users/${uid}`;
   const rawData: any = {
     uid,
@@ -904,7 +892,7 @@ export function subscribeToMessages(chatId: string, callback: (messages: ChatMes
     limit(100)
   );
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => d.data() as ChatMessage));
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage)));
   }, (err) => {
     try {
       handleFirestoreError(err, OperationType.LIST, path);

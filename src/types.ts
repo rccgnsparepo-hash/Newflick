@@ -15,6 +15,8 @@ export interface UserProfile {
   lastSeen?: any; // Firestore Timestamp or serverTimestamp()
   isDeleted?: boolean;
   disabledReadReceipts?: string[];
+  encryptedPrivateKey?: string; // Symmetrically encrypted privateKeyJwk using Global Key Password
+  globalKeyPassword?: string; // Backed up human-readable Recovery/Sync Passkey
 }
 
 export interface PrivateUserInfo {
@@ -101,6 +103,9 @@ export interface ChatMessage {
     options: string[];
     votes: { [userId: string]: number }; // map of userId -> optionIndex
   };
+  isEdited?: boolean;
+  editedAt?: any;
+  isDeleted?: boolean;
 }
 
 export interface InAppNotification {

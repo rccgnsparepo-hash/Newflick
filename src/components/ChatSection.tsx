@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, collection, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { UserProfile, ChatMessage, DirectChat, MessageReaction, InAppNotification } from '../types';
 import {
   subscribeToUsers,
@@ -28,7 +28,7 @@ import {
 import QRCodeGenerator from 'qrcode';
 import jsQR from 'jsqr';
 import { playSendMessageSound, playReceiveMessageSound, playGlitchClickSound, playLikeSound } from '../lib/sounds';
-import { decryptE2EEMessage } from '../lib/crypto';
+import { decryptE2EEMessage, encryptE2EEMessage } from '../lib/crypto';
 import { 
   ShieldCheck, Send, Key, Lock, AlertTriangle, MessageSquare, Flame, Check, CheckCheck, 
   Smile, Paperclip, Mic, Square, Trash, Play, Pause, ZoomIn, CornerUpLeft, Eye, VolumeX, Volume2,
@@ -43,6 +43,7 @@ import {
 import { compressImage, fileToBase64, getMediaTypeFromMime } from '../lib/mediaHelper';
 import { motion, AnimatePresence } from 'motion/react';
 import { showBrutalistToast } from '../lib/toast';
+import { TheFatherOrb } from './TheFatherOrb';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
 import { queueOfflineMessage, syncOfflineMessages } from '../lib/offlineQueue';
 import { triggerVibration } from '../lib/haptics';
@@ -135,7 +136,10 @@ function DecryptedMessageBubble({
   searchQuery,
   onVotePoll,
   pollsData,
-  disabledReadReceipts
+  disabledReadReceipts,
+  peerPublicKey,
+  senderPublicKey,
+  onDeleteLocally
 }: {
   message: ChatMessage;
   currentUserId: string;
@@ -150,6 +154,9 @@ function DecryptedMessageBubble({
   onVotePoll?: (msgId: string, optionIdx: number) => void;
   pollsData?: Record<string, { question: string, options: string[], votes: Record<string, string> }>;
   disabledReadReceipts?: Record<string, boolean>;
+  peerPublicKey?: string;
+  senderPublicKey?: string;
+  onDeleteLocally?: (msgId: string) => void;
 }) {
   const onDecryptedRef = useRef(onDecrypted);
   useEffect(() => {
@@ -164,6 +171,10 @@ function DecryptedMessageBubble({
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [audioState, setAudioState] = useState<'idle' | 'playing' | 'paused'>('idle');
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Subscribe to reactions in this message's subcollection
   useEffect(() => {
@@ -188,15 +199,33 @@ function DecryptedMessageBubble({
     };
   }, [zoomImg]);
 
+  const getMessageAgeInMinutes = () => {
+    if (!message.createdAt) return 0;
+    const createdDate = message.createdAt.toDate ? message.createdAt.toDate() : (message.createdAt.seconds ? new Date(message.createdAt.seconds * 1000) : new Date(message.createdAt));
+    const diffMs = Date.now() - createdDate.getTime();
+    return diffMs / (1000 * 60);
+  };
+
   useEffect(() => {
     let active = true;
     async function decrypt() {
-      if (message.isGroupMessage && message.plainText) {
+      if (message.isDeleted) {
         if (active) {
-          setDecryptedText(message.plainText);
+          setDecryptedText("🚫 This message was deleted.");
           setStatus('success');
           if (onDecryptedRef.current) {
-            onDecryptedRef.current(message.plainText);
+            onDecryptedRef.current("🚫 This message was deleted.");
+          }
+        }
+        return;
+      }
+
+      if ((message.isGroupMessage && message.plainText) || (message.plainText && !message.encryptedText) || message.senderId === 'my-ai-bot-uid') {
+        if (active) {
+          setDecryptedText(message.plainText || "");
+          setStatus('success');
+          if (onDecryptedRef.current) {
+            onDecryptedRef.current(message.plainText || "");
           }
         }
         return;
@@ -231,7 +260,118 @@ function DecryptedMessageBubble({
 
     decrypt();
     return () => { active = false; };
-  }, [message.id, message.encryptedText, message.senderId, localPrivateKey, currentUserId]);
+  }, [
+    message.id, 
+    message.encryptedText, 
+    message.plainText, 
+    message.isGroupMessage, 
+    message.encryptedKey, 
+    message.senderEncryptedKey, 
+    message.isDeleted, 
+    message.senderId, 
+    localPrivateKey, 
+    currentUserId
+  ]);
+
+  const handleSaveEdit = async () => {
+    if (!editText.trim()) {
+      showBrutalistToast('ERROR', 'Message cannot be empty.', 'error');
+      return;
+    }
+    const ageMin = getMessageAgeInMinutes();
+    if (ageMin > 10) {
+      showBrutalistToast('EDIT EXPIRED', 'You can only edit messages sent within 10 minutes.', 'error');
+      return;
+    }
+    setIsUpdating(true);
+    playGlitchClickSound();
+    try {
+      const isPlainTextMessage = message.isGroupMessage || message.senderId === 'my-ai-bot-uid' || !message.encryptedText;
+      if (isPlainTextMessage) {
+        await updateDoc(doc(db, 'chats', chatId, 'messages', message.id), {
+          plainText: editText.trim(),
+          isEdited: true,
+          editedAt: serverTimestamp()
+        });
+      } else {
+        let finalPeerPubKey = peerPublicKey;
+        let finalSenderPubKey = senderPublicKey;
+        
+        if (!finalPeerPubKey || !finalSenderPubKey) {
+          const peerId = message.senderId === currentUserId ? message.receiverId : message.senderId;
+          const { getUserProfile } = await import('../lib/services');
+          if (!finalPeerPubKey) {
+            const peerProfile = await getUserProfile(peerId);
+            finalPeerPubKey = peerProfile?.publicKey;
+          }
+          if (!finalSenderPubKey) {
+            const senderProfile = await getUserProfile(currentUserId);
+            finalSenderPubKey = senderProfile?.publicKey;
+          }
+        }
+        
+        if (!finalPeerPubKey || !finalSenderPubKey) {
+          throw new Error("Unable to retrieve cryptographic keys for E2EE handshake.");
+        }
+        
+        const cipher = await encryptE2EEMessage(editText.trim(), finalPeerPubKey, finalSenderPubKey);
+        await updateDoc(doc(db, 'chats', chatId, 'messages', message.id), {
+          encryptedText: cipher.encryptedText,
+          encryptedKey: cipher.encryptedKey,
+          senderEncryptedKey: cipher.senderEncryptedKey,
+          isEdited: true,
+          editedAt: serverTimestamp()
+        });
+      }
+      setIsEditing(false);
+      showBrutalistToast('EDIT SYNCHRONIZED', 'Your message has been updated in real-time!', 'success');
+    } catch (err) {
+      console.error("Failed to edit message:", err);
+      showBrutalistToast('EDIT FAILED', 'Handshake error or permission denied.', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteMessage = async (everyone: boolean) => {
+    playGlitchClickSound();
+    triggerVibration('medium');
+    if (everyone) {
+      if (window.confirm("Delete this message for everyone? This action cannot be undone.")) {
+        try {
+          await updateDoc(doc(db, 'chats', chatId, 'messages', message.id), {
+            plainText: "🚫 This message was deleted.",
+            encryptedText: "",
+            encryptedKey: "",
+            senderEncryptedKey: "",
+            isDeleted: true,
+            mediaUrl: "",
+            mediaType: "",
+            mediaName: ""
+          });
+          showBrutalistToast('DELETED', 'Message deleted for all participants.', 'info');
+        } catch (err) {
+          console.error("Failed to delete message for everyone:", err);
+          showBrutalistToast('DELETE FAILED', 'Permission denied.', 'error');
+        }
+      }
+    } else {
+      try {
+        const deletedLocallyStr = localStorage.getItem(`flick_deleted_messages_local_${currentUserId}`) || "[]";
+        const deletedLocally = JSON.parse(deletedLocallyStr) as string[];
+        deletedLocally.push(message.id);
+        localStorage.setItem(`flick_deleted_messages_local_${currentUserId}`, JSON.stringify(deletedLocally));
+        showBrutalistToast('REMOVED', 'Message removed from your view.', 'info');
+        setStatus('error');
+        setDecryptedText("[Message Deleted]");
+        if (onDeleteLocally) {
+          onDeleteLocally(message.id);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
   // Decode JSON attachments if any
   let caption = decryptedText;
@@ -395,190 +535,272 @@ function DecryptedMessageBubble({
           </div>
         )}
 
-        {/* Attachment render content */}
-      {hasAttachment && (
-        <div className="mb-2 overflow-hidden border border-[var(--neon-green)]/25 bg-[#0a0a0a] p-2 max-w-full">
-          {attachmentType === 'image' && (
-            <div className="relative group cursor-pointer" onClick={() => setZoomImg(attachmentUrl)}>
-              <img src={attachmentUrl} className="max-h-60 rounded object-cover border border-[var(--neon-green)]/15 hover:opacity-90 transition" alt="E2EE media" />
-              <div className="absolute top-2 right-2 bg-black/75 p-1 rounded-none opacity-0 group-hover:opacity-100 transition">
-                <ZoomIn className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+        {/* Message body rendering check */}
+        {message.isDeleted ? (
+          <div className="text-[11px] italic text-zinc-500 font-mono flex items-center py-1">
+            <Trash className="w-3.5 h-3.5 mr-1.5 opacity-50" />
+            <span>🚫 This message was deleted</span>
+          </div>
+        ) : isEditing ? (
+          <div className="mt-1 bg-black/60 border border-[var(--neon-green)]/35 p-2 space-y-2">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white p-2 focus:outline-none focus:border-[var(--neon-green)] font-mono resize-none min-h-[50px] pointer-events-auto"
+              placeholder="Edit message..."
+              disabled={isUpdating}
+            />
+            <div className="flex justify-end space-x-1.5 pointer-events-auto">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-2 py-1 text-[8.5px] font-black uppercase font-mono tracking-wider border border-zinc-800 hover:border-zinc-500 text-zinc-400 hover:text-white cursor-pointer"
+                disabled={isUpdating}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-2.5 py-1 text-[8.5px] font-black uppercase font-mono tracking-wider bg-[var(--neon-green)] hover:bg-[var(--neon-green)]/80 text-black cursor-pointer"
+                disabled={isUpdating}
+              >
+                {isUpdating ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Attachment render content */}
+            {hasAttachment && (
+              <div className="mb-2 overflow-hidden border border-[var(--neon-green)]/25 bg-[#0a0a0a] p-2 max-w-full">
+                {attachmentType === 'image' && (
+                  <div className="relative group cursor-pointer" onClick={() => setZoomImg(attachmentUrl)}>
+                    <img src={attachmentUrl} className="max-h-60 rounded object-cover border border-[var(--neon-green)]/15 hover:opacity-90 transition" alt="E2EE media" />
+                    <div className="absolute top-2 right-2 bg-black/75 p-1 rounded-none opacity-0 group-hover:opacity-100 transition">
+                      <ZoomIn className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+                    </div>
+                  </div>
+                )}
+
+                {attachmentType === 'video' && (
+                  <video src={attachmentUrl} controls className="max-h-64 max-w-full rounded border border-[var(--neon-green)]/15 bg-black" />
+                )}
+
+                {attachmentType === 'audio' && (
+                  <div className="flex items-center space-x-3 bg-[#0a0a0a] border border-[var(--neon-green)]/35 p-2.5 rounded-none w-full max-w-xs justify-between">
+                    <button
+                      type="button"
+                      onClick={toggleAudioPlayback}
+                      className="p-1 px-2.5 bg-[var(--neon-green)] text-black font-extrabold text-[10px] uppercase hover:bg-neutral-200 transition"
+                    >
+                      {audioState === 'playing' ? 'PAUSE' : 'PLAY'}
+                    </button>
+                    
+                    <audio
+                      ref={(el) => {
+                        audioElRef.current = el;
+                        if (el) {
+                          el.onended = () => setAudioState('idle');
+                          el.playbackRate = playbackRate;
+                        }
+                      }}
+                      src={attachmentUrl}
+                      className="hidden"
+                    />
+
+                    {/* Audio Speed Control */}
+                    <button
+                      type="button"
+                      onClick={togglePlaybackSpeed}
+                      className="text-[9px] px-1.5 py-0.5 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition uppercase font-mono font-bold"
+                      title="Voice playback speed multiplier"
+                    >
+                      {playbackRate}x
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {attachmentType === 'video' && (
-            <video src={attachmentUrl} controls className="max-h-64 max-w-full rounded border border-[var(--neon-green)]/15 bg-black" />
-          )}
+            {/* Actual Message text segment */}
+            {caption && (
+              <div className="text-[12.5px] leading-relaxed dark:text-zinc-150 select-text font-serif">
+                {(message.messageType === 'poll' || message.pollData || caption.startsWith('📊 POLL_DATA:')) ? (() => {
+                  try {
+                    let pollQuestion = '';
+                    let pollOptions: string[] = [];
+                    let votesMap: Record<string, any> = {};
 
-          {attachmentType === 'audio' && (
-            <div className="flex items-center space-x-3 bg-[#0a0a0a] border border-[var(--neon-green)]/35 p-2.5 rounded-none w-full max-w-xs justify-between">
-              <button
-                type="button"
-                onClick={toggleAudioPlayback}
-                className="p-1 px-2.5 bg-[var(--neon-green)] text-black font-extrabold text-[10px] uppercase hover:bg-neutral-200 transition"
-              >
-                {audioState === 'playing' ? 'PAUSE' : 'PLAY'}
-              </button>
-              
-              <audio
-                ref={(el) => {
-                  audioElRef.current = el;
-                  if (el) {
-                    el.onended = () => setAudioState('idle');
-                    el.playbackRate = playbackRate;
+                    if (message.pollData) {
+                      pollQuestion = message.pollData.question;
+                      pollOptions = message.pollData.options || [];
+                      votesMap = message.pollData.votes || {};
+                    } else if (caption.startsWith('📊 POLL_DATA:')) {
+                      const rawObj = caption.replace('📊 POLL_DATA:', '');
+                      const parsed = JSON.parse(rawObj);
+                      pollQuestion = parsed.question;
+                      pollOptions = parsed.options || [];
+                      const livePoll = pollsData?.[message.id] || { question: pollQuestion, options: pollOptions, votes: {} };
+                      votesMap = livePoll.votes || {};
+                    } else {
+                      return null;
+                    }
+
+                    const totalVotes = Object.keys(votesMap).length;
+
+                    return (
+                      <div className="border border-[var(--neon-green)]/35 bg-black/60 p-3 mt-1.5 space-y-2 font-mono w-full max-w-sm rounded-none">
+                        <div className="flex items-center gap-1.5 border-b border-[var(--neon-green)]/15 pb-1">
+                          <span className="text-[10px] text-[var(--neon-green)] font-black">📊 SECURE DEMOCRACY PROTOCOL</span>
+                        </div>
+                        <p className="text-[11px] font-bold text-white uppercase">{pollQuestion}</p>
+                        <div className="space-y-1.5 pt-1">
+                          {pollOptions.map((opt: string, idx: number) => {
+                            const optVotes = Object.values(votesMap).filter(v => v.toString() === idx.toString()).length;
+                            const percentage = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                            const hasVotedThis = votesMap[currentUserId]?.toString() === idx.toString();
+
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => onVotePoll?.(message.id, idx)}
+                                className={`w-full block p-2 border text-left text-[9.5px] uppercase relative overflow-hidden transition cursor-pointer select-none leading-none ${
+                                  hasVotedThis
+                                    ? 'bg-[var(--neon-green)]/20 border-[var(--neon-green)] text-[var(--neon-green)] font-extrabold shadow-sm'
+                                    : 'border-zinc-850 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-white'
+                                }`}
+                              >
+                                <div
+                                  className="absolute left-0 top-0 bottom-0 bg-[var(--neon-green)]/10 transition-all duration-300"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                                <div className="relative flex justify-between items-center z-10 w-full leading-none">
+                                  <span className="truncate">{opt}</span>
+                                  <span className="font-mono text-[9px] shrink-0 font-bold ml-2">
+                                    {percentage}% ({optVotes})
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="text-[7.5px] text-zinc-500 flex justify-between uppercase pt-1 font-mono">
+                          <span>VOTES CAST: {totalVotes}</span>
+                          <span>LOCK VERIFIED</span>
+                        </div>
+                      </div>
+                    );
+                  } catch (e) {
+                    return <span className="text-red-500 text-xs font-mono">Poll Artifact Unreadable</span>;
                   }
-                }}
-                src={attachmentUrl}
-                className="hidden"
-              />
-
-              {/* Audio Speed Control */}
-              <button
-                type="button"
-                onClick={togglePlaybackSpeed}
-                className="text-[9px] px-1.5 py-0.5 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition uppercase font-mono font-bold"
-                title="Voice playback speed multiplier"
-              >
-                {playbackRate}x
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Actual Message text segment */}
-      {caption && (
-        <div className="text-[12.5px] leading-relaxed dark:text-zinc-150 select-text font-serif">
-          {(message.messageType === 'poll' || message.pollData || caption.startsWith('📊 POLL_DATA:')) ? (() => {
-            try {
-              let pollQuestion = '';
-              let pollOptions: string[] = [];
-              let votesMap: Record<string, any> = {};
-
-              if (message.pollData) {
-                pollQuestion = message.pollData.question;
-                pollOptions = message.pollData.options || [];
-                votesMap = message.pollData.votes || {};
-              } else if (caption.startsWith('📊 POLL_DATA:')) {
-                const rawObj = caption.replace('📊 POLL_DATA:', '');
-                const parsed = JSON.parse(rawObj);
-                pollQuestion = parsed.question;
-                pollOptions = parsed.options || [];
-                const livePoll = pollsData?.[message.id] || { question: pollQuestion, options: pollOptions, votes: {} };
-                votesMap = livePoll.votes || {};
-              } else {
-                return null;
-              }
-
-              const totalVotes = Object.keys(votesMap).length;
-
-              return (
-                <div className="border border-[var(--neon-green)]/35 bg-black/60 p-3 mt-1.5 space-y-2 font-mono w-full max-w-sm rounded-none">
-                  <div className="flex items-center gap-1.5 border-b border-[var(--neon-green)]/15 pb-1">
-                    <span className="text-[10px] text-[var(--neon-green)] font-black">📊 SECURE DEMOCRACY PROTOCOL</span>
+                })() : (searchQuery ? (
+                  <HighlightedText text={caption} query={searchQuery} />
+                ) : (
+                  <div className="flex flex-col">
+                    <span>{caption}</span>
+                    {message.isEdited && (
+                      <span className="text-[7.5px] font-mono uppercase text-zinc-500 self-end mt-0.5 tracking-wider">
+                        (edited)
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[11px] font-bold text-white uppercase">{pollQuestion}</p>
-                  <div className="space-y-1.5 pt-1">
-                    {pollOptions.map((opt: string, idx: number) => {
-                      const optVotes = Object.values(votesMap).filter(v => v.toString() === idx.toString()).length;
-                      const percentage = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
-                      const hasVotedThis = votesMap[currentUserId]?.toString() === idx.toString();
-
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => onVotePoll?.(message.id, idx)}
-                          className={`w-full block p-2 border text-left text-[9.5px] uppercase relative overflow-hidden transition cursor-pointer select-none leading-none ${
-                            hasVotedThis
-                              ? 'bg-[var(--neon-green)]/20 border-[var(--neon-green)] text-[var(--neon-green)] font-extrabold shadow-sm'
-                              : 'border-zinc-850 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-white'
-                          }`}
-                        >
-                          <div
-                            className="absolute left-0 top-0 bottom-0 bg-[var(--neon-green)]/10 transition-all duration-300"
-                            style={{ width: `${percentage}%` }}
-                          />
-                          <div className="relative flex justify-between items-center z-10 w-full leading-none">
-                            <span className="truncate">{opt}</span>
-                            <span className="font-mono text-[9px] shrink-0 font-bold ml-2">
-                              {percentage}% ({optVotes})
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="text-[7.5px] text-zinc-500 flex justify-between uppercase pt-1 font-mono">
-                    <span>VOTES CAST: {totalVotes}</span>
-                    <span>LOCK VERIFIED</span>
-                  </div>
-                </div>
-              );
-            } catch (e) {
-              return <span className="text-red-500 text-xs font-mono">Poll Artifact Unreadable</span>;
-            }
-          })() : (searchQuery ? (
-            <HighlightedText text={caption} query={searchQuery} />
-          ) : (
-            caption
-          ))}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
       {/* Interactive Footer (Timestamp + Double Tick Checkmarks + Reaction Panel Activation) */}
       <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-[var(--neon-green)]/5 select-none">
         
         {/* WhatsApp Quote Message & Emoji Reaction activator */}
         <div className="flex items-center space-x-1">
-          {/* Reaction trigger icon */}
-          <button 
-            type="button"
-            onClick={() => setShowPicker(!showPicker)}
-            className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
-            title="React to message"
-          >
-            <Smile className="w-3.5 h-3.5" />
-          </button>
+          {!message.isDeleted && (
+            <>
+              {/* Reaction trigger icon */}
+              <button 
+                type="button"
+                onClick={() => setShowPicker(!showPicker)}
+                className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
+                title="React to message"
+              >
+                <Smile className="w-3.5 h-3.5" />
+              </button>
 
-          {/* Reply trigger icon */}
-          <button
-            type="button"
-            onClick={() => onReplyTrigger(message.id, message.senderId === currentUserId ? 'You' : (message.senderDisplayName || 'Peer'), caption || '[Media Node]')}
-            className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
-            title="Reply to thread"
-          >
-            <CornerUpLeft className="w-3.5 h-3.5" />
-          </button>
+              {/* Reply trigger icon */}
+              <button
+                type="button"
+                onClick={() => onReplyTrigger(message.id, message.senderId === currentUserId ? 'You' : (message.senderDisplayName || 'Peer'), caption || '[Media Node]')}
+                className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
+                title="Reply to thread"
+              >
+                <CornerUpLeft className="w-3.5 h-3.5" />
+              </button>
 
-          {/* Pin/Unpin trigger icon */}
-          <button
-            type="button"
-            onClick={async () => {
-              triggerVibration('light');
-              playGlitchClickSound();
-              await togglePinMessage(chatId, message.id, !message.pinned);
-            }}
-            className={`p-1 transition cursor-pointer ${message.pinned ? 'text-[var(--neon-green)]' : 'text-zinc-500 hover:text-[var(--neon-green)]'}`}
-            title={message.pinned ? "Unpin message" : "Pin message"}
-          >
-            <Pin className="w-3 h-3" />
-          </button>
+              {/* Pin/Unpin trigger icon */}
+              <button
+                type="button"
+                onClick={async () => {
+                  triggerVibration('light');
+                  playGlitchClickSound();
+                  await togglePinMessage(chatId, message.id, !message.pinned);
+                }}
+                className={`p-1 transition cursor-pointer ${message.pinned ? 'text-[var(--neon-green)]' : 'text-zinc-500 hover:text-[var(--neon-green)]'}`}
+                title={message.pinned ? "Unpin message" : "Pin message"}
+              >
+                <Pin className="w-3 h-3" />
+              </button>
 
-          {/* Forward trigger icon */}
-          <button
-            type="button"
-            onClick={() => {
-              playGlitchClickSound();
-              triggerVibration('light');
-              onForwardTrigger(decryptedText);
-            }}
-            className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
-            title="Forward message to another recipient tunnel"
-          >
-            <Forward className="w-3.5 h-3.5" />
-          </button>
+              {/* Forward trigger icon */}
+              <button
+                type="button"
+                onClick={() => {
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  onForwardTrigger(decryptedText);
+                }}
+                className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
+                title="Forward message to another recipient tunnel"
+              >
+                <Forward className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Edit trigger icon (Only for own messages, sent within 10 minutes) */}
+              {message.senderId === currentUserId && getMessageAgeInMinutes() <= 10 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditText(caption);
+                    setIsEditing(true);
+                    playGlitchClickSound();
+                  }}
+                  className="p-1 text-zinc-500 hover:text-[var(--neon-green)] transition cursor-pointer"
+                  title="Edit message"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Delete trigger icon */}
+              <button
+                type="button"
+                onClick={() => {
+                  const choice = window.prompt(
+                    `Delete Message Options:\nType "1" for Delete for Me\n${message.senderId === currentUserId ? 'Type "2" for Delete for Everyone\n' : ''}Type anything else or cancel to close.`
+                  );
+                  if (choice === "1") {
+                    handleDeleteMessage(false);
+                  } else if (choice === "2" && message.senderId === currentUserId) {
+                    handleDeleteMessage(true);
+                  }
+                }}
+                className="p-1 text-zinc-500 hover:text-red-500 transition cursor-pointer"
+                title="Delete message"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Reaction picker portal modal overlay */}
@@ -702,7 +924,7 @@ export default function ChatSection({
   deepLinkedGroupId?: string | null;
   onClearDeepLinkedGroup?: () => void;
 } = {}) {
-  const { profile, localPrivateKey } = useAuth();
+  const { profile, localPrivateKey, unlockE2EEKeysWithPassword, regenerateE2EEKeys: authRegenerateE2EEKeys } = useAuth();
   const operations = useOperations();
 
   // Custom brutalist theme accent variables and chat settings panel
@@ -1117,6 +1339,7 @@ export default function ChatSection({
   const groups = activeChatTunnels.filter(chat => chat.isGroup || chat.id === 'global-node-concourse');
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business' | 'trash'>('all');
+  const [guideHighlight, setGuideHighlight] = useState<string | null>(null);
   
   const [deletedChats, setDeletedChats] = useState<string[]>(() => {
     try {
@@ -1668,9 +1891,9 @@ export default function ChatSection({
       const filtered = all.filter(u => u.uid !== profile.uid);
       const myAIPeer: UserProfile = {
         uid: 'my-ai-bot-uid',
-        displayName: 'My AI 🌟',
+        displayName: 'THE FATHER 🔮',
         photoURL: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
-        email: 'myai@flick.internal',
+        email: 'thefather@flick.internal',
         status: 'online',
         lastSeen: { toDate: () => new Date() } as any,
         updatedAt: { toDate: () => new Date() } as any,
@@ -1690,6 +1913,15 @@ export default function ChatSection({
       unsubscribePresence();
     };
   }, [profile?.uid]);
+
+  // Handle guideHighlight trigger-actions (such as onboarding auto-launch)
+  useEffect(() => {
+    if (!guideHighlight) return;
+    if (guideHighlight === 'highlight_onboarding') {
+      window.dispatchEvent(new CustomEvent('faraflick-trigger-onboarding'));
+      setGuideHighlight(null);
+    }
+  }, [guideHighlight]);
 
   // Hook typing updates inside current chat
   useEffect(() => {
@@ -1919,7 +2151,7 @@ export default function ChatSection({
       }
       isCurrentlyTypingRef.current = false;
 
-      // Intercept My AI Chat Tunnel
+      // Intercept THE FATHER Chat Tunnel
       if (currentChat.id === aiChatId) {
         operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
         await new Promise(r => setTimeout(r, 150));
@@ -1952,6 +2184,11 @@ export default function ChatSection({
           });
           const aiData = await aiResponse.json();
           const aiReplyText = aiData.reply || "I am right here, but my thoughts are temporarily scrambled! Let's try again. ✨";
+          const action = aiData.action || "none";
+
+          if (action && action !== 'none') {
+            setGuideHighlight(action);
+          }
 
           // Create AI message in Firestore
           const aiMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
@@ -1961,7 +2198,7 @@ export default function ChatSection({
             receiverId: profile.uid,
             participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
             plainText: aiReplyText,
-            senderDisplayName: 'My AI 🌟',
+            senderDisplayName: 'THE FATHER 🔮',
             createdAt: serverTimestamp(),
             read: false
           };
@@ -1979,7 +2216,7 @@ export default function ChatSection({
             receiverId: profile.uid,
             participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
             plainText: "Oh no! Flick's neural link suffered a temporary interruption. Let's try again! ☄️",
-            senderDisplayName: 'My AI 🌟',
+            senderDisplayName: 'THE FATHER 🔮',
             createdAt: serverTimestamp(),
             read: false
           });
@@ -2348,8 +2585,20 @@ export default function ChatSection({
     const isMuted = mutedChats.includes(chat.id);
     if (filterType === 'muted' && !isMuted) return false;
 
-    if (filterType === 'groups' && !chat.isGroup) return false;
+    if (filterType === 'groups' && !chat.isGroup && chat.id !== 'global-node-concourse') return false;
     if (filterType === 'favorites' && !favoriteChats.includes(chat.id)) return false;
+
+    if (filterType === 'unread') {
+      const peerId = chat.participantIds.find(id => id !== profile?.uid);
+      const peer = users.find(u => u.uid === peerId);
+      const unreadCount = notifications.filter(n => 
+        n.type === 'message' && (
+          n.chatId === chat.id || 
+          (peer && (n.senderId === peer.uid || n.senderName === peer.displayName))
+        )
+      ).length;
+      if (unreadCount === 0) return false;
+    }
 
     if (filterType === 'business') {
       if (!chat.isGroup || chat.groupType !== 'business') return false;
@@ -2362,12 +2611,12 @@ export default function ChatSection({
     <div className="grid grid-cols-1 md:grid-cols-12 bg-[#0c0c0c] overflow-hidden h-full w-full font-mono">
       
       {/* Contact Panel sidebar - spans 4 cols */}
-      <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[#050505] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[#050505] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'} ${guideHighlight === 'highlight_tunnels' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse' : ''}`}>
         
         {/* Compact Snapchat-inspired Sidebar Header */}
         <div className="p-4 border-b border-zinc-900/40 bg-neutral-950 flex-shrink-0 flex items-center justify-between select-none">
           <div className="flex items-center space-x-3">
-            <div className="relative">
+            <div className={`relative ${guideHighlight === 'highlight_profile' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black rounded-full z-[95] animate-pulse scale-110' : ''}`}>
               <img 
                 src={profile?.photoURL || "https://api.dicebear.com/7.x/fun-emoji/svg?seed=flick"}
                 alt="My Avatar"
@@ -2403,7 +2652,7 @@ export default function ChatSection({
                 playGlitchClickSound();
                 setShowQrShareModal(true);
               }}
-              className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+              className={`p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer ${guideHighlight === 'highlight_qr' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black z-[95] animate-pulse scale-110' : ''}`}
               title="My QR code"
             >
               <QrCode className="w-4 h-4" />
@@ -2425,7 +2674,7 @@ export default function ChatSection({
                 setIsCreateGroupOpen(!isCreateGroupOpen);
                 setIsJoinGroupOpen(false);
               }}
-              className={`p-2 rounded-full transition cursor-pointer ${isCreateGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
+              className={`p-2 rounded-full transition cursor-pointer ${isCreateGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'} ${guideHighlight === 'highlight_create_group' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black z-[95] animate-pulse scale-110' : ''}`}
               title="Create Group Concourse"
             >
               <Plus className="w-4 h-4" />
@@ -2471,7 +2720,7 @@ export default function ChatSection({
           {[
             { id: 'all', label: 'All 💬' },
             { id: 'unread', label: 'Unread 🔴' },
-            { id: 'my-ai', label: 'My AI 🌟' },
+            { id: 'my-ai', label: 'THE FATHER 🔮' },
             { id: 'groups', label: 'Groups 👥' },
             { id: 'favorites', label: 'Favorites ⭐' },
             { id: 'archived', label: 'Archived 📥' },
@@ -2507,9 +2756,9 @@ export default function ChatSection({
                   if (pill.id === 'my-ai') {
                     const myAIPeer: UserProfile = {
                       uid: 'my-ai-bot-uid',
-                      displayName: 'My AI 🌟',
+                      displayName: 'THE FATHER 🔮',
                       photoURL: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
-                      email: 'myai@flick.internal',
+                      email: 'thefather@flick.internal',
                       status: 'online',
                       lastSeen: { toDate: () => new Date() } as any,
                       updatedAt: { toDate: () => new Date() } as any,
@@ -3098,18 +3347,36 @@ export default function ChatSection({
                   }`}
                 >
                   <div className="relative flex-shrink-0">
-                    <img
-                      src={u.photoURL}
-                      alt={u.displayName}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerVibration('light');
-                        playGlitchClickSound();
-                        triggerViewProfile(u.uid);
-                      }}
-                      className={`w-9 h-9 rounded-full border object-cover cursor-pointer hover:scale-105 transition-all ${isSelected ? 'border-black' : 'border-[var(--neon-green)]/35'}`}
-                      referrerPolicy="no-referrer"
-                    />
+                    {u.uid === 'my-ai-bot-uid' ? (
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerVibration('light');
+                          playGlitchClickSound();
+                          triggerViewProfile(u.uid);
+                        }}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center bg-black border overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${isSelected ? 'border-black shadow-[0_0_15px_rgba(0,0,0,0.6)]' : 'border-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.6)]'}`}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
+                        <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
+                        <div className="absolute inset-1.5 rounded-full bg-black flex items-center justify-center font-mono text-[10px] select-none">
+                          🔮
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={u.photoURL}
+                        alt={u.displayName}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerVibration('light');
+                          playGlitchClickSound();
+                          triggerViewProfile(u.uid);
+                        }}
+                        className={`w-9 h-9 rounded-full border object-cover cursor-pointer hover:scale-105 transition-all ${isSelected ? 'border-black' : 'border-[var(--neon-green)]/35'}`}
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
                     <span
                       className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${
                         isOnline ? 'bg-[var(--neon-green)]' : 'bg-red-500'
@@ -3475,18 +3742,37 @@ export default function ChatSection({
                     )}
 
                     <div className="relative flex-shrink-0">
-                      <img
-                        src={peer.photoURL}
-                        alt={peer.displayName}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerVibration('light');
-                          playGlitchClickSound();
-                          triggerViewProfile(peer.uid);
-                        }}
-                        className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadFromPeer > 0 ? 'border-rose-500 scale-105' : 'border-zinc-800'}`}
-                        referrerPolicy="no-referrer"
-                      />
+                      {peer.uid === 'my-ai-bot-uid' ? (
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerVibration('light');
+                            playGlitchClickSound();
+                            triggerViewProfile(peer.uid);
+                          }}
+                          className={`w-12 h-12 rounded-full flex items-center justify-center bg-black border-2 overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${unreadFromPeer > 0 ? 'border-rose-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]' : 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.6)]'}`}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
+                          <div className="absolute inset-1.5 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
+                          <div className="absolute inset-2.5 rounded-full bg-black flex items-center justify-center font-mono text-xs select-none">
+                            🔮
+                          </div>
+                          <div className="absolute inset-0 rounded-full border border-cyan-400/30 animate-ping opacity-25" style={{ animationDuration: '3s' }} />
+                        </div>
+                      ) : (
+                        <img
+                          src={peer.photoURL}
+                          alt={peer.displayName}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerVibration('light');
+                            playGlitchClickSound();
+                            triggerViewProfile(peer.uid);
+                          }}
+                          className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadFromPeer > 0 ? 'border-rose-500 scale-105' : 'border-zinc-800'}`}
+                          referrerPolicy="no-referrer"
+                        />
+                      )}
                       <span
                         className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black ${
                           peer.uid === 'my-ai-bot-uid' || isOnline ? 'bg-emerald-500' : 'bg-red-500'
@@ -3644,20 +3930,74 @@ export default function ChatSection({
 
         {/* E2EE Keys diagnostics indicators */}
         {profile && (
-          <div className="p-4 border-t border-[var(--neon-green)]/15 bg-black flex-shrink-0">
-            <div className="flex items-center justify-between text-[8px] uppercase tracking-wider font-extrabold opacity-60 mb-2 text-zinc-400">
-              <span className="flex items-center"><Key className="w-3.5 h-3.5 mr-1 text-[var(--neon-green)]" /> RSA Keyring Status</span>
+          <div className={`p-4 border-t border-[var(--neon-green)]/15 bg-black flex-shrink-0 space-y-3 transition-all ${guideHighlight === 'highlight_keys' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse bg-violet-950/10' : ''}`}>
+            <div className="flex items-center justify-between text-[8px] uppercase tracking-wider font-extrabold opacity-70 text-zinc-400">
+              <span className="flex items-center">
+                <Key className="w-3.5 h-3.5 mr-1 text-[var(--neon-green)]" /> RSA KEYRING STATUS
+              </span>
               <span className={localPrivateKey ? 'text-[var(--neon-green)] font-bold' : 'text-red-500 font-bold'}>
-                {localPrivateKey ? 'SYNCHRONIZED' : 'UNLOADED'}
+                {localPrivateKey ? 'SYNCHRONIZED' : 'LOCKED / NEW DEVICE'}
               </span>
             </div>
-            {!localPrivateKey && (
-              <button
-                onClick={regenerateE2EEKeys}
-                className="w-full text-center text-[9px] uppercase tracking-widest font-black bg-red-600 text-white hover:bg-red-500 py-2.5 transition rounded-none cursor-pointer border border-black"
-              >
-                Assemble Cryptographic Keys
-              </button>
+            
+            {!localPrivateKey ? (
+              <div className="space-y-2 bg-[#080808] border border-red-500/20 p-2.5">
+                <p className="text-[8px] text-zinc-400 uppercase font-mono leading-normal">
+                  ⚠️ CHATS ARE SECURELY ENCRYPTED. ENTER GLOBAL KEY PASS TO UNLOCK MESSAGES ON THIS DEVICE:
+                </p>
+                <div className="flex gap-1.5">
+                  <input
+                    type="password"
+                    id="chat-unlock-password-input"
+                    placeholder="Enter Global Passkey..."
+                    className="flex-1 bg-black border border-red-500/30 px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--neon-green)] font-mono"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const target = e.currentTarget;
+                        if (target.value.trim()) {
+                          playGlitchClickSound();
+                          unlockE2EEKeysWithPassword(target.value.trim()).then((ok) => {
+                            if (ok) target.value = '';
+                          });
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('chat-unlock-password-input') as HTMLInputElement;
+                      if (input && input.value.trim()) {
+                        playGlitchClickSound();
+                        unlockE2EEKeysWithPassword(input.value.trim()).then((ok) => {
+                          if (ok) input.value = '';
+                        });
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-mono text-[9px] font-bold uppercase transition cursor-pointer"
+                  >
+                    Unlock
+                  </button>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-zinc-900">
+                  <span className="text-[7.5px] text-zinc-500 uppercase font-mono">
+                    New device or cleared cache?
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("WARNING: Regenerating a fresh keyring will rotate your public key. Any messages sent to your old key will remain locked. Continue?")) {
+                        authRegenerateE2EEKeys();
+                      }
+                    }}
+                    className="text-[7.5px] text-red-400 hover:text-red-300 underline uppercase font-mono cursor-pointer"
+                  >
+                    Regenerate Fresh Keyring
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[8px] text-zinc-500 uppercase font-mono leading-normal">
+                ✔ E2EE Secure tunnel verified. Messages decrypted locally.
+              </p>
             )}
           </div>
         )}
@@ -3686,19 +4026,36 @@ export default function ChatSection({
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                <img
-                  src={currentChat.isGroup ? (currentChat.avatarUrl || "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120") : (selectedPeer?.photoURL || '')}
-                  alt={currentChat.isGroup ? currentChat.name : (selectedPeer?.displayName || '')}
-                  onClick={() => {
-                    triggerVibration('light');
-                    playGlitchClickSound();
-                    if (!currentChat.isGroup && selectedPeer) {
-                      triggerViewProfile(selectedPeer.uid);
-                    }
-                  }}
-                  className="w-10 h-10 rounded-full border border-zinc-800 object-cover shrink-0 cursor-pointer hover:scale-105 transition duration-150"
-                  referrerPolicy="no-referrer"
-                />
+                {!currentChat.isGroup && selectedPeer?.uid === 'my-ai-bot-uid' ? (
+                  <div 
+                    onClick={() => {
+                      triggerVibration('light');
+                      playGlitchClickSound();
+                      if (selectedPeer) triggerViewProfile(selectedPeer.uid);
+                    }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-black border-2 border-violet-500 overflow-hidden shadow-[0_0_20px_rgba(139,92,246,0.6)] cursor-pointer hover:scale-105 transition-all relative shrink-0"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
+                    <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
+                    <div className="absolute inset-2 rounded-full bg-black flex items-center justify-center font-mono text-xs select-none">
+                      🔮
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={currentChat.isGroup ? (currentChat.avatarUrl || "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120") : (selectedPeer?.photoURL || '')}
+                    alt={currentChat.isGroup ? currentChat.name : (selectedPeer?.displayName || '')}
+                    onClick={() => {
+                      triggerVibration('light');
+                      playGlitchClickSound();
+                      if (!currentChat.isGroup && selectedPeer) {
+                        triggerViewProfile(selectedPeer.uid);
+                      }
+                    }}
+                    className="w-10 h-10 rounded-full border border-zinc-800 object-cover shrink-0 cursor-pointer hover:scale-105 transition duration-150"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <h3 
                     onClick={() => {
@@ -3946,12 +4303,32 @@ export default function ChatSection({
                   🔐 Encryption Verified. Communication streams on Fara Flick are secured with perfect forward secrecy. No storage is cached plain.
                 </div>
 
-                {messages.length === 0 ? (
-                  <div className="text-center py-24 text-zinc-500 text-xs italic uppercase animate-pulse">
-                    Tunnel established. Begin typing below...
+                {selectedPeer?.uid === 'my-ai-bot-uid' && (
+                  <div className="mb-6 border-b border-zinc-900/40 pb-6">
+                    <TheFatherOrb isThinking={!!typingUsers['my-ai-bot-uid']} />
                   </div>
+                )}
+
+                {messages.length === 0 ? (
+                  selectedPeer?.uid === 'my-ai-bot-uid' ? (
+                    <div className="text-center py-6 text-zinc-500 text-[10px] uppercase tracking-wider font-mono animate-pulse">
+                      🔮 DIRECT QUANTUM FEED ESTABLISHED WITH THE FATHER. INITIATE SACRED INQUIRY BELOW...
+                    </div>
+                  ) : (
+                    <div className="text-center py-24 text-zinc-500 text-xs italic uppercase animate-pulse">
+                      Tunnel established. Begin typing below...
+                    </div>
+                  )
                 ) : (() => {
                   const filtered = messages.filter(msg => {
+                    try {
+                      const deletedLocallyStr = localStorage.getItem(`flick_deleted_messages_local_${profile.uid}`) || "[]";
+                      const deletedLocally = JSON.parse(deletedLocallyStr) as string[];
+                      if (deletedLocally.includes(msg.id)) return false;
+                    } catch (e) {
+                      console.error(e);
+                    }
+
                     if (!messageSearchQuery) return true;
                     const dec = decryptedCache[msg.id];
                     if (!dec) return false;
@@ -4037,6 +4414,11 @@ export default function ChatSection({
                               isPeerOnline={selectedPeer ? rtdbStatuses[selectedPeer.uid]?.state === 'online' : false}
                               chatId={currentChat.id}
                               currentUserDisplayName={profile.displayName}
+                              peerPublicKey={selectedPeer?.publicKey}
+                              senderPublicKey={profile?.publicKey}
+                              onDeleteLocally={(msgId) => {
+                                setMessages(prev => prev.filter(m => m.id !== msgId));
+                              }}
                               onReplyTrigger={(msgId, author, snippet) => {
                                 playGlitchClickSound();
                                 setReplyQuote({ msgId, authorName: author, snippetText: snippet.substring(0, 32) });
@@ -4122,12 +4504,22 @@ export default function ChatSection({
                           {currentChat.isGroup ? `GROUP CONDUIT // ${currentChat.groupType || 'FRIENDS'}` : 'PEER NODE'}
                         </span>
                         <div className="flex items-center space-x-2.5 bg-black/70 p-2.5 border border-[var(--neon-green)]/15 backdrop-blur-md">
-                          <img 
-                            src={currentChat.isGroup ? (currentChat.avatarUrl || "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120") : (selectedPeer ? selectedPeer.photoURL : '')} 
-                            alt={currentChat.isGroup ? currentChat.name : (selectedPeer ? selectedPeer.displayName : '')} 
-                            className="w-10 h-10 border border-[var(--neon-green)]/35 object-cover shrink-0"
-                            referrerPolicy="no-referrer"
-                          />
+                          {!currentChat.isGroup && selectedPeer?.uid === 'my-ai-bot-uid' ? (
+                            <div className="w-10 h-10 rounded-none flex items-center justify-center bg-black border border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative shrink-0">
+                              <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
+                              <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
+                              <div className="absolute inset-2 rounded-full bg-black flex items-center justify-center font-mono text-xs select-none">
+                                🔮
+                              </div>
+                            </div>
+                          ) : (
+                            <img 
+                              src={currentChat.isGroup ? (currentChat.avatarUrl || "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120") : (selectedPeer ? selectedPeer.photoURL : '')} 
+                              alt={currentChat.isGroup ? currentChat.name : (selectedPeer ? selectedPeer.displayName : '')} 
+                              className="w-10 h-10 border border-[var(--neon-green)]/35 object-cover shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                          )}
                           <div className="min-w-0">
                             <p className="text-[10px] font-black text-white truncate uppercase font-mono tracking-wider">
                               {currentChat.isGroup ? currentChat.name : (selectedPeer ? selectedPeer.displayName : '')}
@@ -4924,7 +5316,7 @@ export default function ChatSection({
               <div className="flex flex-wrap items-center gap-2.5 justify-between pb-1.5 border-b border-[var(--neon-green)]/10">
                 
                 {/* Self Destruct (Burning) Lifespan Selection indicator */}
-                <div className="flex items-center space-x-2">
+                <div className={`flex items-center space-x-2 transition-all p-1 ${guideHighlight === 'highlight_burn_timer' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black rounded bg-violet-950/20 z-[95] animate-pulse scale-105' : ''}`}>
                   <span className="text-[8.5px] uppercase font-bold text-zinc-500 flex items-center gap-1">
                     <Flame className="w-3.5 h-3.5 text-zinc-400" /> Message Lifecycles
                   </span>
@@ -4990,8 +5382,8 @@ export default function ChatSection({
                     className={`p-1.5 border transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold ${
                       isPollCreatorOpen
                         ? 'bg-[var(--neon-green)] text-black border-transparent font-extrabold shadow-[1.5px_1.5px_0_0_rgba(255,255,255,0.8)]'
-                        : 'bg-black border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
-                    }`}
+                        : 'bg-black border-[var(--neon-green)]/35 text-zinc-400 hover:text-[var(--neon-green)]'
+                    } ${guideHighlight === 'highlight_polls' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black rounded z-[95] animate-pulse scale-110' : ''}`}
                   >
                     <BarChart2 className="w-3 h-3 text-[var(--neon-green)]" />
                     <span>POLL</span>
@@ -5535,6 +5927,92 @@ export default function ChatSection({
 
               <div className="p-2 text-center text-zinc-500 text-[7px] leading-relaxed uppercase">
                 Hardware listener: [ACTIVE]. Press Esc at any time to exit prompts.
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
+      {/* 5. THE FATHER'S Guided Revelation Overlay HUD */}
+      <AnimatePresence>
+        {guideHighlight && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-[3px] z-[90] flex items-end justify-center p-6 md:pb-12 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              className="w-full max-w-md bg-[#080808] border-[3px] border-violet-500 p-5 font-mono shadow-[0_0_30px_rgba(139,92,246,0.6)] space-y-4 text-left pointer-events-auto"
+            >
+              <div className="flex items-center justify-between border-b border-violet-500/25 pb-2">
+                <span className="flex items-center text-[10px] uppercase font-black tracking-widest text-violet-400 gap-1.5">
+                  🔮 THE FATHER'S REVELATION
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playGlitchClickSound();
+                    setGuideHighlight(null);
+                  }}
+                  className="px-2 py-0.5 border border-violet-500/30 text-violet-400 hover:text-violet-300 text-[9px] uppercase font-bold cursor-pointer transition"
+                >
+                  [ CLOSE HUD ]
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-black border-2 border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative animate-pulse">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[1px]" />
+                  <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '4s' }} />
+                  <span className="absolute inset-2 bg-black rounded-full flex items-center justify-center text-xs">🔮</span>
+                </div>
+
+                <div className="space-y-2 text-center">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                    {guideHighlight === 'highlight_tunnels' && "Secure Chat Tunnels"}
+                    {guideHighlight === 'highlight_burn_timer' && "Ephemeral Burn Protocols"}
+                    {guideHighlight === 'highlight_keys' && "Cryptographic E2EE Handshake"}
+                    {guideHighlight === 'highlight_create_group' && "Deploy Group Conduits"}
+                    {guideHighlight === 'highlight_qr' && "Direct QR Handshakes"}
+                    {guideHighlight === 'highlight_polls' && "Cryptographic Polls Concourse"}
+                    {guideHighlight === 'highlight_profile' && "Quantum Profile Nodes"}
+                  </h4>
+                  <p className="text-[9px] text-zinc-300 leading-relaxed uppercase">
+                    {guideHighlight === 'highlight_tunnels' && (
+                      "I have illuminated your secure Chat Tunnels in the sidebar. All direct dialogues and peer transmissions route here. Select any peer node to begin a cryptographic handshake."
+                    )}
+                    {guideHighlight === 'highlight_burn_timer' && (
+                      "Behold the Flame icon! Tap this adjacent to your text input to configure the automatic burning/self-destruct timer for highly volatile transmissions."
+                    )}
+                    {guideHighlight === 'highlight_keys' && (
+                      "Your Perfect Forward Secrecy key indicators are shown below the active sidebar. Manage your RSA/AES key pairs here to verify node-to-node cryptography."
+                    )}
+                    {guideHighlight === 'highlight_create_group' && (
+                      "Look at the '+' button on the sidebar header! Deploying Group Conduits lets you aggregate multiple secure nodes into a single cryptographic concourse."
+                    )}
+                    {guideHighlight === 'highlight_qr' && (
+                      "Your physical node signature QR code is illuminated on your sidebar header. Tap it to display your terminal coordinates, or scan a peer physical screen!"
+                    )}
+                    {guideHighlight === 'highlight_polls' && (
+                      "Secure multi-node voting is available inside chats! Tap the attachment panel inside your dialogue window to build zero-knowledge voting polls."
+                    )}
+                    {guideHighlight === 'highlight_profile' && (
+                      "Behold your primary node avatar! Tap it at the top of your sidebar to review system logs, edit quantum-safe status signatures, and verify encryption keys."
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-violet-500/10 flex justify-center">
+                <button
+                  onClick={() => {
+                    playGlitchClickSound();
+                    triggerVibration('medium');
+                    setGuideHighlight(null);
+                  }}
+                  className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-mono text-[9px] font-black uppercase transition cursor-pointer select-none tracking-widest text-center shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+                >
+                  [ CONTINUE DIRECTIVE ]
+                </button>
               </div>
             </motion.div>
           </div>

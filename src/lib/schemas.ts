@@ -97,7 +97,10 @@ export const ChatMessageSchema = z.object({
     question: z.string(),
     options: z.array(z.string()),
     votes: z.record(z.string(), z.number())
-  }).nullable().optional()
+  }).nullable().optional(),
+  isEdited: z.boolean().optional(),
+  editedAt: z.any().optional(),
+  isDeleted: z.boolean().optional()
 });
 
 export const InAppNotificationSchema = z.object({

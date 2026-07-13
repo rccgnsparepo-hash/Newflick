@@ -185,3 +185,84 @@ export async function decryptE2EEMessage(
     return "[Encrypted Message - Private Key Missing/Unmatched]";
   }
 }
+
+/**
+ * Derives a secure 256-bit AES-GCM key from a user-supplied Global Key Password and salt
+ */
+async function deriveKeyFromPassword(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const passwordBytes = encoder.encode(password);
+  
+  const baseKey = await window.crypto.subtle.importKey(
+    "raw",
+    passwordBytes,
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+  
+  return window.crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 10000, // Balanced for near-instant decryption on low-end mobile & high-end desktop alike
+      hash: "SHA-256",
+    },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+/**
+ * Encrypt a string symmetrically using a password (e.g. Global Key Password)
+ */
+export async function encryptSymmetrically(text: string, password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const dataBytes = encoder.encode(text);
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  
+  const key = await deriveKeyFromPassword(password, salt);
+  const ciphertextBuffer = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    dataBytes
+  );
+  
+  const ciphertextBytes = new Uint8Array(ciphertextBuffer);
+  
+  // Combine salt + iv + ciphertext
+  const combined = new Uint8Array(salt.length + iv.length + ciphertextBytes.length);
+  combined.set(salt, 0);
+  combined.set(iv, salt.length);
+  combined.set(ciphertextBytes, salt.length + iv.length);
+  
+  return bytesToBase64(combined);
+}
+
+/**
+ * Decrypt a string symmetrically using a password (e.g. Global Key Password)
+ */
+export async function decryptSymmetrically(encryptedBase64: string, password: string): Promise<string> {
+  const combined = base64ToBytes(encryptedBase64);
+  if (combined.length < 16 + 12) {
+    throw new Error("Invalid cipher size.");
+  }
+  
+  const salt = combined.slice(0, 16);
+  const iv = combined.slice(16, 16 + 12);
+  const ciphertext = combined.slice(16 + 12);
+  
+  const key = await deriveKeyFromPassword(password, salt);
+  const decryptedBuffer = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    ciphertext
+  );
+  
+  const decoder = new TextDecoder();
+  return decoder.decode(decryptedBuffer);
+}
+

@@ -33,6 +33,8 @@ interface AuthContextType {
   deleteAccount: () => Promise<void>;
   regenerateE2EEKeys: () => Promise<void>;
   reloadProfile: () => Promise<void>;
+  unlockE2EEKeysWithPassword: (password: string) => Promise<boolean>;
+  changeGlobalKeyPassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -77,6 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [isAuthReady, setIsAuthReady] = useState(false);
 
+  // Helper to generate a human-readable cyber-styled Global Key Password
+  const generateGlobalKeyPassword = (): string => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let part1 = "";
+    let part2 = "";
+    for (let i = 0; i < 4; i++) {
+      part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+      part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `FLICK-KEY-${part1}-${part2}`;
+  };
+
   // Synchronous key verification and generation logic
   const handleKeyVerification = async (uid: string, userDisplayName: string, userEmail: string, userPhotoUrl: string) => {
     try {
@@ -95,17 +109,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (!privLocal || !pubKeyJwk) {
-        console.log("Generating fresh E2EE RSA key-pair...");
-        const keypair = await generateE2EEKeyPair();
-        
-        privLocal = keypair.privateKeyJwk;
-        pubKeyJwk = keypair.publicKeyJwk;
+      let backupPass = existingProfile?.globalKeyPassword;
+      let encryptedPriv = existingProfile?.encryptedPrivateKey;
+
+      // Case A: We have a local private key, but no remote backup yet
+      if (privLocal && (!backupPass || !encryptedPriv)) {
+        backupPass = backupPass || generateGlobalKeyPassword();
+        const { encryptSymmetrically } = await import('../lib/crypto');
         try {
-          localStorage.setItem(`e2ee_private_${uid}`, keypair.privateKeyJwk);
-          localStorage.setItem(`e2ee_public_${uid}`, keypair.publicKeyJwk);
-        } catch {
-          // ignore storage full errors
+          encryptedPriv = await encryptSymmetrically(privLocal, backupPass);
+        } catch (err) {
+          console.warn("Auto-encrypt of local key failed:", err);
+        }
+      }
+
+      // Case B: We are on a brand new device/browser (no local private key)
+      if (!privLocal) {
+        if (!existingProfile?.encryptedPrivateKey) {
+          // No backup on Firestore either -> Generates fresh keyring and backup passkey
+          console.log("Generating fresh E2EE RSA key-pair and recovery key...");
+          const keypair = await generateE2EEKeyPair();
+          privLocal = keypair.privateKeyJwk;
+          pubKeyJwk = keypair.publicKeyJwk;
+          backupPass = generateGlobalKeyPassword();
+          
+          const { encryptSymmetrically } = await import('../lib/crypto');
+          try {
+            encryptedPriv = await encryptSymmetrically(privLocal, backupPass);
+          } catch (err) {
+            console.warn("Encrypt of new key failed:", err);
+          }
+
+          try {
+            localStorage.setItem(`e2ee_private_${uid}`, keypair.privateKeyJwk);
+            localStorage.setItem(`e2ee_public_${uid}`, keypair.publicKeyJwk);
+            localStorage.setItem(`e2ee_global_password_${uid}`, backupPass);
+          } catch {
+            // ignore storage full errors
+          }
+        } else {
+          // Backup exists on Firestore! Check if password was cached locally
+          const cachedPass = localStorage.getItem(`e2ee_global_password_${uid}`);
+          if (cachedPass) {
+            try {
+              const { decryptSymmetrically } = await import('../lib/crypto');
+              privLocal = await decryptSymmetrically(existingProfile.encryptedPrivateKey, cachedPass);
+              try {
+                localStorage.setItem(`e2ee_private_${uid}`, privLocal);
+              } catch {}
+            } catch (err) {
+              console.warn("Auto-decrypt of existing key with cached password failed:", err);
+            }
+          }
         }
       }
 
@@ -136,7 +191,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         soundEnabled: existingProfile?.soundEnabled !== undefined ? existingProfile.soundEnabled : true,
         notifSocialFeed: existingProfile?.notifSocialFeed !== undefined ? existingProfile.notifSocialFeed : true,
         notifMessagesAll: existingProfile?.notifMessagesAll !== undefined ? existingProfile.notifMessagesAll : true,
-        notifMessagesFrom: existingProfile?.notifMessagesFrom || []
+        notifMessagesFrom: existingProfile?.notifMessagesFrom || [],
+        encryptedPrivateKey: encryptedPriv || existingProfile?.encryptedPrivateKey || undefined,
+        globalKeyPassword: backupPass || existingProfile?.globalKeyPassword || undefined
       };
 
       await upsertUserProfile(uid, updatedProfile);
@@ -149,6 +206,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           localStorage.setItem('flick_cached_profile', JSON.stringify(synched));
           localStorage.setItem('flick_cached_private_key', privLocal || '');
+          if (backupPass) {
+            localStorage.setItem(`e2ee_global_password_${uid}`, backupPass);
+          }
         } catch {}
         setProfile(synched);
       } else {
@@ -386,18 +446,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const keypair = await generateE2EEKeyPair();
       localStorage.setItem(`e2ee_private_${currentUser.uid}`, keypair.privateKeyJwk);
+      localStorage.setItem(`e2ee_public_${currentUser.uid}`, keypair.publicKeyJwk);
       setLocalPrivateKey(keypair.privateKeyJwk);
+
+      const pass = profile.globalKeyPassword || generateGlobalKeyPassword();
+      const { encryptSymmetrically } = await import('../lib/crypto');
+      const encrypted = await encryptSymmetrically(keypair.privateKeyJwk, pass);
 
       await upsertUserProfile(currentUser.uid, {
         displayName: profile.displayName,
         photoURL: profile.photoURL,
         email: profile.email,
         status: 'online',
-        publicKey: keypair.publicKeyJwk
+        publicKey: keypair.publicKeyJwk,
+        globalKeyPassword: pass,
+        encryptedPrivateKey: encrypted
       });
 
       const synced = await getUserProfile(currentUser.uid);
       setProfile(synced);
+      showBrutalistToast('KEYRING REGENERATED', 'A new RSA keyring was deployed. Historical messages may be locked.', 'info');
     } catch (error) {
       console.warn("Key regeneration failed:", error);
     } finally {
@@ -412,6 +480,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(synced);
     } catch (error) {
       console.warn("Failed to reload user profile:", error);
+    }
+  };
+
+  // Restores local private key using the symmetrically encrypted Firestore payload and the user's password
+  const unlockE2EEKeysWithPassword = async (password: string): Promise<boolean> => {
+    if (!currentUser?.uid) return false;
+    setLoading(true);
+    try {
+      const syncedProfile = await getUserProfile(currentUser.uid);
+      if (!syncedProfile || !syncedProfile.encryptedPrivateKey) {
+        showBrutalistToast('UNLOCK ERROR', 'No secure E2EE backup found for this account.', 'error');
+        return false;
+      }
+
+      const { decryptSymmetrically } = await import('../lib/crypto');
+      const decryptedPrivKey = await decryptSymmetrically(syncedProfile.encryptedPrivateKey, password.trim());
+      
+      // Decryption succeeded! Store credentials.
+      localStorage.setItem(`e2ee_private_${currentUser.uid}`, decryptedPrivKey);
+      localStorage.setItem(`e2ee_public_${currentUser.uid}`, syncedProfile.publicKey);
+      localStorage.setItem(`e2ee_global_password_${currentUser.uid}`, password.trim());
+      localStorage.setItem('flick_cached_private_key', decryptedPrivKey);
+      
+      setLocalPrivateKey(decryptedPrivKey);
+      setProfile(syncedProfile);
+      
+      showBrutalistToast('CHATS UNLOCKED', 'Your cryptographic keyring has been restored in real-time!', 'success');
+      return true;
+    } catch (error) {
+      console.warn("E2EE unlock decryption failed:", error);
+      showBrutalistToast('DECRYPTION FAIL', 'Incorrect Global Key Password. Handshake aborted.', 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Updates the Global Key Password and symmetrically encrypts the local private key with the new password
+  const changeGlobalKeyPassword = async (newPassword: string): Promise<void> => {
+    if (!currentUser?.uid || !profile) return;
+    if (!localPrivateKey) {
+      showBrutalistToast('ERROR', 'Unlock your chats before changing the key password.', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { encryptSymmetrically } = await import('../lib/crypto');
+      const encrypted = await encryptSymmetrically(localPrivateKey, newPassword.trim());
+
+      await upsertUserProfile(currentUser.uid, {
+        displayName: profile.displayName,
+        photoURL: profile.photoURL,
+        email: profile.email,
+        status: 'online',
+        publicKey: profile.publicKey,
+        globalKeyPassword: newPassword.trim(),
+        encryptedPrivateKey: encrypted
+      });
+
+      localStorage.setItem(`e2ee_global_password_${currentUser.uid}`, newPassword.trim());
+      
+      const synced = await getUserProfile(currentUser.uid);
+      setProfile(synced);
+      showBrutalistToast('PASSWORD SYNCHRONIZED', 'Your E2EE Global Key Password has been updated.', 'success');
+    } catch (error) {
+      console.warn("Changing E2EE password failed:", error);
+      showBrutalistToast('UPDATE FAILED', 'Failed to update E2EE key password.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -485,7 +622,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         deleteAccount,
         regenerateE2EEKeys,
-        reloadProfile
+        reloadProfile,
+        unlockE2EEKeysWithPassword,
+        changeGlobalKeyPassword
       }}
     >
       {children}

@@ -107,9 +107,14 @@ function Dashboard() {
         setViewedProfileId(customEvent.detail.uid);
       }
     };
+    const handleTriggerOnboarding = () => {
+      setShowOnboarding(true);
+    };
     window.addEventListener('faraflick-view-profile', handleViewProfileEvent);
+    window.addEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
     return () => {
       window.removeEventListener('faraflick-view-profile', handleViewProfileEvent);
+      window.removeEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
     };
   }, []);
 
