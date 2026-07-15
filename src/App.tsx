@@ -101,12 +101,37 @@ function Dashboard() {
   const [ongoingCall, setOngoingCall] = React.useState<any | null>(null);
 
   React.useEffect(() => {
+    // Handle Electron Deeplinks and Tray actions
+    if (typeof window !== 'undefined' && (window as any).require) {
+      try {
+        const { ipcRenderer } = (window as any).require('electron');
+        if (ipcRenderer) {
+          ipcRenderer.on('deeplink-action', (event: any, action: string) => {
+            console.log('Received deeplink action:', action);
+            if (action === 'post') {
+              setActiveTab('feed');
+              setTimeout(() => window.dispatchEvent(new CustomEvent('faraflick-trigger-post')), 300);
+            } else if (action === 'story') {
+              setActiveTab('feed');
+              // Trigger story creator via custom event if possible
+              setTimeout(() => window.dispatchEvent(new CustomEvent('faraflick-trigger-post')), 300); // For now, just trigger post
+            } else if (action === 'message') {
+              setActiveTab('chat');
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Electron IPC not available:', e);
+      }
+    }
+
     const handleViewProfileEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ uid: string }>;
       if (customEvent.detail && customEvent.detail.uid) {
         setViewedProfileId(customEvent.detail.uid);
       }
     };
+
     const handleTriggerOnboarding = () => {
       setShowOnboarding(true);
     };

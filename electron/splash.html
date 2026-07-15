@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flick by Faratech</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #050505;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+    .logo {
+      width: 120px;
+      height: 120px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .brand {
+      font-size: 2rem;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+    }
+    .company {
+      font-size: 1rem;
+      color: #888;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .loading {
+      margin-top: 40px;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: #00ff88;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+  </style>
+</head>
+<body>
+  <img src="../dist/flick_pwa_logo.jpg" alt="Flick" class="logo" />
+  <div class="brand">FLICK</div>
+  <div class="company">BY FARATECH</div>
+  <div class="loading"></div>
+</body>
+</html>

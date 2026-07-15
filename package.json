@@ -1,14 +1,19 @@
 {
-  "name": "react-example",
+  "name": "flick",
+  "author": "Faratech",
+  "description": "Flick - Secure Encrypted Chat",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "build": {
-    "appId": "com.flick.app",
+    "appId": "com.faratech.flick",
     "productName": "Flick",
     "directories": {
       "output": "release"
+    },
+    "publish": {
+      "provider": "github"
     },
     "files": [
       "dist/**/*",
@@ -16,7 +21,8 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/flick_pwa_logo.jpg"
     }
   },
   "scripts": {
@@ -34,6 +40,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "d3": "^7.9.0",
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.8.9",
     "express": "^4.21.2",
     "firebase": "^12.14.0",
     "gsap": "^3.15.0",

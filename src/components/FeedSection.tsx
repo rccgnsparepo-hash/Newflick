@@ -209,6 +209,12 @@ export default function FeedSection({
 
   // Subscribe to comments dynamically when activeDiscussionPost is set
   useEffect(() => {
+    const handlePostEvent = () => setShowPostCreator(true);
+    window.addEventListener('faraflick-trigger-post', handlePostEvent);
+    return () => window.removeEventListener('faraflick-trigger-post', handlePostEvent);
+  }, []);
+
+  useEffect(() => {
     if (!activeDiscussionPost) {
       setCurrentPostComments([]);
       return;
