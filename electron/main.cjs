@@ -66,7 +66,7 @@ function createWindow() {
     width: 1280,
     height: 800,
     show: false, // Don't show until ready
-    icon: path.join(__dirname, '../dist/flick_pwa_logo.jpg'),
+    icon: path.join(__dirname, '../dist/icon.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -100,7 +100,7 @@ function createWindow() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, '../dist/flick_pwa_logo.jpg');
+  const iconPath = path.join(__dirname, '../dist/icon.png');
   tray = new Tray(iconPath);
   
   const contextMenu = Menu.buildFromTemplate([
@@ -160,7 +160,7 @@ function showAboutDialog() {
     type: 'info',
     message: 'Flick',
     detail: 'Version: ' + app.getVersion() + '\nCompany: Faratech\n\nFlick is the secure, end-to-end encrypted communication and social platform.\n\nUpcoming Features:\n- Multi-device syncing\n- Voice/Video Rooms\n- Decentralized File Sharing',
-    icon: path.join(__dirname, '../dist/flick_pwa_logo.jpg'),
+    icon: path.join(__dirname, '../dist/icon.png'),
     buttons: ['OK', 'Website']
   }).then(result => {
     if (result.response === 1) {

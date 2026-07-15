@@ -22,7 +22,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/flick_pwa_logo.jpg"
+      "icon": "public/icon.png"
     }
   },
   "scripts": {
@@ -64,6 +64,7 @@
     "electron": "^43.1.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.25.0",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

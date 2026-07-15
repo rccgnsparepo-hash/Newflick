@@ -32,6 +32,9 @@ jobs:
       - name: Bump Version
         run: npm version 1.0.${{ github.run_number }} --no-git-tag-version
 
+      - name: Convert Icon for Electron
+        run: node scripts/build-icon.js
+
       - name: Build Web App
         run: npm run build
 
