@@ -48,14 +48,40 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       
       return bootstrapConfig as BootstrapConfig;
     } catch (err) {
-      console.error('[Bootstrap] Failed to initialize:', err);
-      // Fallback or return empty struct to prevent crash
-      return {
-        firebaseConfig: null,
+      console.error('[Bootstrap] Failed to initialize from backend. Falling back to VITE_ env variables if available:', err);
+      
+      const env = (import.meta as any).env || {};
+      const viteProjectId = env.VITE_FIREBASE_PROJECT_ID;
+      const viteApiKey = env.VITE_FIREBASE_API_KEY;
+      
+      let fallbackFirebaseConfig = null;
+      if (viteProjectId && viteApiKey) {
+        fallbackFirebaseConfig = {
+          projectId: viteProjectId,
+          apiKey: viteApiKey,
+          appId: env.VITE_FIREBASE_APP_ID || "",
+          authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || `${viteProjectId}.firebaseapp.com`,
+          firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2",
+          storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || `${viteProjectId}.appspot.com`,
+          messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+          measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || ""
+        };
+      }
+
+      bootstrapConfig = {
+        firebaseConfig: fallbackFirebaseConfig,
         version: "fallback",
         features: { enableE2EE: true, enablePushNotifications: false },
         publicApiUrls: { backendUrl: "" }
       } as BootstrapConfig;
+
+      // Store in window for compatibility
+      (window as any).__BOOTSTRAP_CONFIG__ = bootstrapConfig;
+      if (fallbackFirebaseConfig) {
+        (window as any).__FIREBASE_CONFIG__ = fallbackFirebaseConfig;
+      }
+
+      return bootstrapConfig;
     }
   })();
 

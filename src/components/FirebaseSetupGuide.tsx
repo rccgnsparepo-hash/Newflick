@@ -10,13 +10,16 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
   const [copied, setCopied] = useState<string | null>(null);
 
   const envVariables = [
-    { name: 'FIREBASE_PROJECT_ID', desc: 'Your Firebase project ID' },
-    { name: 'FIREBASE_API_KEY', desc: 'Your Firebase web API Key' },
+    { name: 'FIREBASE_PROJECT_ID', desc: 'Your Firebase project ID (For full-stack/backend deployments)' },
+    { name: 'FIREBASE_API_KEY', desc: 'Your Firebase web API Key (For full-stack/backend deployments)' },
     { name: 'FIREBASE_APP_ID', desc: 'Your Firebase Web App ID' },
     { name: 'FIREBASE_AUTH_DOMAIN', desc: 'Optional. defaults to {projectId}.firebaseapp.com' },
     { name: 'FIREBASE_FIRESTORE_DATABASE_ID', desc: 'Optional. Database ID if using a custom database' },
     { name: 'FIREBASE_STORAGE_BUCKET', desc: 'Optional. defaults to {projectId}.appspot.com' },
     { name: 'FIREBASE_MESSAGING_SENDER_ID', desc: 'Optional. Messaging sender ID' },
+    { name: 'VITE_FIREBASE_PROJECT_ID', desc: 'Your Firebase project ID (MANDATORY FOR VERCEL STATIC BUILDS)' },
+    { name: 'VITE_FIREBASE_API_KEY', desc: 'Your Firebase web API Key (MANDATORY FOR VERCEL STATIC BUILDS)' },
+    { name: 'VITE_FIREBASE_APP_ID', desc: 'Your Firebase Web App ID (MANDATORY FOR VERCEL STATIC BUILDS)' },
   ];
 
   const handleCopy = (text: string) => {
@@ -96,7 +99,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               Navigate to <strong className="text-zinc-200">Settings &gt; Environment Variables</strong>.
             </li>
             <li>
-              Add the following environment variables. The server will securely bootstrap the client without exposing credentials in the client build.
+              Add the following environment variables. The server will securely bootstrap the client without exposing credentials in the client build. <strong>If you are deploying a static frontend on Vercel, you MUST include the variables prefixed with <code className="text-zinc-200 font-mono text-[10px] bg-white/5 px-1 py-0.5 rounded">VITE_</code>.</strong>
             </li>
           </ol>
         </div>
