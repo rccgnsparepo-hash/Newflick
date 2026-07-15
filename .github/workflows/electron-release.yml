@@ -49,10 +49,21 @@ jobs:
       - name: Build Web App
         run: npm run build
 
-      - name: Build and Publish Electron Executable
-        run: npx electron-builder --win -p always
+      - name: Build Electron Executable
+        run: npx electron-builder --win -p never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_DRAFT: "false"
-          EP_PRE_RELEASE: "false"
+
+      - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
