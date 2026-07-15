@@ -14,51 +14,113 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
       overflow: hidden;
+      background: radial-gradient(circle at center, #111 0%, #000 100%);
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0;
+      animation: fadeIn 1s ease-out forwards;
     }
     .logo {
-      width: 120px;
-      height: 120px;
-      border-radius: 20px;
-      margin-bottom: 20px;
-      animation: pulse 2s infinite ease-in-out;
+      width: 140px;
+      height: 140px;
+      border-radius: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 0 40px rgba(0, 255, 136, 0.2);
+      animation: pulse 2.5s infinite ease-in-out;
     }
     .brand {
-      font-size: 2rem;
-      font-weight: bold;
-      letter-spacing: 0.1em;
-      margin-bottom: 10px;
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg, #fff, #888);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     .company {
-      font-size: 1rem;
-      color: #888;
-      letter-spacing: 0.2em;
+      font-size: 1.1rem;
+      color: #00ff88;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
+      font-weight: 500;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    }
+    .tagline {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #666;
+      letter-spacing: 0.05em;
+    }
+    .loading-container {
+      margin-top: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
     }
     .loading {
-      margin-top: 40px;
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(255, 255, 255, 0.05);
       border-radius: 50%;
       border-top-color: #00ff88;
-      animation: spin 1s ease-in-out infinite;
+      border-right-color: rgba(0, 255, 136, 0.3);
+      animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+    .status {
+      font-size: 0.8rem;
+      color: #888;
+      letter-spacing: 0.1em;
+      animation: pulse-text 2s infinite ease-in-out;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
     @keyframes pulse {
-      0% { transform: scale(0.95); opacity: 0.8; }
-      50% { transform: scale(1.05); opacity: 1; }
-      100% { transform: scale(0.95); opacity: 0.8; }
+      0% { transform: scale(0.98); box-shadow: 0 0 30px rgba(0, 255, 136, 0.1); }
+      50% { transform: scale(1.02); box-shadow: 0 0 50px rgba(0, 255, 136, 0.4); }
+      100% { transform: scale(0.98); box-shadow: 0 0 30px rgba(0, 255, 136, 0.1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-text {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
     }
   </style>
 </head>
 <body>
-  <img src="../dist/icon.png" alt="Flick" class="logo" />
-  <div class="brand">FLICK</div>
-  <div class="company">BY FARATECH</div>
-  <div class="loading"></div>
+  <div class="container">
+    <img src="../dist/icon.png" alt="Flick" class="logo" />
+    <div class="brand">FLICK</div>
+    <div class="company">BY FARATECH</div>
+    <div class="tagline">Secure Encrypted Network</div>
+    
+    <div class="loading-container">
+      <div class="loading"></div>
+      <div class="status">INITIALIZING MICROSERVICES...</div>
+    </div>
+  </div>
+  <script>
+    const statusEl = document.querySelector('.status');
+    const messages = [
+      "INITIALIZING MICROSERVICES...",
+      "ESTABLISHING SECURE CONNECTION...",
+      "BOOTING NEURAL PROTOCOLS...",
+      "READY."
+    ];
+    let i = 0;
+    setInterval(() => {
+      i++;
+      if(i < messages.length) statusEl.innerText = messages[i];
+    }, 1500);
+  </script>
 </body>
 </html>

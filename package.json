@@ -9,6 +9,7 @@
   "build": {
     "appId": "com.faratech.flick",
     "productName": "Flick",
+    "compression": "maximum",
     "directories": {
       "output": "release"
     },
@@ -19,11 +20,32 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/firebase/**/*",
+      "!node_modules/three/**/*",
+      "!node_modules/d3/**/*",
+      "!node_modules/motion/**/*",
+      "!node_modules/gsap/**/*",
+      "!node_modules/react/**/*",
+      "!node_modules/react-dom/**/*",
+      "!node_modules/@google/**/*",
+      "!node_modules/lucide-react/**/*",
+      "!node_modules/vite/**/*",
+      "!node_modules/@vitejs/**/*",
+      "!node_modules/tailwindcss/**/*",
+      "!node_modules/@tailwindcss/**/*"
     ],
     "win": {
       "target": "nsis",
       "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Flick"
     }
   },
   "scripts": {

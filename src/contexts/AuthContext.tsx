@@ -243,6 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen for Auth changes
+    if (!auth) {
+      setLoading(false);
+      setIsAuthReady(true);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       const hasCache = !!localStorage.getItem('flick_cached_user') && !!localStorage.getItem('flick_cached_profile');
       if (!hasCache) {

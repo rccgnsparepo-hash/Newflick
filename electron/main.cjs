@@ -87,7 +87,7 @@ function createWindow() {
       
       // Check for updates
       autoUpdater.checkForUpdatesAndNotify();
-    }, 2000);
+    }, 6000);
   });
 
   mainWindow.on('close', (event) => {
