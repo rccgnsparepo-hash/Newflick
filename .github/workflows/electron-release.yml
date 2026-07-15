@@ -32,6 +32,17 @@ jobs:
       - name: Bump Version
         run: npm version 1.0.${{ github.run_number }} --no-git-tag-version
 
+      - name: Generate and Push Git Tag
+        id: tag
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          TAG_NAME="v1.0.${{ github.run_number }}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
       - name: Convert Icon for Electron
         run: node scripts/build-icon.js
 
@@ -43,3 +54,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: "false"
+          EP_PRE_RELEASE: "false"
