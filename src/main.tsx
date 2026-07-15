@@ -1,7 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
 import './index.css';
+import { initBootstrap } from './lib/bootstrap';
 
 // Prevent ResizeObserver loop limit exceeded error from bubbling up as a fatal error
 window.addEventListener('error', (e) => {
@@ -14,8 +14,14 @@ window.addEventListener('error', (e) => {
   }
 });
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Initialize bootstrap configuration before loading the App
+// This ensures environment variables are fetched dynamically (e.g., for Electron)
+initBootstrap().then(() => {
+  import('./App.tsx').then(({ default: App }) => {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  });
+});

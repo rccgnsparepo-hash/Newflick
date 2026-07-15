@@ -2,46 +2,19 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
+import { getBootstrapConfig } from './bootstrap';
 
 let config: any = null;
 
 if (typeof window !== 'undefined') {
-  config = (window as any).__FIREBASE_CONFIG__;
-  if (!config) {
-    // 1. Check if client-side VITE_ environment variables are provided (e.g., on Vercel)
-    const env = (import.meta as any).env || {};
-    const viteProjectId = env.VITE_FIREBASE_PROJECT_ID;
-    const viteApiKey = env.VITE_FIREBASE_API_KEY;
-    if (viteProjectId && viteApiKey) {
-      config = {
-        projectId: viteProjectId,
-        apiKey: viteApiKey,
-        appId: env.VITE_FIREBASE_APP_ID || "",
-        authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || `${viteProjectId}.firebaseapp.com`,
-        firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2",
-        storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || `${viteProjectId}.appspot.com`,
-        messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-        measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || ""
-      };
-      (window as any).__FIREBASE_CONFIG__ = config;
-    }
-  }
-
-  if (!config) {
-    try {
-      // Use synchronous XHR to resolve config immediately on demand from our secure backend API route
-      if (typeof XMLHttpRequest !== 'undefined') {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', '/api/firebase-config', false);
-        xhr.send(null);
-        if (xhr.status === 200) {
-          config = JSON.parse(xhr.responseText);
-          (window as any).__FIREBASE_CONFIG__ = config;
-        }
-      }
-    } catch (err) {
-      console.warn('[Firebase Client Initialization] Dynamic server config fetch unavailable. Using fallback credentials.', err);
-    }
+  try {
+    // The bootstrap config is fetched asynchronously in main.tsx before App is loaded
+    // This allows us to use it synchronously here
+    const bootstrap = getBootstrapConfig();
+    config = bootstrap.firebaseConfig;
+  } catch (err) {
+    // Fallback if accessed before bootstrap (should not happen with new architecture)
+    config = (window as any).__FIREBASE_CONFIG__ || null;
   }
 }
 
@@ -72,7 +45,7 @@ try {
     isFirebaseConfigured = true;
     console.log("[Firebase Client] Initialized successfully.");
   } else {
-    firebaseInitError = "Missing Firebase API Key. Please provide your VITE_FIREBASE_API_KEY environment variable on Vercel.";
+    firebaseInitError = "Missing Firebase API Key. Please provide your FIREBASE_API_KEY environment variable on Vercel or your hosting platform.";
     console.warn("[Firebase Client] API Key is missing. Firebase is not configured.");
   }
 } catch (err: any) {

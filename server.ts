@@ -59,7 +59,7 @@ async function startServer() {
 
   // Intercept API routes if database is not initialized yet
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api/") && req.path !== "/api/firebase-config" && req.path !== "/api/health" && !db) {
+    if (req.path.startsWith("/api/") && req.path !== "/api/bootstrap" && req.path !== "/api/firebase-config" && req.path !== "/api/health" && !db) {
       return res.status(503).json({
         error: "Firebase database is not configured. Please set your FIREBASE_PROJECT_ID, FIREBASE_API_KEY, and other environment variables in Vercel / your hosting platform."
       });
@@ -67,7 +67,25 @@ async function startServer() {
     next();
   });
 
-  // Serve Firebase configuration dynamically to front-end to prevent hardcoded credentials in client builds/Electron
+  // Serve dynamic bootstrap configuration to clients (Web, PWA, Electron) 
+  // replacing VITE_* environment variables.
+  app.get("/api/bootstrap", (req, res) => {
+    // Only return public safe configuration. DO NOT return admin secrets.
+    const bootstrapData = {
+      firebaseConfig: firebaseConfig || null,
+      version: process.env.APP_VERSION || "1.0.0",
+      features: {
+        enableE2EE: process.env.ENABLE_E2EE === 'true' || true,
+        enablePushNotifications: !!process.env.ONESIGNAL_REST_KEY
+      },
+      publicApiUrls: {
+        backendUrl: process.env.PUBLIC_BACKEND_URL || ""
+      }
+    };
+    res.json(bootstrapData);
+  });
+
+  // Keep legacy endpoint for safety temporarily if any old clients are running
   app.get("/api/firebase-config", (req, res) => {
     if (firebaseConfig) {
       res.json(firebaseConfig);

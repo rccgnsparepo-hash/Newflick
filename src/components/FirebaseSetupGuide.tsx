@@ -10,13 +10,13 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
   const [copied, setCopied] = useState<string | null>(null);
 
   const envVariables = [
-    { name: 'VITE_FIREBASE_PROJECT_ID', desc: 'Your Firebase project ID' },
-    { name: 'VITE_FIREBASE_API_KEY', desc: 'Your Firebase web API Key' },
-    { name: 'VITE_FIREBASE_APP_ID', desc: 'Your Firebase Web App ID' },
-    { name: 'VITE_FIREBASE_AUTH_DOMAIN', desc: 'Optional. defaults to {projectId}.firebaseapp.com' },
-    { name: 'VITE_FIREBASE_FIRESTORE_DATABASE_ID', desc: 'Optional. Database ID if using a custom database' },
-    { name: 'VITE_FIREBASE_STORAGE_BUCKET', desc: 'Optional. defaults to {projectId}.appspot.com' },
-    { name: 'VITE_FIREBASE_MESSAGING_SENDER_ID', desc: 'Optional. Messaging sender ID' },
+    { name: 'FIREBASE_PROJECT_ID', desc: 'Your Firebase project ID' },
+    { name: 'FIREBASE_API_KEY', desc: 'Your Firebase web API Key' },
+    { name: 'FIREBASE_APP_ID', desc: 'Your Firebase Web App ID' },
+    { name: 'FIREBASE_AUTH_DOMAIN', desc: 'Optional. defaults to {projectId}.firebaseapp.com' },
+    { name: 'FIREBASE_FIRESTORE_DATABASE_ID', desc: 'Optional. Database ID if using a custom database' },
+    { name: 'FIREBASE_STORAGE_BUCKET', desc: 'Optional. defaults to {projectId}.appspot.com' },
+    { name: 'FIREBASE_MESSAGING_SENDER_ID', desc: 'Optional. Messaging sender ID' },
   ];
 
   const handleCopy = (text: string) => {
@@ -96,7 +96,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               Navigate to <strong className="text-zinc-200">Settings &gt; Environment Variables</strong>.
             </li>
             <li>
-              Add the following Client-Side variables (prefixed with <code className="text-zinc-200 font-mono text-[10px] bg-white/5 px-1 py-0.5 rounded">VITE_</code> so Vite loads them in the browser).
+              Add the following environment variables. The server will securely bootstrap the client without exposing credentials in the client build.
             </li>
           </ol>
         </div>
