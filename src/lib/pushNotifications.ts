@@ -8,6 +8,8 @@ import { doc, setDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { deepLinkManager } from './deepLinkManager';
 import { PushPayloadSchema } from './schemas';
+import { Capacitor } from '@capacitor/core';
+import OneSignalPlugin from 'onesignal-cordova-plugin';
 
 /**
  * Shared log storage interface for the NativePushDebugger / WebPushDebugger utility
@@ -82,16 +84,24 @@ export function validatePushNotificationPayload(payload: any): boolean {
  * Dynamically resolves OneSignal from window script injection
  */
 async function getOneSignal(): Promise<any> {
+  if (Capacitor.isNativePlatform()) {
+    return OneSignalPlugin;
+  }
+  
   if (typeof window === 'undefined') return null;
   
   const uWindow = window as any;
+  if (uWindow.plugins?.OneSignal) return uWindow.plugins.OneSignal;
   if (uWindow.OneSignal) return uWindow.OneSignal;
 
   // Wait up to 5 seconds for defer script load
   return new Promise((resolve) => {
     let elapsed = 0;
     const interval = setInterval(() => {
-      if (uWindow.OneSignal) {
+      if (uWindow.plugins?.OneSignal) {
+        clearInterval(interval);
+        resolve(uWindow.plugins.OneSignal);
+      } else if (uWindow.OneSignal) {
         clearInterval(interval);
         resolve(uWindow.OneSignal);
       }
@@ -124,13 +134,19 @@ export async function registerCapacitorPushNotifications(uid: string) {
     addPushDebugLog('info', 'Initializing OneSignal Web App ID: 050ecfbd-c43d-453d-a578-2f3ece4649ea');
     
     // 1. Initialize
-    await OneSignal.init({
-      appId: "050ecfbd-c43d-453d-a578-2f3ece4649ea",
-      allowLocalhostAsSecureOrigin: true,
-      serviceWorkerParam: { scope: "/" },
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-    });
-    addPushDebugLog('success', 'OneSignal Web SDK initialized.');
+    if (Capacitor.isNativePlatform()) {
+      addPushDebugLog('info', 'Initializing via Cordova Native Plugin (APK/Capacitor)');
+      OneSignal.initialize("050ecfbd-c43d-453d-a578-2f3ece4649ea");
+    } else {
+      addPushDebugLog('info', 'Initializing via Web SDK (PWA)');
+      await OneSignal.init({
+        appId: "050ecfbd-c43d-453d-a578-2f3ece4649ea",
+        allowLocalhostAsSecureOrigin: true,
+        serviceWorkerParam: { scope: "/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+      });
+    }
+    addPushDebugLog('success', 'OneSignal SDK initialized.');
 
     // 2. Associate authenticated User UID
     addPushDebugLog('info', `Establishing external user alignment with UID: ${uid}`);
@@ -159,8 +175,10 @@ export async function registerCapacitorPushNotifications(uid: string) {
     });
 
     // 4. Request browser notification permission proactively
-    addPushDebugLog('info', 'Prompting browser native notification permission dialog...');
-    const permission = await OneSignal.Notifications.requestPermission();
+    addPushDebugLog('info', 'Prompting notification permission dialog...');
+    const permission = Capacitor.isNativePlatform() 
+      ? await OneSignal.Notifications.requestPermission(true)
+      : await OneSignal.Notifications.requestPermission();
     addPushDebugLog('success', `Notification permissions result: ${permission}`);
 
     // 5. Fetch subscription ID and persist to Firestore
