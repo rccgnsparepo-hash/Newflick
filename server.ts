@@ -12,6 +12,18 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Enable CORS for all origins to allow standalone desktop/mobile clients to access the config tunnel
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // Initialize server-side Firebase connection (with environment variables fallback)
   let firebaseConfig: any = null;
   try {
@@ -1234,6 +1246,8 @@ async function startServer() {
     }
   });
 
+  let isSearchGroundingDisabled = false;
+
   // THE FATHER (formerly My AI) chatbot endpoint with Google Search Grounding and App Control actions
   app.post("/api/myai", async (req, res) => {
     try {
@@ -1310,26 +1324,38 @@ YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
         let lastError: any = null;
 
         // Attempt 1: Try with Google Search Grounding first (WITHOUT responseMimeType: "application/json" as they are mutually exclusive)
-        console.log(`[THE FATHER] Attempting generation WITH Google Search Grounding...`);
-        for (const model of models) {
-          try {
-            console.log(`[THE FATHER] Requesting ${model} with Search Grounding...`);
-            const res = await ai.models.generateContent({
-              model: model,
-              contents: prompt,
-              config: {
-                systemInstruction: fatherSystemInstruction,
-                tools: [{ googleSearch: {} }]
+        if (!isSearchGroundingDisabled) {
+          console.log(`[THE FATHER] Attempting generation WITH Google Search Grounding...`);
+          for (const model of models) {
+            try {
+              console.log(`[THE FATHER] Requesting ${model} with Search Grounding...`);
+              const res = await ai.models.generateContent({
+                model: model,
+                contents: prompt,
+                config: {
+                  systemInstruction: fatherSystemInstruction,
+                  tools: [{ googleSearch: {} }]
+                }
+              });
+              if (res && res.text) {
+                console.log(`[THE FATHER] Success with ${model} (Search Grounding Enabled)`);
+                return res;
               }
-            });
-            if (res && res.text) {
-              console.log(`[THE FATHER] Success with ${model} (Search Grounding Enabled)`);
-              return res;
+            } catch (err: any) {
+              lastError = err;
+              const errStr = String(err?.message || err || "").toLowerCase();
+              console.warn(`[THE FATHER] Search Grounding failed for ${model}:`, err?.message || err);
+              
+              // If we hit a quota limit, or billing issue, or resource exhaustion, disable Search Grounding and break
+              if (errStr.includes("quota") || errStr.includes("billing") || errStr.includes("limit") || errStr.includes("resource_exhausted") || errStr.includes("429") || errStr.includes("exhausted")) {
+                console.warn(`[THE FATHER] Quota/Billing/Resource Exhausted on Google Search Grounding. Disabling Search Grounding for future calls to optimize speed.`);
+                isSearchGroundingDisabled = true;
+                break; // Break the model loop immediately so we don't try other models and fail slowly
+              }
             }
-          } catch (err: any) {
-            lastError = err;
-            console.warn(`[THE FATHER] Search Grounding failed for ${model}:`, err?.message || err);
           }
+        } else {
+          console.log(`[THE FATHER] Skipping Search Grounding (previously disabled due to quota/limit limits)`);
         }
 
         // Attempt 2: Fallback to standard request WITHOUT search grounding (safely supporting responseMimeType: "application/json")

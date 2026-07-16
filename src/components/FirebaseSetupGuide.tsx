@@ -9,6 +9,7 @@ interface FirebaseSetupGuideProps {
 export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [backendInput, setBackendInput] = useState(localStorage.getItem('flick_backend_url') || '');
+  const [configJsonInput, setConfigJsonInput] = useState(localStorage.getItem('flick_firebase_config') || '');
   const [savedMsg, setSavedMsg] = useState('');
 
   const handleSaveBackend = () => {
@@ -30,6 +31,44 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
       setTimeout(() => {
         window.location.reload();
       }, 1500);
+    }
+  };
+
+  const handleSaveConfigJson = () => {
+    const rawInput = configJsonInput.trim();
+    if (!rawInput) {
+      localStorage.removeItem('flick_firebase_config');
+      setConfigJsonInput('');
+      setSavedMsg('✓ Direct Config Cleared. Reverting to gateway lookup...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      return;
+    }
+
+    try {
+      // Extract the JSON object inside the pasted text (supports full Javascript code snippets pasting)
+      let cleanJson = rawInput;
+      const jsonStart = rawInput.indexOf('{');
+      const jsonEnd = rawInput.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        cleanJson = rawInput.substring(jsonStart, jsonEnd + 1);
+      }
+
+      const parsed = JSON.parse(cleanJson);
+      if (!parsed.apiKey || !parsed.projectId) {
+        setSavedMsg('✗ Error: Config JSON must contain "apiKey" and "projectId".');
+        return;
+      }
+
+      localStorage.setItem('flick_firebase_config', JSON.stringify(parsed));
+      setConfigJsonInput(JSON.stringify(parsed, null, 2));
+      setSavedMsg('✓ Direct Firebase Config Applied! Restarting applet...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      setSavedMsg(`✗ Invalid JSON format. Please paste a clean configuration object.`);
     }
   };
 
@@ -123,8 +162,39 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               Connect Gateway
             </button>
           </div>
+
+          <div className="relative my-4 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-zinc-850" />
+            </div>
+            <div className="relative flex justify-center text-[9px] uppercase">
+              <span className="bg-[#0a0506] px-2 text-zinc-500 font-bold">OR PASTE SDK CONFIG DIRECTLY (BEST FOR STANDALONE)</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <textarea
+              rows={3}
+              placeholder='Paste your Firebase config object or JSON here, e.g.&#10;{&#10;  "apiKey": "...",&#10;  "projectId": "...",&#10;  "appId": "..."&#10;}'
+              value={configJsonInput}
+              onChange={(e) => setConfigJsonInput(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-850 text-[11px] p-2.5 text-zinc-200 focus:outline-none focus:border-[var(--neon-green)] font-mono resize-y min-h-[90px]"
+            />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <p className="text-[9px] text-zinc-500 uppercase font-sans">
+                Supports pasting raw JSON or full web setup snippets
+              </p>
+              <button
+                onClick={handleSaveConfigJson}
+                className="w-full sm:w-auto px-4 py-2 bg-black border border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer shadow-[3px_3px_0px_rgba(0,255,102,0.15)] hover:shadow-none text-center"
+              >
+                Apply Direct Config
+              </button>
+            </div>
+          </div>
+
           {savedMsg && (
-            <p className="text-[10px] text-[#00ff66] font-mono mt-2.5 uppercase font-bold animate-pulse">
+            <p className="text-[10px] text-[#00ff66] font-mono mt-3 uppercase font-bold animate-pulse">
               {savedMsg}
             </p>
           )}

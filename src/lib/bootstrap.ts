@@ -49,6 +49,29 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
 
   bootstrapPromise = (async () => {
     try {
+      // 1. Check if there is a manually pasted Firebase Config in localStorage
+      const savedConfigStr = localStorage.getItem('flick_firebase_config');
+      if (savedConfigStr) {
+        try {
+          const manualFirebaseConfig = JSON.parse(savedConfigStr);
+          if (manualFirebaseConfig && manualFirebaseConfig.apiKey) {
+            console.log('[Bootstrap] Using manually entered Firebase configuration.');
+            bootstrapConfig = {
+              firebaseConfig: manualFirebaseConfig,
+              version: "manual-standalone",
+              features: { enableE2EE: true, enablePushNotifications: false },
+              publicApiUrls: { backendUrl: getBackendUrl() }
+            };
+            
+            (window as any).__BOOTSTRAP_CONFIG__ = bootstrapConfig;
+            (window as any).__FIREBASE_CONFIG__ = manualFirebaseConfig;
+            return bootstrapConfig;
+          }
+        } catch (e) {
+          console.error('[Bootstrap] Failed to parse manual Firebase config:', e);
+        }
+      }
+
       const baseUrl = getBackendUrl();
       const response = await fetch(`${baseUrl}/api/bootstrap`);
       if (!response.ok) {
