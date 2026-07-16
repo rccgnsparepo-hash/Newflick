@@ -184,7 +184,7 @@ export default function FeedSection({
 
   // General Post Creator modal
   const [showPostCreator, setShowPostCreator] = useState(false);
-  const [postCreatorType, setPostCreatorType] = useState<'social' | 'academic' | 'question' | 'poll'>('social');
+  const [postCreatorType, setPostCreatorType] = useState<'social' | 'academic' | 'question' | 'poll' | 'story'>('social');
   const [postContent, setPostContent] = useState('');
   const [postImage, setPostImage] = useState('');
   const [postVideo, setPostVideo] = useState('');
@@ -1098,6 +1098,77 @@ export default function FeedSection({
               />
             ) : (
               <>
+                {/* =================================== EPHEMERAL CHRONICLES (STORIES) BAR =================================== */}
+                <div id="tour-stories-bar" className="bg-[#121214]/40 border border-zinc-900/60 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] font-mono font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span>
+                      ⚡ Ephemeral Peer Chronicles
+                    </span>
+                    <button
+                      onClick={() => {
+                        playGlitchClickSound();
+                        setPostCreatorType('story');
+                        setShowPostCreator(true);
+                      }}
+                      className="text-[7.5px] font-mono text-zinc-500 hover:text-[var(--neon-green)] transition uppercase font-black"
+                    >
+                      + ADD STORY NODE
+                    </button>
+                  </div>
+                  
+                  <div className="flex space-x-4 overflow-x-auto pb-1 scrollbar-none select-none">
+                    {/* Add own story bubble */}
+                    <div className="flex flex-col items-center space-y-1.5 shrink-0">
+                      <button
+                        onClick={() => {
+                          playGlitchClickSound();
+                          setPostCreatorType('story');
+                          setShowPostCreator(true);
+                        }}
+                        className="w-13 h-13 rounded-full bg-zinc-950 border-2 border-dashed border-zinc-800 hover:border-[var(--neon-green)] flex items-center justify-center transition-all group relative cursor-pointer"
+                      >
+                        {profile?.photoURL ? (
+                          <img src={profile.photoURL} alt="" className="w-11 h-11 rounded-full object-cover opacity-60 group-hover:opacity-100 transition" />
+                        ) : (
+                          <span className="text-xs text-zinc-500">+</span>
+                        )}
+                        <span className="absolute bottom-0 right-0 bg-[var(--neon-green)] text-black rounded-full p-0.5 border border-black group-hover:scale-110 transition">
+                          <Plus className="w-3 h-3 font-bold" />
+                        </span>
+                      </button>
+                      <span className="text-[8.5px] font-mono text-zinc-500 max-w-[55px] truncate">My Story</span>
+                    </div>
+
+                    {/* Render existing active stories */}
+                    {getStoriesList().map((st, sIdx) => {
+                      const isViewed = storyViewedList[st.id] || false;
+                      const authorFirstName = st.authorName.split(' ')[0];
+                      return (
+                        <div key={st.id || sIdx} className="flex flex-col items-center space-y-1.5 shrink-0">
+                          <button
+                            onClick={() => handleOpenStoryViewer(sIdx)}
+                            className={`w-13 h-13 rounded-full p-0.5 flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
+                              isViewed 
+                                ? 'bg-zinc-800' 
+                                : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600'
+                            }`}
+                          >
+                            <div className="w-full h-full rounded-full bg-black p-[1.5px] flex items-center justify-center">
+                              <img 
+                                src={st.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
+                                alt={st.authorName} 
+                                className="w-full h-full rounded-full object-cover border border-zinc-950" 
+                              />
+                            </div>
+                          </button>
+                          <span className="text-[8.5px] font-mono text-zinc-400 max-w-[55px] truncate uppercase">{authorFirstName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
             {/* =================================== SECTION 3 — QUICK ACTION PILLS =================================== */}
             <div className="py-2">
               <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
@@ -1703,13 +1774,8 @@ export default function FeedSection({
                   onClick={() => {
                     playGlitchClickSound();
                     setIsRadialOpen(false);
-                    const trigger = document.getElementById('bulk-stories-creator-trigger');
-                    if (trigger) {
-                      trigger.click();
-                    } else {
-                      setPostCreatorType('social'); // fallback
-                      setShowPostCreator(true);
-                    }
+                    setPostCreatorType('story');
+                    setShowPostCreator(true);
                   }}
                   className="flex items-center space-x-2 bg-zinc-950 border border-zinc-800 hover:border-[var(--neon-green)] p-2.5 rounded-full text-[10px] font-mono uppercase font-black text-white cursor-pointer transition shadow-2xl"
                 >

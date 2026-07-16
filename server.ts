@@ -12,12 +12,17 @@ const PORT = 3000;
 async function startServer() {
   app.use(express.json());
 
-  // Enable CORS for all origins to allow standalone desktop/mobile clients to access the config tunnel
+  // Enable CORS securely for all origins to allow standalone desktop/mobile clients to access the config tunnel
   app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }
