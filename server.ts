@@ -1344,18 +1344,19 @@ YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
             } catch (err: any) {
               lastError = err;
               const errStr = String(err?.message || err || "").toLowerCase();
-              console.warn(`[THE FATHER] Search Grounding failed for ${model}:`, err?.message || err);
               
-              // If we hit a quota limit, or billing issue, or resource exhaustion, disable Search Grounding and break
+              // If we hit a quota limit, billing issue, or resource exhaustion, disable Search Grounding and break
               if (errStr.includes("quota") || errStr.includes("billing") || errStr.includes("limit") || errStr.includes("resource_exhausted") || errStr.includes("429") || errStr.includes("exhausted")) {
-                console.warn(`[THE FATHER] Quota/Billing/Resource Exhausted on Google Search Grounding. Disabling Search Grounding for future calls to optimize speed.`);
+                console.log(`[THE FATHER] Google Search Grounding is not available/active (Quota/Billing/Resource Exhausted). Switching to standard offline fallback brain.`);
                 isSearchGroundingDisabled = true;
-                break; // Break the model loop immediately so we don't try other models and fail slowly
+                break; // Break the model loop immediately to save time and try standard requests
+              } else {
+                console.log(`[THE FATHER] Search Grounding request skipped/unsupported for ${model}.`);
               }
             }
           }
         } else {
-          console.log(`[THE FATHER] Skipping Search Grounding (previously disabled due to quota/limit limits)`);
+          console.log(`[THE FATHER] Skipping Search Grounding (using standard fallback brain due to quota limits)`);
         }
 
         // Attempt 2: Fallback to standard request WITHOUT search grounding (safely supporting responseMimeType: "application/json")
@@ -1378,7 +1379,12 @@ YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
               }
             } catch (err: any) {
               lastError = err;
-              console.warn(`[THE FATHER] Standard attempt ${attempt} failed for ${model}:`, err?.message || err);
+              const errStr = String(err?.message || err || "").toLowerCase();
+              if (errStr.includes("quota") || errStr.includes("limit") || errStr.includes("429") || errStr.includes("exhausted")) {
+                console.log(`[THE FATHER] Standard attempt ${attempt} for ${model} hit rate limits / quota.`);
+              } else {
+                console.log(`[THE FATHER] Standard attempt ${attempt} for ${model} was unsuccessful.`);
+              }
               await new Promise(resolve => setTimeout(resolve, 200));
             }
           }
