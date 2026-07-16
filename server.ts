@@ -121,7 +121,7 @@ async function startServer() {
 
     // 1. Listen to notifications collection (covers: Messages, Likes, Comments, Mentions, Follows)
     if (isAuthenticated) {
-      onSnapshot(collection(db, 'notifications'), async (snapshot) => {
+      onSnapshot(query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(1)), async (snapshot) => {
         if (!initialLoadComplete) return;
 
         for (const change of snapshot.docChanges()) {
@@ -208,7 +208,7 @@ async function startServer() {
     }
 
     // 2. Listen to posts collection (to broadcast New Post notifications to all other users)
-    onSnapshot(collection(db, 'posts'), async (snapshot) => {
+    onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(1)), async (snapshot) => {
       if (!initialLoadComplete) return;
 
       for (const change of snapshot.docChanges()) {
@@ -279,7 +279,7 @@ async function startServer() {
     });
 
     // 3. Listen to news collection (to broadcast global news wire notifications to all users)
-    onSnapshot(collection(db, 'news'), async (snapshot) => {
+    onSnapshot(query(collection(db, 'news'), limit(1)), async (snapshot) => {
       if (!initialLoadComplete) return;
 
       for (const change of snapshot.docChanges()) {
