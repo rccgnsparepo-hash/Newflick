@@ -37,7 +37,7 @@ try {
   if (config && config.apiKey) {
     app = initializeApp(config);
     db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
     }, config.firestoreDatabaseId || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2");
     auth = getAuth(app);
     const rtdbUrl = config.databaseURL || `https://${config.projectId || 'gen-lang-client-0982710068'}-default-rtdb.firebaseio.com`;
@@ -115,13 +115,14 @@ async function testConnection() {
     return;
   }
   try {
-    // Avoid blocking for 10 seconds by racing the server fetch with a fast 2-second timeout fallback
-    const promise = getDocFromServer(doc(db, 'test', 'connection'));
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
-    await Promise.race([promise, timeout]);
+    await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase Connection verified successfully.");
   } catch (error) {
-    console.info("Firestore: Local cache active (operating in local-first or offline mode).");
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.warn("Please check your Firebase configuration or network connection.");
+    } else {
+      console.info("Firestore: Local cache active (operating in local-first or offline mode).");
+    }
   }
 }
 

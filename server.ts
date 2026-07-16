@@ -46,7 +46,7 @@ async function startServer() {
     try {
       firebaseApp = initializeApp(firebaseConfig);
       db = initializeFirestore(firebaseApp, {
-        experimentalForceLongPolling: true,
+        experimentalAutoDetectLongPolling: true,
       }, firebaseConfig.firestoreDatabaseId || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2");
       auth = getAuth(firebaseApp);
       console.log("[Backend] Firebase App, Firestore, and Auth initialized successfully.");
