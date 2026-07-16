@@ -182,7 +182,9 @@ export async function registerCapacitorPushNotifications(uid: string) {
     addPushDebugLog('success', `Notification permissions result: ${permission}`);
 
     // 5. Fetch subscription ID and persist to Firestore
-    const subscriptionId = OneSignal.User.pushSubscription.id;
+    const subscriptionId = typeof OneSignal.User.pushSubscription.getIdAsync === 'function'
+      ? await OneSignal.User.pushSubscription.getIdAsync()
+      : OneSignal.User.pushSubscription.id;
     if (subscriptionId) {
       addPushDebugLog('success', `Obtained active Web Push subscription ID: ${subscriptionId}`);
       await saveOneSignalTokenToFirestore(uid, subscriptionId);
