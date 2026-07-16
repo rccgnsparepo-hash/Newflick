@@ -50,6 +50,7 @@ import { triggerVibration } from '../lib/haptics';
 import { triggerViewProfile } from '../lib/profileTrigger';
 import EmoStickerBoard from './EmoStickerBoard';
 import { ConversationNotificationManager } from '../lib/notificationSystem';
+import { getBackendUrl } from '../lib/bootstrap';
 
 function formatLastSeen(lastChanged: any): string {
   if (!lastChanged) return 'offline';
@@ -2177,7 +2178,8 @@ export default function ChatSection({
         setTypingUsers(prev => ({ ...prev, 'my-ai-bot-uid': 'pulse' }));
 
         try {
-          const aiResponse = await fetch('/api/myai', {
+          const baseUrl = getBackendUrl();
+          const aiResponse = await fetch(`${baseUrl}/api/myai`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: textRestoreValue })

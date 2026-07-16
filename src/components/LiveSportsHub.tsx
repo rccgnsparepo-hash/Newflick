@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { getBackendUrl } from '../lib/bootstrap';
 
 interface LiveMatch {
   id: string;
@@ -115,7 +116,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
   const fetchFixtures = async (leagueId: string, silent = false) => {
     if (!silent) setIsLoadingFixtures(true);
     try {
-      const res = await fetch(`/api/sports/fixtures?league=${leagueId}`);
+      const baseUrl = getBackendUrl();
+      const res = await fetch(`${baseUrl}/api/sports/fixtures?league=${leagueId}`);
       if (!res.ok) throw new Error("Failed to fetch fixtures");
       const data: LiveMatch[] = await res.json();
       setMatches(data);
@@ -142,7 +144,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
   const fetchTable = async (leagueId: string) => {
     setIsLoadingTable(true);
     try {
-      const res = await fetch(`/api/sports/table?league=${leagueId}`);
+      const baseUrl = getBackendUrl();
+      const res = await fetch(`${baseUrl}/api/sports/table?league=${leagueId}`);
       if (!res.ok) throw new Error("Failed to fetch standings");
       const data: StandingRow[] = await res.json();
       setTableData(data);
@@ -158,7 +161,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
   const fetchNews = async () => {
     setIsLoadingNews(true);
     try {
-      const res = await fetch("/api/sports/news");
+      const baseUrl = getBackendUrl();
+      const res = await fetch(`${baseUrl}/api/sports/news`);
       if (!res.ok) throw new Error("Failed to fetch sports news");
       const data: NewsItem[] = await res.json();
       setNews(data);

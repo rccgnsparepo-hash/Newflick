@@ -22,6 +22,23 @@ export interface BootstrapConfig {
 let bootstrapConfig: BootstrapConfig | null = null;
 let bootstrapPromise: Promise<BootstrapConfig> | null = null;
 
+export function getBackendUrl(): string {
+  if (typeof window === 'undefined') return '';
+  
+  // 1. Check localStorage first
+  const savedUrl = localStorage.getItem('flick_backend_url');
+  if (savedUrl) {
+    return savedUrl.replace(/\/$/, '');
+  }
+  
+  // 2. If we are running in the browser normally, use the current origin
+  if (window.location.protocol !== 'file:' && window.location.hostname !== '') {
+    return '';
+  }
+  
+  return '';
+}
+
 /**
  * Fetches the application bootstrap configuration from the backend.
  * This should be called before the React app mounts and before Firebase initializes.
@@ -32,7 +49,8 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
 
   bootstrapPromise = (async () => {
     try {
-      const response = await fetch('/api/bootstrap');
+      const baseUrl = getBackendUrl();
+      const response = await fetch(`${baseUrl}/api/bootstrap`);
       if (!response.ok) {
         throw new Error(`Failed to fetch bootstrap config: ${response.status}`);
       }

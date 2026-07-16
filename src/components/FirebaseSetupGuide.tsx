@@ -8,6 +8,30 @@ interface FirebaseSetupGuideProps {
 
 export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [backendInput, setBackendInput] = useState(localStorage.getItem('flick_backend_url') || '');
+  const [savedMsg, setSavedMsg] = useState('');
+
+  const handleSaveBackend = () => {
+    let cleanUrl = backendInput.trim();
+    if (cleanUrl) {
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+      localStorage.setItem('flick_backend_url', cleanUrl);
+      setBackendInput(cleanUrl);
+      setSavedMsg('✓ Gateway Connected! Bootstrapping secure tunnels...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      localStorage.removeItem('flick_backend_url');
+      setBackendInput('');
+      setSavedMsg('✓ Gateway Cleared. Reverting to local fallback...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  };
 
   const envVariables = [
     { name: 'FIREBASE_PROJECT_ID', desc: 'Your Firebase project ID (For full-stack/backend deployments)' },
@@ -73,6 +97,37 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
           <p className="text-[11px] text-zinc-300 font-mono break-all leading-relaxed">
             {error || "No 'apiKey' detected. The dynamic server config loader was unreachable and fallback credentials are unconfigured."}
           </p>
+        </div>
+
+        {/* Standalone Desktop & Native Client Connection Bridge */}
+        <div className="bg-black/60 border border-[var(--neon-green)]/30 p-4 mb-6 rounded-none">
+          <div className="flex items-center space-x-2 text-[var(--neon-green)] text-xs font-bold uppercase mb-2.5">
+            <Terminal className="w-4 h-4 animate-pulse" />
+            <span>Standalone Client Gateway Configuration</span>
+          </div>
+          <p className="text-[10px] text-zinc-300 font-sans mb-3 leading-relaxed uppercase">
+            If you are running Flick as a standalone Desktop (.exe) or Mobile app, enter your deployed Flick server URL (Cloud Run/Vercel) below to bridge secure config tunnels.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              placeholder="e.g. https://flick-backend-url.run.app"
+              value={backendInput}
+              onChange={(e) => setBackendInput(e.target.value)}
+              className="flex-1 bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 text-zinc-200 focus:outline-none focus:border-[var(--neon-green)] font-mono"
+            />
+            <button
+              onClick={handleSaveBackend}
+              className="px-4 py-2 bg-black border border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer shadow-[3px_3px_0px_rgba(0,255,102,0.15)] hover:shadow-none"
+            >
+              Connect Gateway
+            </button>
+          </div>
+          {savedMsg && (
+            <p className="text-[10px] text-[#00ff66] font-mono mt-2.5 uppercase font-bold animate-pulse">
+              {savedMsg}
+            </p>
+          )}
         </div>
 
         {/* Instructions */}

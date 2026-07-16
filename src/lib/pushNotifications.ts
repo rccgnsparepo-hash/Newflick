@@ -10,6 +10,7 @@ import { deepLinkManager } from './deepLinkManager';
 import { PushPayloadSchema } from './schemas';
 import { Capacitor } from '@capacitor/core';
 import OneSignalPlugin from 'onesignal-cordova-plugin';
+import { getBackendUrl } from './bootstrap';
 
 /**
  * Shared log storage interface for the NativePushDebugger / WebPushDebugger utility
@@ -427,7 +428,8 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
     }
 
     // Call the server API proxy (never expose REST keys on client browser!)
-    const response = await fetch("/api/push/send", {
+    const baseUrl = getBackendUrl();
+    const response = await fetch(`${baseUrl}/api/push/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
