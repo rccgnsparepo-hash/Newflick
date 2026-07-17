@@ -1143,7 +1143,7 @@ export default function FeedSection({
                     {/* Render existing active stories */}
                     {getStoriesList().map((st, sIdx) => {
                       const isViewed = storyViewedList[st.id] || false;
-                      const authorFirstName = st.authorName.split(' ')[0];
+                      const authorFirstName = (st.authorName || 'Anonymous').split(' ')[0];
                       return (
                         <div key={st.id || sIdx} className="flex flex-col items-center space-y-1.5 shrink-0">
                           <button
@@ -1301,7 +1301,7 @@ export default function FeedSection({
                                 {post.authorName}
                               </h4>
                               <span className="text-[7.5px] bg-zinc-900 text-zinc-400 border border-zinc-800 px-1.5 rounded-full uppercase tracking-tight font-mono">
-                                {post.school.split(' ')[0]}
+                                {(post.school || 'Global').split(' ')[0]}
                               </span>
                             </div>
                             <span className="text-[7.5px] font-mono text-zinc-500">
@@ -1969,7 +1969,7 @@ export default function FeedSection({
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder={`Reply directly to ${activeStory.authorName.split(' ')[0]}...`}
+                        placeholder={`Reply directly to ${(activeStory.authorName || 'User').split(' ')[0]}...`}
                         className="flex-1 bg-zinc-950 border border-zinc-900 rounded-full px-4 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
