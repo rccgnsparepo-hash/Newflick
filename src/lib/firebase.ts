@@ -37,7 +37,7 @@ try {
   if (config && config.apiKey) {
     app = initializeApp(config);
     db = initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: true,
     }, config.firestoreDatabaseId || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2");
     auth = getAuth(app);
     const rtdbUrl = config.databaseURL || `https://${config.projectId || 'gen-lang-client-0982710068'}-default-rtdb.firebaseio.com`;
