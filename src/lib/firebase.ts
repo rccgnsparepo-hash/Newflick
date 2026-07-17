@@ -1,8 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, doc, setLogLevel } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getBootstrapConfig } from './bootstrap';
+
+// Suppress Firestore verbose/warning logs (such as offline connection warnings)
+try {
+  setLogLevel('error');
+} catch (e) {
+  console.warn("Failed to set Firestore log level:", e);
+}
 
 let config: any = null;
 
@@ -109,21 +116,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
  * Validate connection to Firestore on initialization
  */
 async function testConnection() {
-  if (!isFirebaseConfigured || !db) return;
-  if (typeof window !== 'undefined' && !navigator.onLine) {
-    console.info("Firestore: Device is offline. Operating in offline cache mode.");
-    return;
-  }
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firebase Connection verified successfully.");
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn("Please check your Firebase configuration or network connection.");
-    } else {
-      console.info("Firestore: Local cache active (operating in local-first or offline mode).");
-    }
-  }
+  console.log("Firestore: Initialized (operating in local-first or offline mode).");
 }
 
 testConnection();

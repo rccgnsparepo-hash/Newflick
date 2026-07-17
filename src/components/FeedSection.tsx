@@ -53,6 +53,7 @@ import {
   Zap,
   HelpCircle,
   Clock,
+  ChevronLeft,
   ChevronRight,
   Shield,
   ThumbsUp,
@@ -150,6 +151,11 @@ export default function FeedSection({
   
   // Stories state
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
+  const [storyProgress, setStoryProgress] = useState(0);
+  const [isStoryPaused, setIsStoryPaused] = useState(false);
+  const storyStartTimeRef = useRef<number>(0);
+  const storyHoldTimeoutRef = useRef<any>(null);
+  const storyIsHoldRef = useRef<boolean>(false);
   const [isUploadingStory, setIsUploadingStory] = useState(false);
   const [isPublishingPost, setIsPublishingPost] = useState(false);
   const [isSendingComment, setIsSendingComment] = useState(false);
@@ -691,12 +697,107 @@ export default function FeedSection({
   const handleOpenStoryViewer = (index: number) => {
     triggerVibration('light');
     setActiveStoryIndex(index);
+    setStoryProgress(0);
+    setIsStoryPaused(false);
     // Mark story as viewed locally
     const activeList = getStoriesList();
     const st = activeList[index];
     if (st) {
       setStoryViewedList(prev => ({ ...prev, [st.id]: true }));
     }
+  };
+
+  const handleNextStory = () => {
+    const activeList = getStoriesList();
+    if (activeStoryIndex !== null && activeStoryIndex < activeList.length - 1) {
+      setActiveStoryIndex(activeStoryIndex + 1);
+      setStoryProgress(0);
+      triggerVibration('light');
+      const nextStory = activeList[activeStoryIndex + 1];
+      if (nextStory) {
+        setStoryViewedList(prev => ({ ...prev, [nextStory.id]: true }));
+      }
+    } else {
+      setActiveStoryIndex(null);
+      setStoryProgress(0);
+    }
+  };
+
+  const handlePrevStory = () => {
+    const activeList = getStoriesList();
+    if (activeStoryIndex !== null && activeStoryIndex > 0) {
+      setActiveStoryIndex(activeStoryIndex - 1);
+      setStoryProgress(0);
+      triggerVibration('light');
+      const prevStory = activeList[activeStoryIndex - 1];
+      if (prevStory) {
+        setStoryViewedList(prev => ({ ...prev, [prevStory.id]: true }));
+      }
+    } else {
+      setStoryProgress(0);
+    }
+  };
+
+  // Auto-progression timer for IG-style stories
+  useEffect(() => {
+    if (activeStoryIndex === null) {
+      setStoryProgress(0);
+      setIsStoryPaused(false);
+      return;
+    }
+
+    const storyDuration = 5000; // 5000ms duration
+    const intervalTime = 30; // smooth 30ms ticks
+    const step = (intervalTime / storyDuration) * 100;
+
+    const timer = setInterval(() => {
+      if (!isStoryPaused) {
+        setStoryProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(timer);
+            handleNextStory();
+            return 100;
+          }
+          return prev + step;
+        });
+      }
+    }, intervalTime);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [activeStoryIndex, isStoryPaused]);
+
+  // Touch and hold interactions (pause on hold, tap to skip)
+  const handleStoryTouchStart = () => {
+    storyStartTimeRef.current = Date.now();
+    storyIsHoldRef.current = false;
+    storyHoldTimeoutRef.current = setTimeout(() => {
+      setIsStoryPaused(true);
+      storyIsHoldRef.current = true;
+    }, 150); // Pause if held for >150ms
+  };
+
+  const handleStoryTouchEnd = (side: 'left' | 'right') => {
+    clearTimeout(storyHoldTimeoutRef.current);
+    setIsStoryPaused(false);
+    const duration = Date.now() - storyStartTimeRef.current;
+    if (duration < 250 && !storyIsHoldRef.current) {
+      if (side === 'left') {
+        handlePrevStory();
+      } else {
+        handleNextStory();
+      }
+    }
+    storyIsHoldRef.current = false;
+  };
+
+  const handleStoryMouseDown = () => {
+    handleStoryTouchStart();
+  };
+
+  const handleStoryMouseUp = (side: 'left' | 'right') => {
+    handleStoryTouchEnd(side);
   };
 
   // Poll Post voting interactions
@@ -1895,93 +1996,139 @@ export default function FeedSection({
               if (!activeStory) return null;
 
               return (
-                <div className="w-full max-w-md h-[90vh] bg-[#0c0c0c] border border-zinc-900 rounded-2xl overflow-hidden relative flex flex-col justify-between">
-                  {/* Progress Indicators */}
-                  <div className="absolute top-4 left-4 right-4 z-50 flex gap-1">
-                    {activeList.map((_, idx) => (
-                      <div key={idx} className="h-1 flex-1 bg-zinc-800 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full bg-[var(--neon-green)] ${
-                            idx < activeStoryIndex 
-                              ? 'w-full' 
-                              : idx === activeStoryIndex 
-                                ? 'animate-progress-fill' 
-                                : 'w-0'
-                          }`} 
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Header bar */}
-                  <div className="p-4 pt-8 flex items-center justify-between relative z-10 bg-gradient-to-b from-black to-transparent">
-                    <div className="flex items-center space-x-2.5">
-                      <img src={activeStory.authorPhoto} alt="" className="w-8 h-8 rounded-full border border-zinc-800 object-cover" />
-                      <div>
-                        <h4 className="text-xs font-mono font-black text-white uppercase">{activeStory.authorName}</h4>
-                        <span className="text-[7.5px] text-zinc-500 uppercase font-mono">CAMPUS INTEL BROADCAST</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setActiveStoryIndex(null)}
-                      className="p-1 bg-black/45 rounded-full text-zinc-400 hover:text-white transition"
+                <div className="relative flex items-center justify-center w-full max-w-lg">
+                  {/* Desktop Prev Button */}
+                  {activeStoryIndex > 0 && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handlePrevStory(); }}
+                      className="hidden md:flex absolute -left-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer"
+                      title="Previous Story"
                     >
-                      <X className="w-5 h-5" />
+                      <ChevronLeft className="w-5 h-5" />
                     </button>
-                  </div>
+                  )}
 
-                  {/* Main display */}
-                  <div className="flex-1 flex flex-col justify-center items-center relative overflow-hidden p-6 text-center">
-                    {activeStory.imageUrl ? (
-                      <div className="space-y-4 w-full h-full flex flex-col justify-center items-center relative overflow-hidden">
-                        {/* Blurred backdrop image for widescreen/mismatched ratios */}
-                        <img src={activeStory.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 blur-lg scale-110" />
-                        {/* Crisp, fitted foreground image */}
-                        <img src={activeStory.imageUrl} alt="" className="relative z-10 max-w-full max-h-[50vh] object-contain rounded-lg border border-zinc-900 shadow-xl" />
-                        <p className="relative z-10 text-sm font-sans text-white leading-relaxed mt-2">{activeStory.content}</p>
-                      </div>
-                    ) : (
-                      <p className="text-lg font-serif italic text-white leading-relaxed max-w-sm whitespace-pre-wrap">
-                        "{activeStory.content}"
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Bottom interactions replies */}
-                  <div className="p-4 bg-gradient-to-t from-black to-transparent space-y-3 relative z-10">
-                    <div className="flex gap-2 justify-center py-2 text-xl select-none">
-                      {['🔥', '❤️', '😂', '😮'].map(em => (
-                        <button
-                          key={em}
-                          onClick={() => {
-                            playGlitchClickSound();
-                            triggerVibration('medium');
-                            showBrutalistToast('REACTION SENT', `Dispatched story reaction: ${em}!`, 'success');
-                          }}
-                          className="hover:scale-125 transition cursor-pointer"
-                        >
-                          {em}
-                        </button>
+                  {/* Central Story Card */}
+                  <div className="w-full max-w-md h-[90vh] bg-[#0c0c0c] border border-zinc-900 rounded-2xl overflow-hidden relative flex flex-col justify-between">
+                    {/* Progress Indicators */}
+                    <div className={`absolute top-4 left-4 right-4 z-50 flex gap-1 transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                      {activeList.map((_, idx) => (
+                        <div key={idx} className="h-1 flex-1 bg-zinc-800 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[var(--neon-green)]"
+                            style={{
+                              width: idx < activeStoryIndex 
+                                ? '100%' 
+                                : idx === activeStoryIndex 
+                                  ? `${storyProgress}%` 
+                                  : '0%'
+                            }} 
+                          />
+                        </div>
                       ))}
                     </div>
 
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={`Reply directly to ${(activeStory.authorName || 'User').split(' ')[0]}...`}
-                        className="flex-1 bg-zinc-950 border border-zinc-900 rounded-full px-4 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            playGlitchClickSound();
-                            triggerVibration('medium');
-                            showBrutalistToast('REPLY SENT', 'Direct story reply dispatched successfully!', 'success');
-                            (e.target as HTMLInputElement).value = '';
-                          }
-                        }}
-                      />
+                    {/* Header bar */}
+                    <div className={`p-4 pt-8 flex items-center justify-between relative z-40 bg-gradient-to-b from-black to-transparent transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                      <div className="flex items-center space-x-2.5">
+                        <img src={activeStory.authorPhoto} alt="" className="w-8 h-8 rounded-full border border-zinc-800 object-cover" />
+                        <div>
+                          <h4 className="text-xs font-mono font-black text-white uppercase">{activeStory.authorName}</h4>
+                          <span className="text-[7.5px] text-zinc-500 uppercase font-mono">CAMPUS INTEL BROADCAST</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveStoryIndex(null)}
+                        className="p-1 bg-black/45 rounded-full text-zinc-400 hover:text-white transition cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Main display & Tap/Hold areas */}
+                    <div className="flex-1 flex flex-col justify-center items-center relative overflow-hidden p-6 text-center select-none">
+                      {/* Transparent Navigation & Pause Areas (Overlay) */}
+                      <div className="absolute inset-0 z-20 flex">
+                        <div 
+                          onMouseDown={handleStoryMouseDown}
+                          onMouseUp={() => handleStoryMouseUp('left')}
+                          onMouseLeave={() => { clearTimeout(storyHoldTimeoutRef.current); setIsStoryPaused(false); }}
+                          onTouchStart={handleStoryTouchStart}
+                          onTouchEnd={() => handleStoryTouchEnd('left')}
+                          className="w-1/3 h-full cursor-w-resize"
+                          title="Tap to go back"
+                        />
+                        <div 
+                          onMouseDown={handleStoryMouseDown}
+                          onMouseUp={() => handleStoryMouseUp('right')}
+                          onMouseLeave={() => { clearTimeout(storyHoldTimeoutRef.current); setIsStoryPaused(false); }}
+                          onTouchStart={handleStoryTouchStart}
+                          onTouchEnd={() => handleStoryTouchEnd('right')}
+                          className="w-2/3 h-full cursor-e-resize"
+                          title="Tap or hold to skip/pause"
+                        />
+                      </div>
+
+                      {activeStory.imageUrl ? (
+                        <div className="space-y-4 w-full h-full flex flex-col justify-center items-center relative overflow-hidden pointer-events-none">
+                          {/* Blurred backdrop image for widescreen/mismatched ratios */}
+                          <img src={activeStory.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 blur-lg scale-110" />
+                          {/* Crisp, fitted foreground image */}
+                          <img src={activeStory.imageUrl} alt="" className="relative z-10 max-w-full max-h-[50vh] object-contain rounded-lg border border-zinc-900 shadow-xl" />
+                          <p className="relative z-10 text-sm font-sans text-white leading-relaxed mt-2">{activeStory.content}</p>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-serif italic text-white leading-relaxed max-w-sm whitespace-pre-wrap pointer-events-none">
+                          "{activeStory.content}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Bottom interactions replies */}
+                    <div className={`p-4 bg-gradient-to-t from-black to-transparent space-y-3 relative z-40 transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                      <div className="flex gap-2 justify-center py-2 text-xl select-none">
+                        {['🔥', '❤️', '😂', '😮'].map(em => (
+                          <button
+                            key={em}
+                            onClick={() => {
+                              playGlitchClickSound();
+                              triggerVibration('medium');
+                              showBrutalistToast('REACTION SENT', `Dispatched story reaction: ${em}!`, 'success');
+                            }}
+                            className="hover:scale-125 transition cursor-pointer"
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Reply directly to ${(activeStory.authorName || 'User').split(' ')[0]}...`}
+                          className="flex-1 bg-zinc-950 border border-zinc-900 rounded-full px-4 py-2 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              playGlitchClickSound();
+                              triggerVibration('medium');
+                              showBrutalistToast('REPLY SENT', 'Direct story reply dispatched successfully!', 'success');
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
+
+                  {/* Desktop Next Button */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleNextStory(); }}
+                    className="hidden md:flex absolute -right-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer"
+                    title="Next Story"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 </div>
               );
             })()}

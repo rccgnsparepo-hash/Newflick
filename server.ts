@@ -2,9 +2,16 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, setLogLevel } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { readFileSync } from 'fs';
+
+// Suppress Firestore verbose/warning logs (such as offline connection warnings)
+try {
+  setLogLevel('error');
+} catch (e) {
+  console.warn("Failed to set Firestore log level on server:", e);
+}
 
 const app = express();
 const PORT = 3000;
