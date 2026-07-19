@@ -785,7 +785,9 @@ export default function FeedSection({
   };
 
   const handleStoryTouchMove = (e: React.TouchEvent) => {
-    touchEndXRef.current = e.touches[0].clientX;
+    if (e.touches && e.touches.length > 0) {
+      touchEndXRef.current = e.touches[0].clientX;
+    }
   };
 
   const handleStoryTouchEnd = (e: React.TouchEvent | React.MouseEvent, side: 'left' | 'right') => {

@@ -327,7 +327,7 @@ function DecryptedMessageBubble({
       setIsEditing(false);
       showBrutalistToast('EDIT SYNCHRONIZED', 'Your message has been updated in real-time!', 'success');
     } catch (err) {
-      console.error("Failed to edit message:", err);
+      console.error("Failed to edit message:", err?.message || err);
       showBrutalistToast('EDIT FAILED', 'Handshake error or permission denied.', 'error');
     } finally {
       setIsUpdating(false);
@@ -352,7 +352,7 @@ function DecryptedMessageBubble({
           });
           showBrutalistToast('DELETED', 'Message deleted for all participants.', 'info');
         } catch (err) {
-          console.error("Failed to delete message for everyone:", err);
+          console.error("Failed to delete message for everyone:", err?.message || err);
           showBrutalistToast('DELETE FAILED', 'Permission denied.', 'error');
         }
       }
@@ -369,7 +369,7 @@ function DecryptedMessageBubble({
           onDeleteLocally(message.id);
         }
       } catch (err) {
-        console.error(err);
+        console.error(err?.message || err);
       }
     }
   };
@@ -4328,7 +4328,7 @@ export default function ChatSection({
                       const deletedLocally = JSON.parse(deletedLocallyStr) as string[];
                       if (deletedLocally.includes(msg.id)) return false;
                     } catch (e) {
-                      console.error(e);
+                      console.error(e?.message || e);
                     }
 
                     if (!messageSearchQuery) return true;

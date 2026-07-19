@@ -205,8 +205,8 @@ export async function registerCapacitorPushNotifications(uid: string) {
     console.log(`${border}\n[OneSignal Web PWA Register Engine] PIPELINE SECURED\n${border}`);
 
   } catch (err: any) {
-    console.warn('[OneSignal-Web] Web Push initialization is unavailable in the preview sandbox (this is expected until a Web Push App ID is configured for this domain in OneSignal dashboard). Fallback local notifications are active:', err);
-    addPushDebugLog('warning', `Web Push not fully configured: ${err.message || String(err)}. Falling back to robust Local Notification engine.`, err);
+    console.warn('[OneSignal-Web] Web Push initialization is unavailable in the preview sandbox (this is expected until a Web Push App ID is configured for this domain in OneSignal dashboard). Fallback local notifications are active:', err?.message || JSON.stringify(err));
+    addPushDebugLog('warning', `Web Push not fully configured: ${err?.message || JSON.stringify(err)}. Falling back to robust Local Notification engine.`, err);
   }
 }
 
@@ -477,8 +477,8 @@ export async function updateOneSignalUserTags(profile: any) {
     await OneSignal.User.addTags(tags);
     addPushDebugLog('success', 'OneSignal player tag configuration uploaded successfully.', tags);
   } catch (err: any) {
-    console.warn('[OneSignal-Web] Failed to associate user tags:', err);
-    addPushDebugLog('error', `OneSignal tag upload failed: ${err.message || String(err)}`);
+    console.warn('[OneSignal-Web] Failed to associate user tags:', err?.message || JSON.stringify(err));
+    addPushDebugLog('error', `OneSignal tag upload failed: ${err?.message || JSON.stringify(err)}`);
   }
 }
 

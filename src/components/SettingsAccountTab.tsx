@@ -81,7 +81,7 @@ export function SettingsAccountTab({
       await changeGlobalKeyPassword(customPassword.trim());
       setCustomPassword('');
     } catch (err) {
-      console.error(err);
+      console.error(err?.message || err);
     } finally {
       setIsUpdatingPassword(false);
     }

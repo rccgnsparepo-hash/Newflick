@@ -89,7 +89,7 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       
       return bootstrapConfig as BootstrapConfig;
     } catch (err) {
-      console.error('[Bootstrap] Failed to initialize from backend. Falling back to VITE_ env variables if available:', err);
+      console.error('[Bootstrap] Failed to initialize from backend. Falling back to VITE_ env variables if available:', err?.message || err);
       
       const env = (import.meta as any).env || {};
       const viteProjectId = env.VITE_FIREBASE_PROJECT_ID;
