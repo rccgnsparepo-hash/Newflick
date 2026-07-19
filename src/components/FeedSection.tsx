@@ -768,19 +768,52 @@ export default function FeedSection({
     };
   }, [activeStoryIndex, isStoryPaused]);
 
-  // Touch and hold interactions (pause on hold, tap to skip)
-  const handleStoryTouchStart = () => {
+  // Touch and swipe interactions (pause on hold, tap to skip, swipe to navigate)
+  const touchStartXRef = useRef<number>(0);
+  const touchEndXRef = useRef<number>(0);
+
+  const handleStoryTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     storyStartTimeRef.current = Date.now();
     storyIsHoldRef.current = false;
+    if ('touches' in e) {
+      touchStartXRef.current = e.touches[0].clientX;
+    }
     storyHoldTimeoutRef.current = setTimeout(() => {
       setIsStoryPaused(true);
       storyIsHoldRef.current = true;
     }, 150); // Pause if held for >150ms
   };
 
-  const handleStoryTouchEnd = (side: 'left' | 'right') => {
+  const handleStoryTouchMove = (e: React.TouchEvent) => {
+    touchEndXRef.current = e.touches[0].clientX;
+  };
+
+  const handleStoryTouchEnd = (e: React.TouchEvent | React.MouseEvent, side: 'left' | 'right') => {
     clearTimeout(storyHoldTimeoutRef.current);
     setIsStoryPaused(false);
+    
+    // Check for swipe
+    if ('changedTouches' in e && touchStartXRef.current !== 0 && touchEndXRef.current !== 0) {
+      const deltaX = touchStartXRef.current - touchEndXRef.current;
+      if (Math.abs(deltaX) > 50) { // minimum swipe distance
+        if (deltaX > 0) {
+          handleNextStory();
+        } else {
+          handlePrevStory();
+        }
+        // Reset touch coordinates
+        touchStartXRef.current = 0;
+        touchEndXRef.current = 0;
+        storyIsHoldRef.current = false;
+        return; // Skip tap logic if it was a swipe
+      }
+    }
+    
+    // Reset touch coordinates
+    touchStartXRef.current = 0;
+    touchEndXRef.current = 0;
+
+    // Tap logic
     const duration = Date.now() - storyStartTimeRef.current;
     if (duration < 250 && !storyIsHoldRef.current) {
       if (side === 'left') {
@@ -792,12 +825,12 @@ export default function FeedSection({
     storyIsHoldRef.current = false;
   };
 
-  const handleStoryMouseDown = () => {
-    handleStoryTouchStart();
+  const handleStoryMouseDown = (e: React.MouseEvent) => {
+    handleStoryTouchStart(e);
   };
 
-  const handleStoryMouseUp = (side: 'left' | 'right') => {
-    handleStoryTouchEnd(side);
+  const handleStoryMouseUp = (e: React.MouseEvent, side: 'left' | 'right') => {
+    handleStoryTouchEnd(e, side);
   };
 
   // Poll Post voting interactions
@@ -2049,22 +2082,22 @@ export default function FeedSection({
                     {/* Main display & Tap/Hold areas */}
                     <div className="flex-1 flex flex-col justify-center items-center relative overflow-hidden p-6 text-center select-none">
                       {/* Transparent Navigation & Pause Areas (Overlay) */}
-                      <div className="absolute inset-0 z-20 flex">
+                      <div className="absolute inset-0 z-20 flex" onTouchMove={handleStoryTouchMove}>
                         <div 
                           onMouseDown={handleStoryMouseDown}
-                          onMouseUp={() => handleStoryMouseUp('left')}
+                          onMouseUp={(e) => handleStoryMouseUp(e, 'left')}
                           onMouseLeave={() => { clearTimeout(storyHoldTimeoutRef.current); setIsStoryPaused(false); }}
                           onTouchStart={handleStoryTouchStart}
-                          onTouchEnd={() => handleStoryTouchEnd('left')}
+                          onTouchEnd={(e) => handleStoryTouchEnd(e, 'left')}
                           className="w-1/3 h-full cursor-w-resize"
                           title="Tap to go back"
                         />
                         <div 
                           onMouseDown={handleStoryMouseDown}
-                          onMouseUp={() => handleStoryMouseUp('right')}
+                          onMouseUp={(e) => handleStoryMouseUp(e, 'right')}
                           onMouseLeave={() => { clearTimeout(storyHoldTimeoutRef.current); setIsStoryPaused(false); }}
                           onTouchStart={handleStoryTouchStart}
-                          onTouchEnd={() => handleStoryTouchEnd('right')}
+                          onTouchEnd={(e) => handleStoryTouchEnd(e, 'right')}
                           className="w-2/3 h-full cursor-e-resize"
                           title="Tap or hold to skip/pause"
                         />

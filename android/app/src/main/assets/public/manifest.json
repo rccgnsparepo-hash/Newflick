@@ -1,0 +1,54 @@
+{
+  "name": "Flick",
+  "short_name": "Flick",
+  "description": "Fara Flick - The ultimate exquisite, end-to-end encrypted messaging nodes and high-entropy social media chronicles engineered under raw brutalism and liquid glass composites.",
+  "start_url": "/?standalone=true",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "categories": ["social", "messenger", "utilities"],
+  "icons": [
+    {
+      "src": "/flick_pwa_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/flick_pwa_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/flick_pwa_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Direct Chats",
+      "short_name": "Chats",
+      "description": "Open private cryptographically secured peer nodes",
+      "url": "/?tab=chat",
+      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=chats&backgroundColor=050505&size=96", "sizes": "96x96" }]
+    },
+    {
+      "name": "Live Arena",
+      "short_name": "Live",
+      "description": "Launch live sports streams and peer hub",
+      "url": "/?tab=home&subview=live",
+      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=live&backgroundColor=050505&size=96", "sizes": "96x96" }]
+    },
+    {
+      "name": "News Chronicles",
+      "short_name": "News",
+      "description": "Access tech and cybersecurity news stream",
+      "url": "/?tab=news",
+      "icons": [{ "src": "https://api.dicebear.com/7.x/shapes/png?seed=news&backgroundColor=050505&size=96", "sizes": "96x96" }]
+    }
+  ]
+}
