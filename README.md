@@ -1,144 +1,102 @@
-# Flick
+# 🚀 Flick
 
 <p align="center">
-  <img src="./icon.png" alt="Flick Logo" width="220"/>
+  <img src="./icon.png" width="220" alt="Flick Logo"/>
+</p>
+
+<h1 align="center">Flick</h1>
+
+<p align="center">
+<b>Connect • Chat • Share • Beyond</b><br>
+A next-generation social messaging platform built for real-time communication, immersive communities, and AI-powered experiences.
 </p>
 
 <p align="center">
-  <strong>Connect. Chat. Share. Beyond.</strong>
+
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Firebase](https://img.shields.io/badge/Firebase-Backend-orange?logo=firebase)
+![Capacitor](https://img.shields.io/badge/Capacitor-Native-119EFF?logo=capacitor)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 </p>
 
-<p align="center">
-  A next-generation social messaging platform built for realtime communication, community interaction, and immersive digital experiences.
-</p>
+---
+
+# ✨ Overview
+
+Flick is an all-in-one communication platform developed by **FaraTech** that combines modern messaging, social networking, AI-powered discovery, and real-time communities into a single experience.
+
+## Highlights
+
+- 💬 Realtime Messaging
+- 👥 Groups & Communities
+- ❤️ Social Feed
+- 📸 Stories
+- 📹 Reels (Roadmap)
+- 🔔 Native Push Notifications
+- 🤖 AI Features
+- 🌐 Progressive Web App
+- 📱 Android APK
+- 💻 Desktop Support
+- 🔒 Privacy-first Architecture
 
 ---
 
-## Overview
+# 📸 Screenshots
 
-**Flick** is a modern social communication platform engineered by **FaraTech** to redefine how people connect online.
+> Replace these placeholders with actual screenshots.
 
-Unlike traditional chat apps, Flick combines:
+| Feed | Chat |
+|------|------|
+| docs/feed.png | docs/chat.png |
 
-- Realtime messaging
-- Group chats
-- Social feed interactions
-- Stories & media sharing
-- Native push notifications
-- Community discovery
-- AI-powered enhancements
-
-Flick is built to feel like the evolution of:
-- WhatsApp messaging
-- Instagram feed
-- Telegram groups
-- Snapchat social interaction
-- Omegle spontaneous connection
-
-…all merged into one powerful ecosystem.
+| Stories | Groups |
+|----------|--------|
+| docs/stories.png | docs/groups.png |
 
 ---
 
-## Core Features
+# 📋 Feature Matrix
 
-### Realtime Messaging
-- One-to-one private chats
-- Message delivery states
-- Read receipts
-- Typing indicators
-- Online/offline presence
-- Message reactions
-- Media sharing
-
----
-
-### Group Chats
-Powerful community spaces with:
-
-- Admin roles
-- Member permissions
-- Pinned messages
-- Invite links
-- Group media gallery
-- Smart notifications
-- Voice-note support
-- Live activity indicators
-
-Inspired by Telegram-level UX.
+| Feature | Status |
+|---------|:------:|
+| Private Messaging | ✅ |
+| Group Chats | ✅ |
+| Stories | 🚧 |
+| Social Feed | ✅ |
+| Push Notifications | ✅ |
+| AI Recommendations | 🚧 |
+| Voice Calls | 🗺️ Planned |
+| Video Calls | 🗺️ Planned |
+| Desktop | ✅ |
+| Android | ✅ |
+| Web | ✅ |
 
 ---
 
-### Social Feed
-Instagram-style home feed featuring:
+# 🏗 Architecture
 
-- Posts
-- Images
-- Videos
-- Likes
-- Comments
-- Shares
-- Infinite scrolling
-- Smart recommendations
-
----
-
-### Stories
-Temporary 24-hour content:
-- Photos
-- Videos
-- Text stories
-- View analytics
-- Reactions
+```text
+React UI
+   │
+State Management
+   │
+Messaging • Feed • Stories
+   │
+Firebase
+Firestore • Auth • Storage
+   │
+Cloud Functions
+   │
+OneSignal Push
+   │
+Android • Desktop • Web
+```
 
 ---
 
-### Native Push Notifications
-Full native push support via:
-
-- Capacitor
-- OneSignal
-- Deep linking
-- Background delivery
-- Notification actions
-
-Supports:
-- Android APK
-- Web
-- Hybrid deployments
-
-Examples:
-- New message alerts
-- Group mentions
-- Story updates
-- Friend requests
-- News popups
-
----
-
-### AI Integration
-Flick integrates intelligent features including:
-
-- Smart moderation
-- AI suggestions
-- Content ranking
-- Feed optimization
-- Recommendation engines
-
----
-
-### Performance
-Engineered for speed.
-
-Goals:
-- Instant message delivery
-- Smooth animations
-- Minimal re-renders
-- Efficient caching
-- Low bandwidth usage
-
----
-
-# Tech Stack
+# 🧰 Tech Stack
 
 ## Frontend
 - React 19
@@ -147,131 +105,89 @@ Goals:
 - Framer Motion
 
 ## Backend
-- Firebase
+- Firebase Authentication
 - Firestore
-- Realtime listeners
 - Cloud Functions
+- Firebase Storage
 
-## Mobile / Native
+## Native
 - Capacitor
-- Android WebView
-- Native Push APIs
-- OneSignal SDK
+- OneSignal
+- Android
 
-## Additional Services
-- Vercel
+## Additional
 - Cloudinary
-- Gemini AI
 - Three.js
+- Gemini AI
 
 ---
 
-# Architecture
+# 🎨 Design Philosophy
 
-```bash
-Client UI
-   ↓
-Realtime State Manager
-   ↓
-Firebase Firestore
-   ↓
-Push Notification Layer
-   ↓
-Native Device Delivery
-```
-
-Main systems:
-
-```bash
-Feed Engine
-Messaging Engine
-Story Engine
-Notification Engine
-Media Engine
-AI Engine
-```
+- Brutalism
+- Neumorphism
+- Claymorphism
+- Glassmorphism
+- Cyberpunk aesthetics
+- Fluid micro-interactions
+- Smooth animations
+- Accessible UI
 
 ---
 
-# UI Philosophy
+# ⚡ Performance Goals
 
-Flick focuses on:
-
-## Brutalism + Futurism
-- Bold layouts
-- Strong contrast
-- Sharp edges
-- Cyber aesthetics
-
-## Premium Motion
-- Smooth transitions
-- Telegram-like interactions
-- Micro animations
-- Physics-based gestures
-
-## Immersive UX
-Everything should feel alive.
-
-Examples:
-- Typing animations
-- Message morphing
-- Feed transitions
-- Story progression
-- Live counters
+- Fast startup
+- Lazy loading
+- Efficient caching
+- Minimal re-renders
+- Smooth 60 FPS animations
+- Low bandwidth usage
 
 ---
 
-# Repository Structure
+# 🔐 Security
 
-```bash
+- Secure Authentication
+- HTTPS
+- Firestore Security Rules
+- Cloud Functions validation
+- AI moderation
+- Spam protection
+
+---
+
+# 📂 Project Structure
+
+```text
 flick/
-│
+├── android/
 ├── public/
 ├── src/
+│   ├── assets/
 │   ├── components/
-│   ├── pages/
+│   ├── firebase/
 │   ├── hooks/
+│   ├── pages/
 │   ├── services/
 │   ├── store/
-│   ├── firebase/
-│   ├── utils/
-│   └── assets/
-│
-├── capacitor/
-├── android/
+│   └── utils/
 ├── functions/
 └── README.md
 ```
 
 ---
 
-# Installation
-
-Clone repo:
+# 🚀 Installation
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/flick.git
-```
-
-Enter project:
-
-```bash
 cd flick
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Start dev server:
-
-```bash
 npm run dev
 ```
 
-Build production:
+Production build:
 
 ```bash
 npm run build
@@ -279,9 +195,7 @@ npm run build
 
 ---
 
-# Environment Variables
-
-Create `.env`:
+# 🌍 Environment Variables
 
 ```env
 VITE_FIREBASE_API_KEY=
@@ -290,83 +204,56 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
-
 VITE_ONESIGNAL_APP_ID=
 ```
 
 ---
 
-# Development Goals
+# 🛣 Roadmap
 
-## Messaging
-- [x] Basic chat
-- [ ] Message encryption
-- [ ] Voice calls
-- [ ] Video calls
-
-## Social
-- [x] Feed system
-- [ ] Stories
-- [ ] Reels
-- [ ] Live streaming
-
-## AI
-- [ ] AI moderation
-- [ ] AI recommendations
-- [ ] AI assistant
-
----
-
-# Roadmap
-
-## v1
+## Version 1
 - Messaging
 - Groups
 - Feed
-- Push notifications
+- Push Notifications
 
-## v2
+## Version 2
 - Stories
-- Voice calls
-- Media optimization
+- Voice Calls
+- Video Calls
+- Media Optimization
 
-## v3
-- AI personalization
-- Creator monetization
-- Business tools
-
----
-
-# Vision
-
-Flick is not just another chat app.
-
-We are building a platform where:
-- communication feels instant
-- communities feel alive
-- content discovery feels natural
-- AI enhances everything
-
-The goal is simple:
-
-> Build the future of social communication.
+## Version 3
+- AI Personalization
+- Creator Tools
+- Business Profiles
+- Monetization
 
 ---
 
-# Company
+# 🤝 Contributing
 
-Built by **FaraTech**
-
-We build technology that empowers communication, education, and digital communities.
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Open a Pull Request
 
 ---
 
-# License
+# 📜 License
 
 MIT License
 
 ---
 
+# ❤️ Built by FaraTech
+
+Building technology that empowers communication, education, and digital communities.
+
+---
+
 <p align="center">
-  <strong>Flick — Connect. Chat. Share. Beyond.</strong>
+<b>Flick — The Future of Social Communication.</b>
+
+Made with ❤️ by FaraTech.
 </p>
