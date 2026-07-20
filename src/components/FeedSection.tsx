@@ -33,6 +33,7 @@ import {
   X,
   Smile,
   Mic,
+  Music,
   Paperclip,
   ZoomIn,
   Volume2,
@@ -150,7 +151,8 @@ export default function FeedSection({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   
   // Stories state
-  const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
+  const [activeStoryGroupId, setActiveStoryGroupId] = useState<string | null>(null);
+  const [activeStoryIndexInGroup, setActiveStoryIndexInGroup] = useState<number>(0);
   const [storyProgress, setStoryProgress] = useState(0);
   const [isStoryPaused, setIsStoryPaused] = useState(false);
   const storyStartTimeRef = useRef<number>(0);
@@ -163,7 +165,12 @@ export default function FeedSection({
   const [isStoriesLoading, setIsStoriesLoading] = useState(true);
   const [storyContent, setStoryContent] = useState('');
   const [storyImg, setStoryImg] = useState('');
-  const [storyType, setStoryType] = useState<'image' | 'text' | 'poll'>('text');
+  const [storyVideo, setStoryVideo] = useState('');
+  const [storyAudio, setStoryAudio] = useState('');
+  const [storyType, setStoryType] = useState<'image' | 'video' | 'audio' | 'text'>('text');
+  const [storyGradientPreset, setStoryGradientPreset] = useState('sunset');
+  const [storyMusicTitle, setStoryMusicTitle] = useState('');
+  const [storyMusicArtist, setStoryMusicArtist] = useState('');
   const [storyPollQ, setStoryPollQ] = useState('');
   const [storyCountdown, setStoryCountdown] = useState('');
   const [storyViewedList, setStoryViewedList] = useState<Record<string, boolean>>({});
@@ -407,18 +414,43 @@ export default function FeedSection({
   // Story creator upload triggers
   const handlePublishStory = async () => {
     if (!profile) return;
-    if (!storyContent.trim()) {
-      showBrutalistToast('WARNING !', 'Story text context cannot be empty.', 'warning');
+    
+    // Validation based on selected story format
+    if (storyType === 'text' && !storyContent.trim()) {
+      showBrutalistToast('WARNING !', 'Story text context cannot be empty for text stories.', 'warning');
+      return;
+    }
+    if (storyType === 'image' && !storyImg.trim() && !storyContent.trim()) {
+      showBrutalistToast('WARNING !', 'Provide an image or text description to broadcast.', 'warning');
+      return;
+    }
+    if (storyType === 'video' && !storyVideo.trim()) {
+      showBrutalistToast('WARNING !', 'Attach a video file or link to broadcast a video story.', 'warning');
+      return;
+    }
+    if (storyType === 'audio' && !storyAudio.trim()) {
+      showBrutalistToast('WARNING !', 'Attach an audio file to broadcast a sound story.', 'warning');
       return;
     }
 
-    const hasMedia = !!storyImg.trim();
-    const taskLabel = hasMedia ? "Broadcasting Story Node with Image" : "Broadcasting Story Node Text";
+    let finalMediaType: 'image' | 'video' | 'audio' | 'none' = 'none';
+    if (storyType === 'image' && storyImg.trim()) {
+      finalMediaType = 'image';
+    } else if (storyType === 'video' && storyVideo.trim()) {
+      finalMediaType = 'video';
+    } else if (storyType === 'audio' && storyAudio.trim()) {
+      finalMediaType = 'audio';
+    } else if (storyType === 'text') {
+      finalMediaType = 'none';
+    }
+
+    const hasMedia = finalMediaType !== 'none';
+    const taskLabel = `Broadcasting Story: ${storyType.toUpperCase()}`;
 
     // Create central operation task
     const taskId = operations.createTask('image upload', taskLabel, {
       maxRetries: 2,
-      totalBytes: hasMedia ? 1024 * 1024 * 1.8 : undefined,
+      totalBytes: hasMedia ? 1024 * 1024 * 2.5 : undefined,
       onRetry: async () => {
         await handlePublishStory();
       }
@@ -438,7 +470,7 @@ export default function FeedSection({
       // Phase 4: UPLOADING (if has media)
       if (hasMedia) {
         operations.updateTask(taskId, { state: 'UPLOADING', progress: 20 });
-        const totalSize = 1024 * 1024 * 1.8; // 1.8 MB
+        const totalSize = 1024 * 1024 * 2.5;
         
         for (let percent = 20; percent <= 80; percent += 20) {
           const bytesUploaded = Math.round((percent / 100) * totalSize);
@@ -466,8 +498,13 @@ export default function FeedSection({
         authorName: profile.displayName,
         authorPhoto: profile.photoURL,
         content: storyContent.trim(),
-        imageUrl: storyImg.trim() || undefined,
-        mediaType: storyImg.trim() ? 'image' : 'none'
+        imageUrl: finalMediaType === 'image' ? storyImg.trim() : undefined,
+        videoUrl: finalMediaType === 'video' ? storyVideo.trim() : undefined,
+        audioUrl: finalMediaType === 'audio' ? storyAudio.trim() : undefined,
+        mediaType: finalMediaType,
+        gradientPreset: storyType === 'text' ? storyGradientPreset : undefined,
+        musicTitle: finalMediaType === 'audio' ? storyMusicTitle.trim() || 'Flick Soundscape' : undefined,
+        musicArtist: finalMediaType === 'audio' ? storyMusicArtist.trim() || 'Campus Node Broadcast' : undefined,
       });
 
       // Phase 6: FINALIZING
@@ -477,8 +514,13 @@ export default function FeedSection({
       // Phase 7: SUCCESS
       operations.successTask(taskId);
 
+      // Reset states
       setStoryContent('');
       setStoryImg('');
+      setStoryVideo('');
+      setStoryAudio('');
+      setStoryMusicTitle('');
+      setStoryMusicArtist('');
       setIsUploadingStory(false);
       setShowPostCreator(false);
       showBrutalistToast('SUCCESS ✓', 'Story successfully broadcasted to campus network!', 'success', undefined, toastId);
@@ -693,60 +735,228 @@ export default function FeedSection({
     }
   };
 
-  // Stories trigger morphing viewer
-  const handleOpenStoryViewer = (index: number) => {
+  // Story refs for video/audio play/pause synchronization
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Seed default story elements if Firestore lacks stories to support multi-media testing
+  const defaultStories = [
+    {
+      id: 'st-text-0',
+      authorId: 'flick-hq',
+      authorName: 'FLICK HQ',
+      authorPhoto: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120',
+      content: '⚡ FLICK SECURE NET: DEPLOYED\n\nDecentralized encrypted communication is active on core campus nodes. Share text, images, video, and audio streams now!',
+      mediaType: 'none',
+      gradientPreset: 'cosmic',
+      viewsCount: 1,
+      viewedBy: [],
+      createdAt: new Date(Date.now() - 3600000)
+    },
+    {
+      id: 'st-image-0',
+      authorId: 'flick-hq',
+      authorName: 'FLICK HQ',
+      authorPhoto: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120',
+      content: 'Cyberpunk setup in our campus security war room.',
+      mediaType: 'image',
+      imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600',
+      viewsCount: 12,
+      viewedBy: [],
+      createdAt: new Date(Date.now() - 1800000)
+    },
+    {
+      id: 'st-audio-0',
+      authorId: 'flick-hq',
+      authorName: 'FLICK HQ',
+      authorPhoto: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120',
+      content: 'Tune in to our secure campus background audio pulse.',
+      mediaType: 'audio',
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      musicTitle: 'Cyber Ambient Synth',
+      musicArtist: 'Fara Labs Digital',
+      viewsCount: 42,
+      viewedBy: [],
+      createdAt: new Date(Date.now() - 600000)
+    }
+  ];
+
+  const getStoriesList = () => {
+    const list = stories.length > 0 ? stories : defaultStories;
+    return list.filter(s => {
+      if (s.id.startsWith('st-') || s.authorId === 'flick-hq') return true;
+      if (profile && s.authorId === profile.uid) return true;
+      return registeredUsers.some(u => u.uid === s.authorId);
+    });
+  };
+
+  interface StoryGroup {
+    authorId: string;
+    authorName: string;
+    authorPhoto: string;
+    stories: Story[];
+  }
+
+  // Group stories by their author ID (like Instagram story circles)
+  const getGroupedStories = (): StoryGroup[] => {
+    const rawStories = getStoriesList();
+    const groupsMap: Record<string, StoryGroup> = {};
+
+    rawStories.forEach(s => {
+      const authorId = s.authorId || 'anonymous';
+      if (!groupsMap[authorId]) {
+        groupsMap[authorId] = {
+          authorId,
+          authorName: s.authorName || 'Anonymous',
+          authorPhoto: s.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120',
+          stories: []
+        };
+      }
+      groupsMap[authorId].stories.push(s);
+    });
+
+    // Sort stories inside each group by creation date ascending
+    Object.values(groupsMap).forEach(g => {
+      g.stories.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+        const timeB = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+        return timeA - timeB;
+      });
+    });
+
+    // Sort groups so current user is always first, then flick-hq, then latest stories first
+    return Object.values(groupsMap).sort((a, b) => {
+      if (profile && a.authorId === profile.uid) return -1;
+      if (profile && b.authorId === profile.uid) return 1;
+      if (a.authorId === 'flick-hq') return -1;
+      if (b.authorId === 'flick-hq') return 1;
+      
+      const latestA = Math.max(...a.stories.map(s => s.createdAt?.seconds || (s.createdAt instanceof Date ? s.createdAt.getTime() : 0)));
+      const latestB = Math.max(...b.stories.map(s => s.createdAt?.seconds || (s.createdAt instanceof Date ? s.createdAt.getTime() : 0)));
+      return latestB - latestA;
+    });
+  };
+
+  // Open a specific user story group circle
+  const handleOpenStoryGroup = (groupId: string) => {
     triggerVibration('light');
-    setActiveStoryIndex(index);
+    setActiveStoryGroupId(groupId);
+    setActiveStoryIndexInGroup(0);
     setStoryProgress(0);
     setIsStoryPaused(false);
-    // Mark story as viewed locally
-    const activeList = getStoriesList();
-    const st = activeList[index];
-    if (st) {
-      setStoryViewedList(prev => ({ ...prev, [st.id]: true }));
+    
+    // Mark first story in this group as viewed
+    const groups = getGroupedStories();
+    const targetGroup = groups.find(g => g.authorId === groupId);
+    if (targetGroup && targetGroup.stories[0]) {
+      const firstStory = targetGroup.stories[0];
+      setStoryViewedList(prev => ({ ...prev, [firstStory.id]: true }));
+      viewStory(firstStory.id, profile?.uid || 'anonymous');
     }
   };
 
   const handleNextStory = () => {
-    const activeList = getStoriesList();
-    if (activeStoryIndex !== null && activeStoryIndex < activeList.length - 1) {
-      setActiveStoryIndex(activeStoryIndex + 1);
+    if (activeStoryGroupId === null) return;
+    const groups = getGroupedStories();
+    const groupIdx = groups.findIndex(g => g.authorId === activeStoryGroupId);
+    if (groupIdx === -1) return;
+
+    const currentGroup = groups[groupIdx];
+    if (activeStoryIndexInGroup < currentGroup.stories.length - 1) {
+      // Go to next story inside current user's group
+      setActiveStoryIndexInGroup(activeStoryIndexInGroup + 1);
       setStoryProgress(0);
       triggerVibration('light');
-      const nextStory = activeList[activeStoryIndex + 1];
+      const nextStory = currentGroup.stories[activeStoryIndexInGroup + 1];
       if (nextStory) {
         setStoryViewedList(prev => ({ ...prev, [nextStory.id]: true }));
+        viewStory(nextStory.id, profile?.uid || 'anonymous');
       }
     } else {
-      setActiveStoryIndex(null);
-      setStoryProgress(0);
+      // Finished all stories in this group, advance to next user's story group
+      if (groupIdx < groups.length - 1) {
+        const nextGroup = groups[groupIdx + 1];
+        setActiveStoryGroupId(nextGroup.authorId);
+        setActiveStoryIndexInGroup(0);
+        setStoryProgress(0);
+        triggerVibration('medium');
+        const firstStory = nextGroup.stories[0];
+        if (firstStory) {
+          setStoryViewedList(prev => ({ ...prev, [firstStory.id]: true }));
+          viewStory(firstStory.id, profile?.uid || 'anonymous');
+        }
+      } else {
+        // No more story groups remaining, close viewer
+        setActiveStoryGroupId(null);
+        setActiveStoryIndexInGroup(0);
+        setStoryProgress(0);
+      }
     }
   };
 
   const handlePrevStory = () => {
-    const activeList = getStoriesList();
-    if (activeStoryIndex !== null && activeStoryIndex > 0) {
-      setActiveStoryIndex(activeStoryIndex - 1);
+    if (activeStoryGroupId === null) return;
+    const groups = getGroupedStories();
+    const groupIdx = groups.findIndex(g => g.authorId === activeStoryGroupId);
+    if (groupIdx === -1) return;
+
+    if (activeStoryIndexInGroup > 0) {
+      // Go to previous story in active user group
+      setActiveStoryIndexInGroup(activeStoryIndexInGroup - 1);
       setStoryProgress(0);
       triggerVibration('light');
-      const prevStory = activeList[activeStoryIndex - 1];
+      const prevStory = groups[groupIdx].stories[activeStoryIndexInGroup - 1];
       if (prevStory) {
         setStoryViewedList(prev => ({ ...prev, [prevStory.id]: true }));
       }
     } else {
-      setStoryProgress(0);
+      // Shift backwards to previous user's last story
+      if (groupIdx > 0) {
+        const prevGroup = groups[groupIdx - 1];
+        setActiveStoryGroupId(prevGroup.authorId);
+        setActiveStoryIndexInGroup(prevGroup.stories.length - 1);
+        setStoryProgress(0);
+        triggerVibration('medium');
+        const lastStory = prevGroup.stories[prevGroup.stories.length - 1];
+        if (lastStory) {
+          setStoryViewedList(prev => ({ ...prev, [lastStory.id]: true }));
+        }
+      } else {
+        // At the very beginning, restart active story progress
+        setStoryProgress(0);
+      }
     }
   };
 
+  // Synchronize playing and pausing on active media elements (audio / video)
+  useEffect(() => {
+    if (activeStoryGroupId === null) return;
+    if (isStoryPaused) {
+      videoRef.current?.pause();
+      audioRef.current?.pause();
+    } else {
+      videoRef.current?.play().catch(e => console.log('Video play interrupted:', e));
+      audioRef.current?.play().catch(e => console.log('Audio play interrupted:', e));
+    }
+  }, [isStoryPaused, activeStoryGroupId, activeStoryIndexInGroup]);
+
   // Auto-progression timer for IG-style stories
   useEffect(() => {
-    if (activeStoryIndex === null) {
+    if (activeStoryGroupId === null) {
       setStoryProgress(0);
       setIsStoryPaused(false);
       return;
     }
 
-    const storyDuration = 5000; // 5000ms duration
+    const groups = getGroupedStories();
+    const currentGroup = groups.find(g => g.authorId === activeStoryGroupId);
+    if (!currentGroup) return;
+
+    const activeStory = currentGroup.stories[activeStoryIndexInGroup];
+    if (!activeStory) return;
+
+    // Use standard 5000ms story frame duration
+    const storyDuration = 5000;
     const intervalTime = 30; // smooth 30ms ticks
     const step = (intervalTime / storyDuration) * 100;
 
@@ -766,7 +976,7 @@ export default function FeedSection({
     return () => {
       clearInterval(timer);
     };
-  }, [activeStoryIndex, isStoryPaused]);
+  }, [activeStoryGroupId, activeStoryIndexInGroup, isStoryPaused]);
 
   // Touch and swipe interactions (pause on hold, tap to skip, swipe to navigate)
   const touchStartXRef = useRef<number>(0);
@@ -840,28 +1050,6 @@ export default function FeedSection({
     playGlitchClickSound();
     triggerVibration('medium');
     // Live poll database update can be integrated here, no local fallback needed
-  };
-
-  // Seed default story elements if Firestore lacks stories
-  const defaultStory = {
-    id: 'st-0',
-    authorId: 'flick-hq',
-    authorName: 'FLICK HQ',
-    authorPhoto: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120',
-    content: 'Welcome to the premium FLICK Redesign social feed! Share your story now 🚀',
-    mediaType: 'none',
-    viewsCount: 1,
-    viewedBy: [],
-    createdAt: new Date()
-  };
-
-  const getStoriesList = () => {
-    const list = stories.length > 0 ? stories : [defaultStory];
-    return list.filter(s => {
-      if (s.id === 'st-0' || s.authorId === 'flick-hq') return true;
-      if (profile && s.authorId === profile.uid) return true;
-      return registeredUsers.some(u => u.uid === s.authorId);
-    });
   };
 
   return (
@@ -1276,24 +1464,24 @@ export default function FeedSection({
                       <span className="text-[8.5px] font-mono text-zinc-500 max-w-[55px] truncate">My Story</span>
                     </div>
 
-                    {/* Render existing active stories */}
-                    {getStoriesList().map((st, sIdx) => {
-                      const isViewed = storyViewedList[st.id] || false;
-                      const authorFirstName = (st.authorName || 'Anonymous').split(' ')[0];
+                    {/* Render existing active stories grouped by user */}
+                    {getGroupedStories().map((group) => {
+                      const allViewed = group.stories.every(s => storyViewedList[s.id] || false);
+                      const authorFirstName = (group.authorName || 'Anonymous').split(' ')[0];
                       return (
-                        <div key={st.id || sIdx} className="flex flex-col items-center space-y-1.5 shrink-0">
+                        <div key={group.authorId} className="flex flex-col items-center space-y-1.5 shrink-0">
                           <button
-                            onClick={() => handleOpenStoryViewer(sIdx)}
+                            onClick={() => handleOpenStoryGroup(group.authorId)}
                             className={`w-13 h-13 rounded-full p-0.5 flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
-                              isViewed 
+                              allViewed 
                                 ? 'bg-zinc-800' 
-                                : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600'
+                                : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse'
                             }`}
                           >
                             <div className="w-full h-full rounded-full bg-black p-[1.5px] flex items-center justify-center">
                               <img 
-                                src={st.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
-                                alt={st.authorName} 
+                                src={group.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
+                                alt={group.authorName} 
                                 className="w-full h-full rounded-full object-cover border border-zinc-950" 
                               />
                             </div>
@@ -2023,20 +2211,25 @@ export default function FeedSection({
 
       {/* =================================== STORY VIEWERS FULL SCREEN =================================== */}
       <AnimatePresence>
-        {activeStoryIndex !== null && (
+        {activeStoryGroupId !== null && (
           <div data-overlay="true" className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4">
             {(() => {
-              const activeList = getStoriesList();
-              const activeStory = activeList[activeStoryIndex];
+              const groups = getGroupedStories();
+              const currentGroup = groups.find(g => g.authorId === activeStoryGroupId);
+              if (!currentGroup) return null;
+
+              const activeStory = currentGroup.stories[activeStoryIndexInGroup];
               if (!activeStory) return null;
+
+              const groupIdx = groups.findIndex(g => g.authorId === activeStoryGroupId);
 
               return (
                 <div className="relative flex items-center justify-center w-full max-w-lg">
                   {/* Desktop Prev Button */}
-                  {activeStoryIndex > 0 && (
+                  {(groupIdx > 0 || activeStoryIndexInGroup > 0) && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handlePrevStory(); }}
-                      className="hidden md:flex absolute -left-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer"
+                      className="hidden md:flex absolute -left-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer animate-fade-in"
                       title="Previous Story"
                     >
                       <ChevronLeft className="w-5 h-5" />
@@ -2044,17 +2237,17 @@ export default function FeedSection({
                   )}
 
                   {/* Central Story Card */}
-                  <div className="w-full max-w-md h-[90vh] bg-[#0c0c0c] border border-zinc-900 rounded-2xl overflow-hidden relative flex flex-col justify-between">
+                  <div className="w-full max-w-md h-[90vh] bg-[#0c0c0c] border border-zinc-900 rounded-2xl overflow-hidden relative flex flex-col justify-between shadow-2xl">
                     {/* Progress Indicators */}
-                    <div className={`absolute top-4 left-4 right-4 z-50 flex gap-1 transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                      {activeList.map((_, idx) => (
-                        <div key={idx} className="h-1 flex-1 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className={`absolute top-4 left-4 right-4 z-50 flex gap-1.5 transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                      {currentGroup.stories.map((s, idx) => (
+                        <div key={s.id || idx} className="h-1 flex-1 bg-zinc-800 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-[var(--neon-green)]"
+                            className="h-full bg-[var(--neon-green)] transition-all duration-100"
                             style={{
-                              width: idx < activeStoryIndex 
+                              width: idx < activeStoryIndexInGroup 
                                 ? '100%' 
-                                : idx === activeStoryIndex 
+                                : idx === activeStoryIndexInGroup 
                                   ? `${storyProgress}%` 
                                   : '0%'
                             }} 
@@ -2064,17 +2257,17 @@ export default function FeedSection({
                     </div>
 
                     {/* Header bar */}
-                    <div className={`p-4 pt-8 flex items-center justify-between relative z-40 bg-gradient-to-b from-black to-transparent transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    <div className={`p-4 pt-8 flex items-center justify-between relative z-40 bg-gradient-to-b from-black/80 to-transparent transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                       <div className="flex items-center space-x-2.5">
-                        <img src={activeStory.authorPhoto} alt="" className="w-8 h-8 rounded-full border border-zinc-800 object-cover" />
+                        <img src={currentGroup.authorPhoto} alt="" className="w-8 h-8 rounded-full border border-zinc-800 object-cover" />
                         <div>
-                          <h4 className="text-xs font-mono font-black text-white uppercase">{activeStory.authorName}</h4>
-                          <span className="text-[7.5px] text-zinc-500 uppercase font-mono">CAMPUS INTEL BROADCAST</span>
+                          <h4 className="text-xs font-mono font-black text-white uppercase">{currentGroup.authorName}</h4>
+                          <span className="text-[7.5px] text-[var(--neon-green)] uppercase font-mono tracking-wider">CAMPUS INTEL NETWORK</span>
                         </div>
                       </div>
 
                       <button
-                        onClick={() => setActiveStoryIndex(null)}
+                        onClick={() => setActiveStoryGroupId(null)}
                         className="p-1 bg-black/45 rounded-full text-zinc-400 hover:text-white transition cursor-pointer"
                       >
                         <X className="w-5 h-5" />
@@ -2082,7 +2275,7 @@ export default function FeedSection({
                     </div>
 
                     {/* Main display & Tap/Hold areas */}
-                    <div className="flex-1 flex flex-col justify-center items-center relative overflow-hidden p-6 text-center select-none">
+                    <div className="flex-1 flex flex-col justify-center items-center relative overflow-hidden select-none">
                       {/* Transparent Navigation & Pause Areas (Overlay) */}
                       <div className="absolute inset-0 z-20 flex" onTouchMove={handleStoryTouchMove}>
                         <div 
@@ -2105,19 +2298,83 @@ export default function FeedSection({
                         />
                       </div>
 
-                      {activeStory.imageUrl ? (
-                        <div className="space-y-4 w-full h-full flex flex-col justify-center items-center relative overflow-hidden pointer-events-none">
-                          {/* Blurred backdrop image for widescreen/mismatched ratios */}
-                          <img src={activeStory.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 blur-lg scale-110" />
-                          {/* Crisp, fitted foreground image */}
-                          <img src={activeStory.imageUrl} alt="" className="relative z-10 max-w-full max-h-[50vh] object-contain rounded-lg border border-zinc-900 shadow-xl" />
-                          <p className="relative z-10 text-sm font-sans text-white leading-relaxed mt-2">{activeStory.content}</p>
-                        </div>
-                      ) : (
-                        <p className="text-lg font-serif italic text-white leading-relaxed max-w-sm whitespace-pre-wrap pointer-events-none">
-                          "{activeStory.content}"
-                        </p>
-                      )}
+                      {/* Immersive multi-media content rendering with transition */}
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={`${activeStory.id}`}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 1.03 }}
+                          transition={{ duration: 0.25 }}
+                          className="absolute inset-0 w-full h-full flex flex-col justify-center items-center p-6 text-center"
+                        >
+                          {activeStory.mediaType === 'image' && activeStory.imageUrl ? (
+                            <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center relative overflow-hidden pointer-events-none">
+                              <img src={activeStory.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-35 blur-lg scale-115" referrerPolicy="no-referrer" />
+                              <img src={activeStory.imageUrl} alt="" className="relative z-10 max-w-full max-h-[60vh] object-contain rounded-xl border border-zinc-900 shadow-2xl" referrerPolicy="no-referrer" />
+                              {activeStory.content && (
+                                <p className="relative z-10 text-xs font-mono text-white leading-relaxed mt-4 bg-black/60 px-3 py-1.5 rounded-lg border border-zinc-800 max-w-[85%]">{activeStory.content}</p>
+                              )}
+                            </div>
+                          ) : activeStory.mediaType === 'video' && activeStory.videoUrl ? (
+                            <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center relative overflow-hidden pointer-events-none">
+                              <div className="absolute inset-0 bg-black/40 z-0" />
+                              <video 
+                                ref={videoRef}
+                                src={activeStory.videoUrl} 
+                                className="relative z-10 max-w-full max-h-[60vh] object-contain rounded-xl border border-zinc-900 shadow-2xl"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                              />
+                              {activeStory.content && (
+                                <p className="relative z-10 text-xs font-mono text-white leading-relaxed mt-4 bg-black/60 px-3 py-1.5 rounded-lg border border-zinc-800 max-w-[85%]">{activeStory.content}</p>
+                              )}
+                            </div>
+                          ) : activeStory.mediaType === 'audio' && activeStory.audioUrl ? (
+                            <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center bg-zinc-950 p-6">
+                              <audio 
+                                ref={audioRef}
+                                src={activeStory.audioUrl}
+                                autoPlay
+                                loop
+                              />
+                              <div className="flex flex-col items-center justify-center space-y-6 relative z-10 pointer-events-none">
+                                <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-zinc-800 via-zinc-900 to-black border-4 border-zinc-800 shadow-2xl flex items-center justify-center animate-spin" style={{ animationDuration: '10s' }}>
+                                  <div className="w-12 h-12 rounded-full bg-[var(--neon-green)] flex items-center justify-center border-4 border-zinc-950">
+                                    <Volume2 className="w-5 h-5 text-black" />
+                                  </div>
+                                </div>
+                                <div className="text-center space-y-1">
+                                  <h4 className="text-sm font-mono font-black text-[var(--neon-green)] uppercase tracking-wider">{activeStory.musicTitle || 'Flick Soundscape'}</h4>
+                                  <p className="text-[10px] font-mono text-zinc-500 uppercase">{activeStory.musicArtist || 'Campus Node Broadcast'}</p>
+                                </div>
+                                {activeStory.content && (
+                                  <p className="text-sm font-serif italic text-white leading-relaxed max-w-xs whitespace-pre-wrap mt-2">
+                                    "{activeStory.content}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Text-only story or fallback */
+                            <div className={`absolute inset-0 w-full h-full flex flex-col justify-center items-center p-6 ${
+                              activeStory.gradientPreset === 'sunset' ? 'bg-gradient-to-tr from-orange-600 to-rose-600' :
+                              activeStory.gradientPreset === 'cosmic' ? 'bg-gradient-to-tr from-purple-800 via-violet-900 to-fuchsia-800' :
+                              activeStory.gradientPreset === 'emerald' ? 'bg-gradient-to-tr from-emerald-600 to-teal-800' :
+                              activeStory.gradientPreset === 'amber' ? 'bg-gradient-to-tr from-amber-500 to-red-600' :
+                              activeStory.gradientPreset === 'slate' ? 'bg-gradient-to-tr from-zinc-900 to-slate-800' :
+                              activeStory.gradientPreset === 'neon' ? 'bg-gradient-to-tr from-black via-zinc-900 to-[var(--neon-green)]/40' :
+                              'bg-gradient-to-tr from-orange-600 to-rose-600' /* default sunset */
+                            }`}>
+                              <p className="text-lg md:text-xl font-mono font-black text-white leading-relaxed max-w-xs whitespace-pre-wrap select-none pointer-events-none drop-shadow-lg">
+                                {activeStory.content}
+                              </p>
+                            </div>
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
 
                     {/* Bottom interactions replies */}
@@ -2141,7 +2398,7 @@ export default function FeedSection({
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder={`Reply directly to ${(activeStory.authorName || 'User').split(' ')[0]}...`}
+                          placeholder={`Reply directly to ${(currentGroup.authorName || 'User').split(' ')[0]}...`}
                           className="flex-1 bg-zinc-950 border border-zinc-900 rounded-full px-4 py-2 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -2157,13 +2414,15 @@ export default function FeedSection({
                   </div>
 
                   {/* Desktop Next Button */}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleNextStory(); }}
-                    className="hidden md:flex absolute -right-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer"
-                    title="Next Story"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                  {(groupIdx < groups.length - 1 || activeStoryIndexInGroup < currentGroup.stories.length - 1) && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleNextStory(); }}
+                      className="hidden md:flex absolute -right-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer animate-fade-in"
+                      title="Next Story"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               );
             })()}
@@ -2193,8 +2452,8 @@ export default function FeedSection({
               </div>
 
               {/* Category tabs inside creator */}
-              {postCreatorType !== 'story' && (
-                <div className="flex bg-black border-b border-zinc-900 text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none">
+              {postCreatorType !== 'story' ? (
+                <div className="flex bg-black border-b border-zinc-900 text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none shrink-0">
                   {(['social', 'academic', 'question', 'poll'] as const).map(t => (
                     <button
                       key={t}
@@ -2209,18 +2468,42 @@ export default function FeedSection({
                     </button>
                   ))}
                 </div>
+              ) : (
+                <div className="flex bg-black border-b border-zinc-900 text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none shrink-0">
+                  {(['text', 'image', 'video', 'audio'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        playGlitchClickSound();
+                        setStoryType(t);
+                      }}
+                      className={`flex-1 py-3 text-center border-b-2 transition ${
+                        storyType === t 
+                          ? 'border-[var(--neon-green)] text-[var(--neon-green)] bg-[var(--neon-green)]/5 font-black' 
+                          : 'border-transparent'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               )}
 
               {/* Body */}
               <div className="p-5 flex-1 overflow-y-auto space-y-4">
                 <div className="space-y-1.5">
-                  <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">Transmission Content:</span>
+                  <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
+                    {postCreatorType === 'story' ? `${storyType.toUpperCase()} story content / CAPTION:` : 'Transmission Content:'}
+                  </span>
                   <textarea
                     value={postCreatorType === 'story' ? storyContent : postContent}
                     onChange={(e) => postCreatorType === 'story' ? setStoryContent(e.target.value) : setPostContent(e.target.value)}
                     placeholder={
                       postCreatorType === 'story' 
-                        ? "What is flickering on your story today? (text/caption)..." 
+                        ? storyType === 'text'
+                          ? "What is flickering on your mind today? (Type your text story)..."
+                          : `Write a caption for your ${storyType} story (optional)...`
                         : postCreatorType === 'academic' 
                           ? "Write academic notes, homework help steps or solved quiz explanations..."
                           : postCreatorType === 'question'
@@ -2232,98 +2515,331 @@ export default function FeedSection({
                   />
                 </div>
 
-                {/* Direct Image File Uploader and Deepened Video Link */}
+                {/* Specific controls per story type or general post attachments */}
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1.5">
-                    <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
-                      ATTACH IMAGE (DIRECT FILE UPLOAD):
-                    </span>
-                    <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            try {
-                              const compressed = await compressImage(file, 800, 800, 0.65);
-                              if (postCreatorType === 'story') {
-                                setStoryImg(compressed);
-                              } else {
-                                setPostImage(compressed);
-                              }
-                            } catch (err) {
-                              console.warn("Failed to compress image, falling back to original:", err);
-                              const reader = new FileReader();
-                              reader.onload = (uploadEvent) => {
-                                const result = uploadEvent.target?.result as string;
-                                if (postCreatorType === 'story') {
-                                  setStoryImg(result);
-                                } else {
-                                  setPostImage(result);
-                                }
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                      />
-                      {(postCreatorType === 'story' ? storyImg : postImage) ? (
-                        <div className="space-y-2 relative z-20">
-                          <img
-                            src={postCreatorType === 'story' ? storyImg : postImage}
-                            alt="Direct upload preview"
-                            className="max-h-24 mx-auto rounded-lg object-cover border border-zinc-800"
-                          />
-                          <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
-                            ✓ Image Ready for Deployment
-                          </p>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (postCreatorType === 'story') {
-                                setStoryImg('');
-                              } else {
-                                setPostImage('');
-                              }
-                            }}
-                            className="text-[9px] text-red-500 hover:underline font-mono uppercase font-black"
-                          >
-                            [ Remove Image ]
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <Upload className="w-5 h-5 text-zinc-500 mx-auto mb-1 animate-bounce" />
-                          <p className="text-[10px] text-zinc-300 font-mono font-bold uppercase">
-                            Click or drag file to upload
-                          </p>
-                          <p className="text-[8px] text-zinc-600 font-mono">
-                            PNG, JPG, GIF up to 5MB (Base64 secured)
-                          </p>
+                  {postCreatorType === 'story' ? (
+                    <>
+                      {/* Text story background picker */}
+                      {storyType === 'text' && (
+                        <div className="space-y-2.5 animate-fade-in">
+                          <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">CHOOSE STORY BACKGROUND GRADIENT:</span>
+                          <div className="flex gap-2 flex-wrap">
+                            {[
+                              { id: 'sunset', css: 'from-orange-600 to-rose-600' },
+                              { id: 'cosmic', css: 'from-purple-800 via-violet-900 to-fuchsia-800' },
+                              { id: 'emerald', css: 'from-emerald-600 to-teal-800' },
+                              { id: 'amber', css: 'from-amber-500 to-red-600' },
+                              { id: 'slate', css: 'from-zinc-900 to-slate-800' },
+                              { id: 'neon', css: 'from-black via-zinc-900 to-[var(--neon-green)]/40' }
+                            ].map(preset => (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => {
+                                  playGlitchClickSound();
+                                  setStoryGradientPreset(preset.id);
+                                }}
+                                className={`w-8 h-8 rounded-full bg-gradient-to-tr ${preset.css} border-2 transition transform active:scale-95 ${
+                                  storyGradientPreset === preset.id ? 'border-white scale-110 shadow-lg' : 'border-zinc-900'
+                                }`}
+                                title={preset.id}
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
-                    </div>
-                  </div>
 
-                  {postCreatorType !== 'story' && (
-                    <div className="space-y-1.5">
-                      <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
-                        VIDEO LINK / INSTAGRAM REEL / YOUTUBE EMBED:
-                      </span>
-                      <input
-                        type="url"
-                        value={postVideo}
-                        onChange={(e) => setPostVideo(e.target.value)}
-                        placeholder="Paste Instagram Reel/Post, YouTube link, or raw MP4 URL..."
-                        className="w-full bg-black border border-zinc-900 rounded-xl p-3.5 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
-                      />
-                      <p className="text-[7.5px] text-zinc-500 font-mono leading-relaxed uppercase">
-                        Supports full embedded in-feed playback for Instagram reels, YouTube videos, and direct video clips.
-                      </p>
-                    </div>
+                      {/* Image story uploader */}
+                      {storyType === 'image' && (
+                        <div className="space-y-1.5 animate-fade-in">
+                          <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
+                            ATTACH IMAGE (DIRECT FILE UPLOAD):
+                          </span>
+                          <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  try {
+                                    const compressed = await compressImage(file, 800, 800, 0.65);
+                                    setStoryImg(compressed);
+                                  } catch (err) {
+                                    console.warn("Failed to compress image, falling back to original:", err);
+                                    const reader = new FileReader();
+                                    reader.onload = (uploadEvent) => {
+                                      setStoryImg(uploadEvent.target?.result as string);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                            />
+                            {storyImg ? (
+                              <div className="space-y-2 relative z-20">
+                                <img
+                                  src={storyImg}
+                                  alt="Story preview"
+                                  className="max-h-24 mx-auto rounded-lg object-cover border border-zinc-800"
+                                />
+                                <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
+                                  ✓ Image Ready for Deployment
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setStoryImg('');
+                                  }}
+                                  className="text-[9px] text-red-500 hover:underline font-mono uppercase font-black"
+                                >
+                                  [ Remove Image ]
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <Upload className="w-5 h-5 text-zinc-500 mx-auto mb-1 animate-bounce" />
+                                <p className="text-[10px] text-zinc-300 font-mono font-bold uppercase">
+                                  Click or drag file to upload
+                                </p>
+                                <p className="text-[8px] text-zinc-600 font-mono">
+                                  PNG, JPG, GIF up to 5MB (Base64 secured)
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Video story uploader */}
+                      {storyType === 'video' && (
+                        <div className="space-y-1.5 animate-fade-in">
+                          <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
+                            ATTACH VIDEO (DIRECT FILE UPLOAD):
+                          </span>
+                          <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                            <input
+                              type="file"
+                              accept="video/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 8 * 1024 * 1024) {
+                                    showBrutalistToast('MAX SIZE EXCEEDED', 'Video exceeds size limit (8MB maximum).', 'error');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onload = (uploadEvent) => {
+                                    setStoryVideo(uploadEvent.target?.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                            />
+                            {storyVideo ? (
+                              <div className="space-y-2 relative z-20 w-full">
+                                <video
+                                  src={storyVideo}
+                                  className="max-h-24 mx-auto rounded-lg object-contain border border-zinc-800"
+                                  controls
+                                />
+                                <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
+                                  ✓ Video Stream Ready
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setStoryVideo('');
+                                  }}
+                                  className="text-[9px] text-red-500 hover:underline font-mono uppercase font-black"
+                                >
+                                  [ Remove Video ]
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <Upload className="w-5 h-5 text-zinc-500 mx-auto mb-1 animate-bounce" />
+                                <p className="text-[10px] text-zinc-300 font-mono font-bold uppercase">
+                                  Click to upload video stream
+                                </p>
+                                <p className="text-[8px] text-zinc-600 font-mono">
+                                  MP4, WebM up to 8MB (Base64 encoded)
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Audio story uploader with track details */}
+                      {storyType === 'audio' && (
+                        <div className="space-y-3.5 animate-fade-in">
+                          <div className="space-y-1.5">
+                            <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
+                              ATTACH AUDIO / SOUNDTRACK (DIRECT FILE UPLOAD):
+                            </span>
+                            <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    if (file.size > 8 * 1024 * 1024) {
+                                      showBrutalistToast('MAX SIZE EXCEEDED', 'Audio track exceeds size limit (8MB maximum).', 'error');
+                                      return;
+                                    }
+                                    const reader = new FileReader();
+                                    reader.onload = (uploadEvent) => {
+                                      setStoryAudio(uploadEvent.target?.result as string);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                              />
+                              {storyAudio ? (
+                                <div className="space-y-2 relative z-20 w-full">
+                                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                      <Volume2 className="w-4 h-4 text-[var(--neon-green)]" />
+                                      <span className="text-[10px] font-mono text-zinc-300 truncate max-w-[150px]">Sound Track Attached</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setStoryAudio('');
+                                      }}
+                                      className="text-[9px] text-red-500 hover:underline font-mono uppercase font-black"
+                                    >
+                                      [ Remove ]
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <Music className="w-5 h-5 text-zinc-500 mx-auto mb-1 animate-pulse" />
+                                  <p className="text-[10px] text-zinc-300 font-mono font-bold uppercase">
+                                    Click to upload audio track
+                                  </p>
+                                  <p className="text-[8px] text-zinc-600 font-mono">
+                                    MP3, WAV, M4A up to 8MB
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">Track Title:</span>
+                              <input
+                                type="text"
+                                value={storyMusicTitle}
+                                onChange={(e) => setStoryMusicTitle(e.target.value)}
+                                placeholder="E.g., Virtual Synth"
+                                className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">Artist Name:</span>
+                              <input
+                                type="text"
+                                value={storyMusicArtist}
+                                onChange={(e) => setStoryMusicArtist(e.target.value)}
+                                placeholder="E.g., Faratech Labs"
+                                className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Social post attachment */}
+                      <div className="space-y-1.5">
+                        <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
+                          ATTACH IMAGE (DIRECT FILE UPLOAD):
+                        </span>
+                        <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                try {
+                                  const compressed = await compressImage(file, 800, 800, 0.65);
+                                  setPostImage(compressed);
+                                } catch (err) {
+                                  console.warn("Failed to compress image, falling back to original:", err);
+                                  const reader = new FileReader();
+                                  reader.onload = (uploadEvent) => {
+                                    setPostImage(uploadEvent.target?.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                          />
+                          {postImage ? (
+                            <div className="space-y-2 relative z-20">
+                              <img
+                                src={postImage}
+                                alt="Direct upload preview"
+                                className="max-h-24 mx-auto rounded-lg object-cover border border-zinc-800"
+                              />
+                              <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
+                                ✓ Image Ready for Deployment
+                              </p>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPostImage('');
+                                }}
+                                className="text-[9px] text-red-500 hover:underline font-mono uppercase font-black"
+                              >
+                                [ Remove Image ]
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <Upload className="w-5 h-5 text-zinc-500 mx-auto mb-1 animate-bounce" />
+                              <p className="text-[10px] text-zinc-300 font-mono font-bold uppercase">
+                                Click or drag file to upload
+                              </p>
+                              <p className="text-[8px] text-zinc-600 font-mono">
+                                PNG, JPG, GIF up to 5MB (Base64 secured)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
+                          VIDEO LINK / INSTAGRAM REEL / YOUTUBE EMBED:
+                        </span>
+                        <input
+                          type="url"
+                          value={postVideo}
+                          onChange={(e) => setPostVideo(e.target.value)}
+                          placeholder="Paste Instagram Reel/Post, YouTube link, or raw MP4 URL..."
+                          className="w-full bg-black border border-zinc-900 rounded-xl p-3.5 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                        />
+                        <p className="text-[7.5px] text-zinc-500 font-mono leading-relaxed uppercase">
+                          Supports full embedded in-feed playback for Instagram reels, YouTube videos, and direct video clips.
+                        </p>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>

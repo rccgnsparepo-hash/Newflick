@@ -70,10 +70,15 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      zoomFactor: 1.0, // Fixed default zoom factor
     },
     autoHideMenuBar: true,
+    frame: true,
   });
 
+  // Strip Menu Bar completely
+  mainWindow.setMenu(null);
+  
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
 
   mainWindow.once('ready-to-show', () => {
@@ -88,6 +93,55 @@ function createWindow() {
       // Check for updates
       autoUpdater.checkForUpdatesAndNotify();
     }, 6000);
+  });
+
+  // Lock down Zoom Limits when loading completes
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
+  });
+
+  // Block DevTools from opening
+  mainWindow.webContents.on('devtools-opened', () => {
+    mainWindow.webContents.closeDevTools();
+  });
+
+  // Prevent browser-like navigation (Ctrl+R, F5, zoom, DevTools) via before-input-event
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const key = input.key.toLowerCase();
+    
+    // Zoom combinations
+    if (input.control || input.meta) {
+      if (key === '=' || key === '+' || key === '-' || key === '0') {
+        event.preventDefault();
+      }
+    }
+    
+    // DevTools combinations (F12, Ctrl+Shift+I, Cmd+Alt+I)
+    if (key === 'f12' || 
+        (input.control && input.shift && key === 'i') || 
+        (input.meta && input.alt && key === 'i')) {
+      event.preventDefault();
+    }
+    
+    // Reload combinations (F5, Ctrl+R, Cmd+R)
+    if (key === 'f5' || 
+        (input.control && key === 'r') || 
+        (input.meta && key === 'r')) {
+      event.preventDefault();
+    }
+  });
+
+  // Prevent unauthorized in-app navigation and open external links in system browser
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file://') && !url.includes('localhost')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 
   mainWindow.on('close', (event) => {
@@ -170,6 +224,7 @@ function showAboutDialog() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   createSplash();
   createWindow();
   createTray();

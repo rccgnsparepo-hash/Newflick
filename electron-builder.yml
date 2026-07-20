@@ -1,0 +1,23 @@
+appId: com.faratech.flick
+productName: Flick
+compression: maximum
+directories:
+  output: release
+publish:
+  provider: github
+  releaseType: release
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+win:
+  target: nsis
+  icon: public/icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Flick
+  artifactName: Flick-Setup-${version}.${ext}
