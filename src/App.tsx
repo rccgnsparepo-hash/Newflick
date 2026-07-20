@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ConnectivityProvider, useConnectivity } from './contexts/ConnectivityContext';
 import { OperationProvider } from './contexts/OperationContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { useScrollLock } from './hooks/useScrollLock';
 import AuthScreen from './components/AuthScreen';
 import ChatSection from './components/ChatSection';
 import FeedSection from './components/FeedSection';
@@ -13,6 +15,8 @@ import ProfileSettingsModal from './components/ProfileSettingsModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import HorizontalTicker from './components/HorizontalTicker';
 import UserProfileModal from './components/UserProfileModal';
+import LiveNewsScheduler from './components/LiveNewsScheduler';
+import BrutalistNotificationBanner from './components/BrutalistNotificationBanner';
 import CallOverlay from './components/CallOverlay';
 import { isFirebaseConfigured, firebaseInitError } from './lib/firebase';
 import FirebaseSetupGuide from './components/FirebaseSetupGuide';
@@ -99,6 +103,18 @@ function Dashboard() {
   }, []);
 
   const [ongoingCall, setOngoingCall] = React.useState<any | null>(null);
+
+  // Programmatically lock scrolling when any overlay/modal/sheet is open, preserving vertical scroll offsets
+  const isAnyOverlayOpen = 
+    isSettingsOpen || 
+    isFeedbackOpen || 
+    isShortcutsOpen || 
+    viewedProfileId !== null || 
+    showOnboarding || 
+    isTourOpen || 
+    ongoingCall !== null;
+
+  useScrollLock(isAnyOverlayOpen);
 
   React.useEffect(() => {
     // Handle Electron Deeplinks and Tray actions
@@ -1324,22 +1340,28 @@ function Dashboard() {
           </motion.div>
         </AnimatePresence>
       )}
+
+      {/* Unified background news and notification overlays */}
+      <LiveNewsScheduler />
+      <BrutalistNotificationBanner />
     </div>
   );
 }
 
 export default function App() {
   return (
-    <ConnectivityProvider>
-      <AuthProvider>
-        <OperationProvider>
-          <NotificationProvider>
-            <CustomNavigationProvider>
-              <Dashboard />
-            </CustomNavigationProvider>
-          </NotificationProvider>
-        </OperationProvider>
-      </AuthProvider>
-    </ConnectivityProvider>
+    <ThemeProvider>
+      <ConnectivityProvider>
+        <AuthProvider>
+          <OperationProvider>
+            <NotificationProvider>
+              <CustomNavigationProvider>
+                <Dashboard />
+              </CustomNavigationProvider>
+            </NotificationProvider>
+          </OperationProvider>
+        </AuthProvider>
+      </ConnectivityProvider>
+    </ThemeProvider>
   );
 }

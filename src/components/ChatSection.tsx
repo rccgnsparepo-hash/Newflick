@@ -43,6 +43,7 @@ import {
 import { compressImage, fileToBase64, getMediaTypeFromMime } from '../lib/mediaHelper';
 import { motion, AnimatePresence } from 'motion/react';
 import { showBrutalistToast } from '../lib/toast';
+import { useThemeListener } from '../contexts/ThemeContext';
 import { TheFatherOrb } from './TheFatherOrb';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
 import { queueOfflineMessage, syncOfflineMessages } from '../lib/offlineQueue';
@@ -927,6 +928,7 @@ export default function ChatSection({
 } = {}) {
   const { profile, localPrivateKey, unlockE2EEKeysWithPassword, regenerateE2EEKeys: authRegenerateE2EEKeys } = useAuth();
   const operations = useOperations();
+  useThemeListener();
 
   // Custom brutalist theme accent variables and chat settings panel
   const [chatAccentTheme, setChatAccentTheme] = useState<string>('cyber-poison');
@@ -1744,6 +1746,7 @@ export default function ChatSection({
     type: 'image' | 'video' | 'audio';
     name: string;
   } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // reply quote parameters state
   const [replyQuote, setReplyQuote] = useState<{
@@ -2389,10 +2392,7 @@ export default function ChatSection({
   };
 
   // Custom File Attachments processor
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFileAttachment = async (file: File) => {
     setError(null);
     try {
       const isImg = file.type.startsWith('image/');
@@ -2417,6 +2417,47 @@ export default function ChatSection({
       playLikeSound();
     } catch (err) {
       setError("Asset parser failed to decode base64 file buffer.");
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFileAttachment(file);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/') || item.type.startsWith('video/') || item.type.startsWith('audio/')) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          await processFileAttachment(file);
+          break;
+        }
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      await processFileAttachment(file);
     }
   };
 
@@ -4383,9 +4424,9 @@ export default function ChatSection({
                           >
                           <div className={`p-3 max-w-sm border ${
                             isMe 
-                              ? 'bg-[#0a0a0a] text-zinc-100 border-[var(--neon-green)]/35 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)]' 
-                              : 'bg-[#101010] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.05)]'
-                            } space-y-1 relative`}
+                              ? 'bg-[#0a0a0a] text-zinc-100 border-[var(--neon-green)]/35 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)] theme-chat-bubble-me' 
+                              : 'bg-[#101010] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.05)] theme-chat-bubble-peer'
+                            } theme-chat-bubble space-y-1 relative`}
                           >
                             {/* Burning timer header (suppress if grouped to save space) */}
                             {secondsRemaining !== null && !isGrouped && (
@@ -5296,7 +5337,23 @@ export default function ChatSection({
             </AnimatePresence>
 
             {/* Broadcast Form Input Box */}
-            <form onSubmit={handleSendMessage} className="p-3.5 bg-[#090909] border-t border-[var(--neon-green)]/15 space-y-3 flex-shrink-0 font-mono">
+            <form 
+              onSubmit={handleSendMessage} 
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`p-3.5 bg-[#090909] border-t transition-all duration-200 ${
+                isDragging 
+                  ? 'border-[var(--neon-green)] bg-zinc-950 ring-2 ring-[var(--neon-green)]/30 scale-[1.01]' 
+                  : 'border-[var(--neon-green)]/15'
+              } space-y-3 flex-shrink-0 font-mono relative`}
+            >
+              {isDragging && (
+                <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-[10px] text-[var(--neon-green)] font-bold uppercase tracking-widest border-2 border-dashed border-[var(--neon-green)] z-30 space-y-1">
+                  <span>⚡ DROP FILE TO SECURELY ATTACH ⚡</span>
+                  <span className="text-zinc-500 text-[8px] font-mono font-normal">Supports Images, Audio and Video</span>
+                </div>
+              )}
               
               {/* Voice Attachment preview list if chosen */}
               {selectedAttachment && (
@@ -5600,6 +5657,7 @@ export default function ChatSection({
                     setText(e.target.value);
                     handleTypingPulse();
                   }}
+                  onPaste={handlePaste}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const sendShortcutSetting = localStorage.getItem('flick_send_shortcut') || 'enter';

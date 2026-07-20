@@ -23,6 +23,14 @@
       "package.json",
       "node_modules/**/*"
     ],
+    "fileAssociations": [
+      {
+        "ext": "flick",
+        "name": "Flick Encrypted Transmission File",
+        "role": "Viewer",
+        "icon": "public/icon.png"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/icon.png"

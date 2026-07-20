@@ -293,5 +293,274 @@ body:has(.global-overlay) {
   color: #f43f5e;
 }
 
+/* ==========================================================================
+   DYNAMIC THEME ENGINE STYLES (9 Interchangeable Design Systems)
+   ========================================================================== */
+
+:root {
+  --theme-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base resets & dynamic background/text propagation */
+body {
+  background-color: var(--color-background) !important;
+  color: var(--color-text) !important;
+  transition: var(--theme-transition);
+}
+
+/* 1. Global Custom Card Override */
+.brutalist-card, .brutalist-card-green, .theme-card {
+  background-color: var(--color-surface) !important;
+  border: var(--border-width-card) solid var(--neon-green) !important;
+  border-radius: var(--border-radius-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(var(--backdrop-blur-card)) !important;
+  transition: var(--theme-transition) !important;
+}
+
+/* 2. Global Custom Button Override */
+.brutalist-button-green, .morphic-btn-red, .theme-button {
+  background-color: var(--color-primary) !important;
+  color: #000000 !important;
+  border: var(--border-width-button, 2px) solid #000000 !important;
+  border-radius: var(--border-radius-button) !important;
+  box-shadow: var(--shadow-button) !important;
+  transition: var(--theme-transition) !important;
+}
+
+[data-color-scheme="light"] .brutalist-button-green,
+[data-color-scheme="light"] .theme-button {
+  color: #1a1a1a !important;
+}
+
+/* 3. Global Custom Input Override */
+.glass-input, .theme-input {
+  background-color: var(--color-surface) !important;
+  border: var(--border-width-card) solid var(--neon-green-border) !important;
+  border-radius: var(--border-radius-button) !important;
+  color: var(--color-text) !important;
+  backdrop-filter: blur(var(--backdrop-blur-card)) !important;
+  transition: var(--theme-transition) !important;
+}
+
+.glass-input:focus, .theme-input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 10px var(--neon-green-glow) !important;
+  outline: none !important;
+}
+
+/* 4. Global Custom Chat Bubble Override */
+.theme-chat-bubble, .theme-chat-bubble-me, .theme-chat-bubble-peer {
+  border-radius: var(--border-radius-card);
+  backdrop-filter: blur(var(--backdrop-blur-card));
+  transition: var(--theme-transition);
+}
+
+[data-theme="neumorphism"] .theme-chat-bubble-me {
+  background: var(--color-background) !important;
+  box-shadow: inset 4px 4px 8px #101114, inset -4px -4px 8px #272a31 !important;
+  border: none !important;
+}
+[data-theme="neumorphism"] .theme-chat-bubble-peer {
+  background: var(--color-background) !important;
+  box-shadow: 4px 4px 8px #101114, -4px -4px 8px #272a31 !important;
+  border: none !important;
+}
+
+[data-theme="claymorphism"] .theme-chat-bubble-me {
+  border-radius: 24px !important;
+  background-color: rgba(var(--neon-green-rgb), 0.2) !important;
+  box-shadow: inset -4px -4px 8px rgba(0,0,0,0.2), inset 4px 4px 8px rgba(255,255,255,0.1) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
+[data-theme="claymorphism"] .theme-chat-bubble-peer {
+  border-radius: 24px !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: inset -4px -4px 8px rgba(0,0,0,0.2), inset 4px 4px 8px rgba(255,255,255,0.1) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+[data-theme="glassmorphism"] .theme-chat-bubble-me {
+  background: rgba(var(--neon-green-rgb), 0.15) !important;
+  border: 1px solid rgba(var(--neon-green-rgb), 0.25) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+[data-theme="glassmorphism"] .theme-chat-bubble-peer {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+[data-theme="minimalism"] .theme-chat-bubble-me,
+[data-theme="minimalism"] .theme-chat-bubble-peer {
+  border-radius: 4px !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="materialyou"] .theme-chat-bubble-me {
+  border-radius: 20px 20px 4px 20px !important;
+  background-color: rgba(var(--neon-green-rgb), 0.18) !important;
+  border: none !important;
+}
+[data-theme="materialyou"] .theme-chat-bubble-peer {
+  border-radius: 20px 20px 20px 4px !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: none !important;
+}
+
+[data-theme="fluent"] .theme-chat-bubble-me {
+  border-radius: 6px !important;
+  background: rgba(var(--neon-green-rgb), 0.2) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+[data-theme="fluent"] .theme-chat-bubble-peer {
+  border-radius: 6px !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+[data-theme="softui"] .theme-chat-bubble-me {
+  border-radius: 14px !important;
+  background-color: var(--color-primary) !important;
+  color: #000000 !important;
+  box-shadow: 0px 4px 10px rgba(var(--neon-green-rgb), 0.2) !important;
+}
+[data-theme="softui"] .theme-chat-bubble-peer {
+  border-radius: 14px !important;
+  background-color: var(--color-surface) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+/* Scrollbar theme adjustments */
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary) !important;
+  border-radius: var(--border-radius-button) !important;
+}
+
+/* Light Mode Overrides for Specific Themes */
+[data-color-scheme="light"] {
+  --color-text: #1c1917;
+  --color-background: #f4f4f5;
+  --color-surface: #ffffff;
+}
+
+[data-theme="neumorphism"][data-color-scheme="light"] {
+  --color-background: #e0e2e6;
+  --color-surface: #e0e2e6;
+}
+[data-theme="claymorphism"][data-color-scheme="light"] {
+  --color-background: #f0f4f8;
+  --color-surface: #ffffff;
+}
+
+/* ==========================================================================
+   TAILWIND UTILITY OVERRIDES FOR LIVE INTERCHANGEABLE AESTHETICS
+   ========================================================================== */
+
+/* Background / Container overrides */
+body,
+.bg-\[\#050505\],
+.bg-zinc-950,
+.bg-black {
+  background-color: var(--color-background) !important;
+  transition: var(--theme-transition);
+}
+
+/* Header bar blur and styling */
+header.bg-\[\#050505\]\/85,
+.bg-\[\#050505\]\/85 {
+  background-color: var(--color-background) !important;
+  opacity: 0.95 !important;
+  backdrop-filter: blur(var(--backdrop-blur-card, 16px)) !important;
+  border-bottom-color: var(--neon-green-border) !important;
+}
+
+/* Sub-containers & cards */
+.bg-\[\#0c0c0c\],
+.bg-\[\#0d0d0d\],
+.bg-zinc-900,
+.bg-zinc-950\/40,
+.bg-zinc-950\/30,
+.bg-\[\#0a0a0a\],
+.bg-\[\#121212\]\/90,
+.bg-black\/60,
+.bg-black\/80 {
+  background-color: var(--color-surface) !important;
+  border-radius: var(--border-radius-card) !important;
+  border-color: var(--neon-green-border) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(var(--backdrop-blur-card)) !important;
+  transition: var(--theme-transition);
+}
+
+/* Text color overrides */
+.text-\[\#f4f4f5\],
+.text-zinc-100,
+.text-white {
+  color: var(--color-text) !important;
+}
+
+.text-zinc-400,
+.text-zinc-300 {
+  color: var(--color-text) !important;
+  opacity: 0.8 !important;
+}
+
+/* Input Fields */
+input,
+textarea,
+.glass-input,
+.bg-zinc-950.border-zinc-800 {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-radius: var(--border-radius-button) !important;
+  border-color: var(--neon-green-border) !important;
+  box-shadow: var(--shadow-button) !important;
+}
+
+/* Border overrides */
+.border-\[var\(--neon-green\)\],
+.border-\[var\(--neon-green\)\]\/20,
+.border-\[var\(--neon-green\)\]\/30,
+.border-\[var\(--neon-green\)\]\/35,
+.border-\[var\(--neon-green\)\]\/40,
+.border-\[var\(--neon-green\)\]\/70,
+.border-zinc-800,
+.border-zinc-90 {
+  border-color: var(--neon-green-border) !important;
+  border-width: var(--border-width-card) !important;
+  border-radius: var(--border-radius-card) !important;
+}
+
+/* Buttons overrides */
+button.brutalist-button-green,
+.brutalist-button-green,
+button.px-3.py-2.border {
+  background-color: var(--color-primary) !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+  border-radius: var(--border-radius-button) !important;
+  box-shadow: var(--shadow-button) !important;
+  border-width: var(--border-width-button, 2px) !important;
+}
+
+[data-color-scheme="light"] button.brutalist-button-green,
+[data-color-scheme="light"] .brutalist-button-green {
+  color: #1a1a1a !important;
+}
+
+/* Layout rounding overrides */
+.rounded-none,
+.rounded-sm,
+.rounded-md,
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl {
+  border-radius: var(--border-radius-card) !important;
+}
+
+
+
 
 

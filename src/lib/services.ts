@@ -1243,6 +1243,15 @@ export async function viewStory(storyId: string, userId: string): Promise<void> 
   }
 }
 
+export async function deleteStory(storyId: string): Promise<void> {
+  const path = `stories/${storyId}`;
+  try {
+    await deleteDoc(doc(db, 'stories', storyId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
 /**
  * Mark a specific message as read in real-time
  */

@@ -17,6 +17,7 @@ import {
   subscribeToFeed,
   createStory,
   subscribeToStories,
+  deleteStory,
   viewStory,
   createGroupChat,
   subscribeToUsers,
@@ -74,6 +75,7 @@ import { showBrutalistToast } from '../lib/toast';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
 import ThreeSlidesPhysics from './ThreeSlidesPhysics';
 import BentoProfile from './BentoProfile';
+import { useThemeListener } from '../contexts/ThemeContext';
 
 export interface FeedSectionProps {
   activeTab?: 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace';
@@ -96,6 +98,7 @@ export default function FeedSection({
 }: FeedSectionProps = {}) {
   const { profile } = useAuth();
   const operations = useOperations();
+  useThemeListener();
   
   // Custom states
   const [localActiveTab, localSetActiveTab] = useState<'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace'>('home');
@@ -283,6 +286,17 @@ export default function FeedSection({
     const unsubStories = subscribeToStories((loaded) => {
       setStories(loaded);
       setIsStoriesLoading(false);
+      
+      // Auto-purge expired stories (older than 24h or invalid/corrupted ones) from the database in real-time
+      loaded.forEach(s => {
+        if (!s.id.startsWith('st-') && s.authorId !== 'flick-hq') {
+          const ageMs = getStoryAgeInMs(s);
+          if (ageMs > 24 * 60 * 60 * 1000) {
+            console.log("Auto-purging expired/invalid story:", s.id, "age hours:", ageMs / 3600000);
+            deleteStory(s.id).catch(err => console.warn("Failed to auto-purge story:", s.id, err));
+          }
+        }
+      });
     }, (err) => {
       console.warn("Stories sync warning:", err);
       setIsStoriesLoading(false);
@@ -781,9 +795,33 @@ export default function FeedSection({
     }
   ];
 
+  const getStoryAgeInMs = (s: any) => {
+    if (!s) return 24 * 60 * 60 * 1000 + 1000; // expired
+    if (s.id?.startsWith('st-') || s.authorId === 'flick-hq') return 0; // default never expires
+    if (!s.createdAt) {
+      if (profile && s.authorId === profile.uid) {
+        return 0; // freshly created by me
+      }
+      return 24 * 60 * 60 * 1000 + 1000; // missing and not me -> expired
+    }
+    const createdTime = s.createdAt.seconds 
+      ? s.createdAt.seconds * 1000 
+      : (s.createdAt instanceof Date ? s.createdAt.getTime() : new Date(s.createdAt).getTime());
+    return createdTime ? (Date.now() - createdTime) : (24 * 60 * 60 * 1000 + 1000);
+  };
+
   const getStoriesList = () => {
     const list = stories.length > 0 ? stories : defaultStories;
     return list.filter(s => {
+      // Filter out any story that is older than 24 hours (86400000 ms)
+      // Except newly created ones (ageMs === 0)
+      if (!s.id.startsWith('st-') && s.authorId !== 'flick-hq') {
+        const ageMs = getStoryAgeInMs(s);
+        if (ageMs > 24 * 60 * 60 * 1000) {
+          return false;
+        }
+      }
+      
       if (s.id.startsWith('st-') || s.authorId === 'flick-hq') return true;
       if (profile && s.authorId === profile.uid) return true;
       return registeredUsers.some(u => u.uid === s.authorId);
@@ -797,7 +835,7 @@ export default function FeedSection({
     stories: Story[];
   }
 
-  // Group stories by their author ID (like Instagram story circles)
+  // Group stories by their author ID (like Instagram story circles) without unstable duplicates
   const getGroupedStories = (): StoryGroup[] => {
     const rawStories = getStoriesList();
     const groupsMap: Record<string, StoryGroup> = {};
@@ -824,17 +862,35 @@ export default function FeedSection({
       });
     });
 
-    // Sort groups so current user is always first, then flick-hq, then latest stories first
-    return Object.values(groupsMap).sort((a, b) => {
-      if (profile && a.authorId === profile.uid) return -1;
-      if (profile && b.authorId === profile.uid) return 1;
-      if (a.authorId === 'flick-hq') return -1;
-      if (b.authorId === 'flick-hq') return 1;
-      
-      const latestA = Math.max(...a.stories.map(s => s.createdAt?.seconds || (s.createdAt instanceof Date ? s.createdAt.getTime() : 0)));
-      const latestB = Math.max(...b.stories.map(s => s.createdAt?.seconds || (s.createdAt instanceof Date ? s.createdAt.getTime() : 0)));
+    // Sort groups deterministically: Current user is always first, then flick-hq, then rest sorted by newest story
+    const allGroups = Object.values(groupsMap);
+    const currentUserGroup = profile ? allGroups.find(g => g.authorId === profile.uid) : undefined;
+    const flickHqGroup = allGroups.find(g => g.authorId === 'flick-hq');
+    
+    const remainingGroups = allGroups.filter(g => {
+      if (profile && g.authorId === profile.uid) return false;
+      if (g.authorId === 'flick-hq') return false;
+      return true;
+    });
+
+    remainingGroups.sort((a, b) => {
+      const latestA = Math.max(...a.stories.map(s => {
+        if (!s.createdAt) return 0;
+        return s.createdAt.seconds ? s.createdAt.seconds * 1000 : (s.createdAt instanceof Date ? s.createdAt.getTime() : new Date(s.createdAt).getTime());
+      }));
+      const latestB = Math.max(...b.stories.map(s => {
+        if (!s.createdAt) return 0;
+        return s.createdAt.seconds ? s.createdAt.seconds * 1000 : (s.createdAt instanceof Date ? s.createdAt.getTime() : new Date(s.createdAt).getTime());
+      }));
       return latestB - latestA;
     });
+
+    const sortedResult: StoryGroup[] = [];
+    if (currentUserGroup) sortedResult.push(currentUserGroup);
+    if (flickHqGroup) sortedResult.push(flickHqGroup);
+    sortedResult.push(...remainingGroups);
+
+    return sortedResult;
   };
 
   // Open a specific user story group circle
@@ -1442,54 +1498,94 @@ export default function FeedSection({
                   </div>
                   
                   <div className="flex space-x-4 overflow-x-auto pb-1 scrollbar-none select-none">
-                    {/* Add own story bubble */}
-                    <div className="flex flex-col items-center space-y-1.5 shrink-0">
-                      <button
-                        onClick={() => {
-                          playGlitchClickSound();
-                          setPostCreatorType('story');
-                          setShowPostCreator(true);
-                        }}
-                        className="w-13 h-13 rounded-full bg-zinc-950 border-2 border-dashed border-zinc-800 hover:border-[var(--neon-green)] flex items-center justify-center transition-all group relative cursor-pointer"
-                      >
-                        {profile?.photoURL ? (
-                          <img src={profile.photoURL} alt="" className="w-11 h-11 rounded-full object-cover opacity-60 group-hover:opacity-100 transition" />
-                        ) : (
-                          <span className="text-xs text-zinc-500">+</span>
-                        )}
-                        <span className="absolute bottom-0 right-0 bg-[var(--neon-green)] text-black rounded-full p-0.5 border border-black group-hover:scale-110 transition">
-                          <Plus className="w-3 h-3 font-bold" />
-                        </span>
-                      </button>
-                      <span className="text-[8.5px] font-mono text-zinc-500 max-w-[55px] truncate">My Story</span>
-                    </div>
-
-                    {/* Render existing active stories grouped by user */}
-                    {getGroupedStories().map((group) => {
-                      const allViewed = group.stories.every(s => storyViewedList[s.id] || false);
-                      const authorFirstName = (group.authorName || 'Anonymous').split(' ')[0];
+                    {/* Add/View own story bubble */}
+                    {(() => {
+                      const allGroups = getGroupedStories();
+                      const currentUserGroup = profile ? allGroups.find(g => g.authorId === profile.uid) : null;
+                      const ownStoriesViewed = currentUserGroup ? currentUserGroup.stories.every(s => storyViewedList[s.id] || false) : true;
+                      
                       return (
-                        <div key={group.authorId} className="flex flex-col items-center space-y-1.5 shrink-0">
-                          <button
-                            onClick={() => handleOpenStoryGroup(group.authorId)}
-                            className={`w-13 h-13 rounded-full p-0.5 flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
-                              allViewed 
-                                ? 'bg-zinc-800' 
-                                : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse'
-                            }`}
-                          >
-                            <div className="w-full h-full rounded-full bg-black p-[1.5px] flex items-center justify-center">
-                              <img 
-                                src={group.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
-                                alt={group.authorName} 
-                                className="w-full h-full rounded-full object-cover border border-zinc-950" 
-                              />
-                            </div>
-                          </button>
-                          <span className="text-[8.5px] font-mono text-zinc-400 max-w-[55px] truncate uppercase">{authorFirstName}</span>
+                        <div className="flex flex-col items-center space-y-1.5 shrink-0">
+                          <div className="relative group">
+                            <button
+                              onClick={() => {
+                                playGlitchClickSound();
+                                if (currentUserGroup && profile) {
+                                  handleOpenStoryGroup(profile.uid);
+                                } else {
+                                  setPostCreatorType('story');
+                                  setShowPostCreator(true);
+                                }
+                              }}
+                              className={`w-13 h-13 rounded-full flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
+                                currentUserGroup 
+                                  ? (ownStoriesViewed 
+                                      ? 'bg-zinc-800 p-0.5' 
+                                      : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse p-0.5')
+                                  : 'bg-zinc-950 border-2 border-dashed border-zinc-800 hover:border-[var(--neon-green)] p-0'
+                              }`}
+                            >
+                              <div className={`w-full h-full rounded-full bg-black flex items-center justify-center ${currentUserGroup ? 'p-[1.5px]' : 'p-0'}`}>
+                                {profile?.photoURL ? (
+                                  <img 
+                                    src={profile.photoURL} 
+                                    alt="My Avatar" 
+                                    className={`w-full h-full rounded-full object-cover transition ${currentUserGroup ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`} 
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <span className="text-xs text-zinc-500 font-bold">+</span>
+                                )}
+                              </div>
+                            </button>
+                            
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playGlitchClickSound();
+                                setPostCreatorType('story');
+                                setShowPostCreator(true);
+                              }}
+                              className="absolute bottom-0 right-0 bg-[var(--neon-green)] text-black rounded-full p-0.5 border border-black hover:scale-110 transition cursor-pointer shadow-lg z-10"
+                              title="Add Story"
+                            >
+                              <Plus className="w-3 h-3 font-bold" />
+                            </button>
+                          </div>
+                          <span className="text-[8.5px] font-mono text-zinc-500 max-w-[55px] truncate">My Story</span>
                         </div>
                       );
-                    })}
+                    })()}
+
+                    {/* Render existing active stories grouped by other users */}
+                    {getGroupedStories()
+                      .filter(group => !profile || group.authorId !== profile.uid)
+                      .map((group) => {
+                        const allViewed = group.stories.every(s => storyViewedList[s.id] || false);
+                        const authorFirstName = (group.authorName || 'Anonymous').split(' ')[0];
+                        return (
+                          <div key={group.authorId} className="flex flex-col items-center space-y-1.5 shrink-0">
+                            <button
+                              onClick={() => handleOpenStoryGroup(group.authorId)}
+                              className={`w-13 h-13 rounded-full p-0.5 flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
+                                allViewed 
+                                  ? 'bg-zinc-800' 
+                                  : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse'
+                              }`}
+                            >
+                              <div className="w-full h-full rounded-full bg-black p-[1.5px] flex items-center justify-center">
+                                <img 
+                                  src={group.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
+                                  alt={group.authorName} 
+                                  className="w-full h-full rounded-full object-cover border border-zinc-950" 
+                                  referrerPolicy="no-referrer"
+                                />
+                              </div>
+                            </button>
+                            <span className="text-[8.5px] font-mono text-zinc-400 max-w-[55px] truncate uppercase">{authorFirstName}</span>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
 
@@ -1555,41 +1651,56 @@ export default function FeedSection({
                   </div>
                 </div>
               ) : (
-                getMergedPosts().map((post, index) => {
-                const isLiked = false; // logic checks or toggles
-                const commentsCount = post.commentsCount || 0;
+                <div className="space-y-6">
+                  <AnimatePresence initial={false}>
+                    {getMergedPosts().flatMap((post, index) => {
+                      const commentsCount = post.commentsCount || 0;
+                      const cards = [];
 
-                return (
-                  <React.Fragment key={post.id || index}>
-                    
-                    {/* Inject Smart Recommendation Card every 3 posts */}
-                    {index > 0 && index % 2 === 0 && (
-                      <div className="p-5 border border-red-500/20 bg-zinc-950/85 rounded-2xl space-y-3 relative overflow-hidden shadow-xl animate-pulse-slow">
-                        <div className="absolute top-0 right-0 p-1 px-2.5 bg-red-600/15 text-[7px] text-red-400 font-black uppercase tracking-widest font-mono">
-                          CAMPUS RECOMMENDATION
-                        </div>
+                      // Inject Smart Recommendation Card every 3 posts
+                      if (index > 0 && index % 2 === 0) {
+                        cards.push(
+                          <motion.div
+                            key={`recommendation-${post.id || index}`}
+                            layout
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -30 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                            className="p-5 border border-red-500/20 bg-zinc-950/85 rounded-2xl space-y-3 relative overflow-hidden shadow-xl animate-pulse-slow"
+                          >
+                            <div className="absolute top-0 right-0 p-1 px-2.5 bg-red-600/15 text-[7px] text-red-400 font-black uppercase tracking-widest font-mono">
+                              CAMPUS RECOMMENDATION
+                            </div>
 
-                        <div className="space-y-2">
-                          <span className="text-[8px] font-mono text-rose-400 font-bold block uppercase">⏱️ SCHOLASTIC countdown</span>
-                          <h4 className="text-sm font-black text-white font-mono uppercase">First Semester Exams</h4>
-                          <p className="text-[10px] text-zinc-400">Exams start in exactly 4 days. Connect with other students to study together!</p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
-                              className="w-full text-center py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-mono text-[9px] font-black uppercase rounded-lg transition shadow-md cursor-pointer"
-                            >
-                              Find study partner
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                            <div className="space-y-2">
+                              <span className="text-[8px] font-mono text-rose-400 font-bold block uppercase">⏱️ SCHOLASTIC countdown</span>
+                              <h4 className="text-sm font-black text-white font-mono uppercase">First Semester Exams</h4>
+                              <p className="text-[10px] text-zinc-400">Exams start in exactly 4 days. Connect with other students to study together!</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
+                                  className="w-full text-center py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-mono text-[9px] font-black uppercase rounded-lg transition shadow-md cursor-pointer font-sans"
+                                >
+                                  Find study partner
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      }
 
-                    {/* Standard Premium Post Card */}
-                    <div 
-                      className="morphic-frame rounded-2xl overflow-hidden relative transition-all duration-350 hover:scale-[1.015] hover:border-zinc-700/40"
-                      onDoubleClick={(e) => handleDoubleTapLike(post.id, e)}
-                    >
+                      cards.push(
+                        <motion.div 
+                          key={post.id || `post-${index}`}
+                          layout
+                          initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -30 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                          className="morphic-frame rounded-2xl overflow-hidden relative transition-all duration-350 hover:scale-[1.015] hover:border-zinc-700/40"
+                          onDoubleClick={(e) => handleDoubleTapLike(post.id, e)}
+                        >
                       {/* Interactive Heart Burst Layer */}
                       <AnimatePresence>
                         {(heartBursts[post.id] || []).map(hb => (
@@ -1830,13 +1941,17 @@ export default function FeedSection({
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </React.Fragment>
-                );
-              }))}
+                    </motion.div>
+                  );
+
+                  return cards;
+                })}
+              </AnimatePresence>
             </div>
-              </>
-            )}
+          )}
+        </div>
+      </>
+    )}
           </div>
         )}
 
