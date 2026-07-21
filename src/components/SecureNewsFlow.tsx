@@ -251,6 +251,11 @@ export default function SecureNewsFlow() {
                 }
               });
               window.dispatchEvent(customEvent);
+
+              showPushNotification(
+                `⚡ BROADCAST ALERT: ${news.category}`,
+                news.title
+              );
             }
           }
         });

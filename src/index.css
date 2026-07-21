@@ -479,13 +479,27 @@ header.bg-\[\#050505\]\/85,
 /* Sub-containers & cards */
 .bg-\[\#0c0c0c\],
 .bg-\[\#0d0d0d\],
+.bg-\[\#070707\],
+.bg-\[\#080808\],
+.bg-\[\#090909\],
+.bg-\[\#0a0a0a\],
+.bg-\[\#0b0b0b\],
+.bg-\[\#101010\],
+.bg-\[\#111111\],
+.bg-\[\#111113\],
+.bg-\[\#121212\],
+.bg-\[\#121214\],
+.bg-\[\#131315\],
+.bg-\[\#141414\],
 .bg-zinc-900,
 .bg-zinc-950\/40,
 .bg-zinc-950\/30,
-.bg-\[\#0a0a0a\],
 .bg-\[\#121212\]\/90,
 .bg-black\/60,
-.bg-black\/80 {
+.bg-black\/80,
+.bg-black\/45,
+.bg-black\/70,
+.bg-black\/75 {
   background-color: var(--color-surface) !important;
   border-radius: var(--border-radius-card) !important;
   border-color: var(--neon-green-border) !important;
@@ -497,6 +511,7 @@ header.bg-\[\#050505\]\/85,
 /* Text color overrides */
 .text-\[\#f4f4f5\],
 .text-zinc-100,
+.text-zinc-200,
 .text-white {
   color: var(--color-text) !important;
 }
@@ -505,6 +520,12 @@ header.bg-\[\#050505\]\/85,
 .text-zinc-300 {
   color: var(--color-text) !important;
   opacity: 0.8 !important;
+}
+
+.text-zinc-500,
+.text-zinc-600 {
+  color: var(--color-text) !important;
+  opacity: 0.6 !important;
 }
 
 /* Input Fields */

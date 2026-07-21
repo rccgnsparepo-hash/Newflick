@@ -1,0 +1,21 @@
+[data-color-scheme="light"] [class*="bg-[#"],
+[data-color-scheme="light"] [class*="bg-black"],
+[data-color-scheme="light"] [class*="bg-zinc-9"],
+[data-color-scheme="light"] [class*="bg-zinc-8"],
+[data-color-scheme="light"] [class*="dark:bg-"] {
+  background-color: var(--color-surface) !important;
+}
+
+[data-color-scheme="light"] body,
+[data-color-scheme="light"] .bg-\[\#050505\] {
+  background-color: var(--color-background) !important;
+}
+
+[data-color-scheme="light"] [class*="text-[#"],
+[data-color-scheme="light"] [class*="text-zinc-1"],
+[data-color-scheme="light"] [class*="text-zinc-2"],
+[data-color-scheme="light"] [class*="text-zinc-3"],
+[data-color-scheme="light"] [class*="text-zinc-4"],
+[data-color-scheme="light"] [class*="text-white"] {
+  color: var(--color-text) !important;
+}
