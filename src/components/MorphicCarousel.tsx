@@ -115,7 +115,7 @@ export default function MorphicCarousel({ items, onSelect }: MorphicCarouselProp
       {/* Visual background rings to highlight Coverflow depth */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
         <div className="w-80 h-80 rounded-full border border-dashed border-red-500/40 animate-[spin_40s_linear_infinite]" />
-        <div className="w-[420px] h-[420px] rounded-full border border-zinc-800 absolute" />
+        <div className="w-[420px] h-[420px] rounded-full border border-[var(--neon-green-border)] absolute" />
       </div>
 
       {/* Main 3D Track */}
@@ -170,9 +170,9 @@ export default function MorphicCarousel({ items, onSelect }: MorphicCarouselProp
                   setActiveIndex(idx);
                 }
               }}
-              className={`w-44 h-56 bg-zinc-950 border ${isActive ? 'border-red-500/50 shadow-[0_0_24px_rgba(239,68,68,0.25)]' : 'border-zinc-850'} rounded-3xl p-3 flex flex-col justify-between overflow-hidden group`}
+              className={`w-44 h-56 bg-[var(--color-background)] border ${isActive ? 'border-red-500/50 shadow-[0_0_24px_rgba(239,68,68,0.25)]' : 'border-zinc-850'} rounded-3xl p-3 flex flex-col justify-between overflow-hidden group`}
             >
-              <div className="relative flex-1 overflow-hidden rounded-2xl border border-zinc-900 bg-black">
+              <div className="relative flex-1 overflow-hidden rounded-2xl border border-[var(--neon-green-border)] bg-[var(--color-surface)]">
                 <img 
                   src={item.img} 
                   alt={item.name} 
@@ -202,7 +202,7 @@ export default function MorphicCarousel({ items, onSelect }: MorphicCarouselProp
       <div className="flex items-center gap-6 mt-4">
         <button
           onClick={prevSlide}
-          className="p-2 border border-zinc-800 hover:border-red-500 hover:text-white rounded-xl text-zinc-500 transition cursor-pointer"
+          className="p-2 border border-[var(--neon-green-border)] hover:border-red-500 hover:text-[var(--color-text)] rounded-xl text-zinc-500 transition cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -219,7 +219,7 @@ export default function MorphicCarousel({ items, onSelect }: MorphicCarouselProp
 
         <button
           onClick={nextSlide}
-          className="p-2 border border-zinc-800 hover:border-red-500 hover:text-white rounded-xl text-zinc-500 transition cursor-pointer"
+          className="p-2 border border-[var(--neon-green-border)] hover:border-red-500 hover:text-[var(--color-text)] rounded-xl text-zinc-500 transition cursor-pointer"
         >
           <ChevronRight className="w-4 h-4" />
         </button>

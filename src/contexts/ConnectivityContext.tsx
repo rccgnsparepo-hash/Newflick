@@ -321,7 +321,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
               transition={{ type: 'spring', stiffness: 220, damping: 20 }}
               className="fixed top-0 left-0 right-0 z-100 flex justify-center p-3 sm:p-4 pointer-events-none select-none font-mono"
             >
-              <div className="pointer-events-auto bg-black/85 backdrop-blur-md border-2 border-red-500 rounded-none w-full max-w-xl p-3.5 flex items-center justify-between gap-4 [box-shadow:4px_4px_0px_#ef4444] shadow-black/80">
+              <div className="pointer-events-auto bg-[var(--color-surface)]/85 backdrop-blur-md border-2 border-red-500 rounded-none w-full max-w-xl p-3.5 flex items-center justify-between gap-4 [box-shadow:4px_4px_0px_#ef4444] shadow-black/80">
                 <div className="flex items-center space-x-3 text-red-500">
                   <div className="w-8 h-8 rounded-none border border-red-500/40 bg-red-950/20 flex items-center justify-center flex-shrink-0 animate-pulse">
                     <WifiOff className="w-4 h-4 text-red-500" />
@@ -362,7 +362,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
               transition={{ type: 'spring', stiffness: 220, damping: 22 }}
               className="fixed top-0 left-0 right-0 z-100 flex justify-center p-3 sm:p-4 pointer-events-none select-none font-mono"
             >
-              <div className="pointer-events-auto bg-black/85 backdrop-blur-md border-2 border-[var(--neon-green)] rounded-none w-full max-w-xl p-3.5 flex items-center justify-between gap-4 [box-shadow:4px_4px_0px_var(--neon-green)] shadow-black/80">
+              <div className="pointer-events-auto bg-[var(--color-surface)]/85 backdrop-blur-md border-2 border-[var(--neon-green)] rounded-none w-full max-w-xl p-3.5 flex items-center justify-between gap-4 [box-shadow:4px_4px_0px_var(--neon-green)] shadow-black/80">
                 <div className="flex items-center space-x-3 text-[var(--neon-green)]">
                   <div className="w-8 h-8 rounded-none border border-[var(--neon-green)]/40 bg-[var(--neon-green)]/10 flex items-center justify-center flex-shrink-0">
                     <Wifi className="w-4 h-4 text-[var(--neon-green)]" />

@@ -60,7 +60,7 @@ export function SettingsNotificationsTab({
       </h3>
 
       {/* Global sound chimes toggle */}
-      <div className="flex items-start space-x-3 p-3 bg-zinc-950 border border-zinc-900">
+      <div className="flex items-start space-x-3 p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)]">
         <input
           type="checkbox"
           id="soundEnabledSub"
@@ -69,7 +69,7 @@ export function SettingsNotificationsTab({
           className="mt-1 accent-[var(--neon-green)] cursor-pointer"
         />
         <label htmlFor="soundEnabledSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-          <span className="font-semibold block text-white font-mono uppercase text-[10px] tracking-wide mb-1">Global sound chimes</span>
+          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Global sound chimes</span>
           Enable fluid digital sound synthesis when dispatching/receiving.
         </label>
       </div>
@@ -125,9 +125,9 @@ export function SettingsNotificationsTab({
               };
 
               return (
-                <div key={grp.key} className="bg-black/55 border border-zinc-900 p-3 flex flex-col justify-between space-y-2">
+                <div key={grp.key} className="bg-[var(--color-surface)]/55 border border-[var(--neon-green-border)] p-3 flex flex-col justify-between space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9.5px] text-white font-mono font-bold uppercase tracking-wide">
+                    <span className="text-[9.5px] text-[var(--color-text)] font-mono font-bold uppercase tracking-wide">
                       {grp.label}
                     </span>
                     <button
@@ -144,7 +144,7 @@ export function SettingsNotificationsTab({
                     <select
                       value={currentType}
                       onChange={(e) => handleTypeChange(e.target.value)}
-                      className="bg-[#0c0c0c] border border-zinc-800 text-[9px] font-mono text-zinc-300 p-1 uppercase focus:border-[var(--neon-green)] outline-none cursor-pointer"
+                      className="bg-[var(--color-surface)] border border-[var(--neon-green-border)] text-[9px] font-mono text-zinc-300 p-1 uppercase focus:border-[var(--neon-green)] outline-none cursor-pointer"
                     >
                       <option value="default">Pulse Beacon (Default)</option>
                       <option value="cosmic">Cosmic Ping</option>
@@ -163,7 +163,7 @@ export function SettingsNotificationsTab({
                       />
                       <label
                         htmlFor={`file-upload-${grp.key}`}
-                        className="w-full text-center block p-1 border border-zinc-800 bg-[#0d0d0d] hover:bg-zinc-900 text-zinc-400 text-[8px] font-mono uppercase tracking-wider transition cursor-pointer select-none leading-normal truncate"
+                        className="w-full text-center block p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface)] text-zinc-400 text-[8px] font-mono uppercase tracking-wider transition cursor-pointer select-none leading-normal truncate"
                       >
                         {currentType === 'custom' && customFileName
                           ? customFileName
@@ -185,7 +185,7 @@ export function SettingsNotificationsTab({
         </label>
 
         {/* Direct chat alerts */}
-        <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900">
+        <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)]">
           <span className="text-xs text-zinc-300 font-mono font-bold uppercase tracking-wide">1. Direct Chats alerts</span>
           <input
             type="checkbox"
@@ -196,7 +196,7 @@ export function SettingsNotificationsTab({
         </div>
 
         {/* Groups alert sync */}
-        <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900">
+        <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)]">
           <span className="text-xs text-zinc-300 font-mono font-bold uppercase tracking-wide">2. Group Messages alerts</span>
           <input
             type="checkbox"
@@ -207,7 +207,7 @@ export function SettingsNotificationsTab({
         </div>
 
         {/* Video/Voice Calls alert sync */}
-        <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900">
+        <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)]">
           <span className="text-xs text-zinc-300 font-mono font-bold uppercase tracking-wide">3. Voice & Video Calls alerts</span>
           <input
             type="checkbox"
@@ -218,7 +218,7 @@ export function SettingsNotificationsTab({
         </div>
 
         {/* Chronicles Feed alerts */}
-        <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900">
+        <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)]">
           <span className="text-xs text-zinc-300 font-mono font-bold uppercase tracking-wide">4. Social Chronicles alerts</span>
           <input
             type="checkbox"
@@ -229,7 +229,7 @@ export function SettingsNotificationsTab({
         </div>
 
         {/* News Flash alerts */}
-        <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900">
+        <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)]">
           <span className="text-xs text-zinc-300 font-mono font-bold uppercase tracking-wide">5. News Flash & Critical Signals</span>
           <input
             type="checkbox"
@@ -251,7 +251,7 @@ export function SettingsNotificationsTab({
         </div>
 
         {/* VIP Priority Senders only toggle */}
-        <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900">
+        <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)]">
           <span className="text-xs text-zinc-300 font-mono font-bold uppercase tracking-wide">7. VIP Priority Senders Alerts Only</span>
           <input
             type="checkbox"
@@ -270,14 +270,14 @@ export function SettingsNotificationsTab({
         <p className="text-[8.5px] text-zinc-500 leading-normal mb-2 font-mono">
           Select specific peers who can alert your device when whitelisting is active:
         </p>
-        <div className="max-h-24 overflow-y-auto border border-zinc-900 bg-black/40 p-2 space-y-1.5 scrollbar-thin">
+        <div className="max-h-24 overflow-y-auto border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 p-2 space-y-1.5 scrollbar-thin">
           {systemUsers.length === 0 ? (
             <div className="text-[9px] text-zinc-600 font-mono italic">No communication peers registered.</div>
           ) : (
             systemUsers.map((u) => {
               const isAllowed = notifMessagesFrom.includes(u.uid);
               return (
-                <div key={u.uid} className="flex items-center justify-between p-1.5 bg-black/60 border border-zinc-950">
+                <div key={u.uid} className="flex items-center justify-between p-1.5 bg-[var(--color-surface)]/60 border border-zinc-950">
                   <span className="text-[10px] font-mono text-zinc-300">@{u.displayName || 'Anonymous'}</span>
                   <button
                     type="button"
@@ -285,7 +285,7 @@ export function SettingsNotificationsTab({
                     className={`px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider border cursor-pointer transition ${
                       isAllowed
                         ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/10 text-[var(--neon-green)]'
-                        : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                        : 'border-[var(--neon-green-border)] text-zinc-500 hover:border-zinc-700'
                     }`}
                   >
                     {isAllowed ? '[Allowed]' : '[Blocked]'}

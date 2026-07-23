@@ -585,3 +585,15 @@ button.px-3.py-2.border {
 
 
 
+[class*="bg-[#"],
+[class*="bg-zinc-9"],
+[class*="bg-black"],
+[class*="bg-zinc-8"],
+[class*="bg-zinc-950"] {
+  background-color: var(--color-surface) !important;
+}
+
+body,
+[class~="bg-[#050505]"] {
+  background-color: var(--color-background) !important;
+}

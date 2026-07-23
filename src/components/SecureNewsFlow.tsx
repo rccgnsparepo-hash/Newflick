@@ -299,12 +299,12 @@ export default function SecureNewsFlow() {
     <div className="w-full max-w-7xl mx-auto space-y-8 font-mono pb-12">
       
       {/* Massive Neo-Brutalist Masthead */}
-      <div className="border-4 border-[var(--neon-green)] bg-black p-6 sm:p-8 shadow-[8px_8px_0px_0px_#000000] flex flex-col space-y-4">
+      <div className="border-4 border-[var(--neon-green)] bg-[var(--color-surface)] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#000000] flex flex-col space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b-2 border-[var(--neon-green)]/30 pb-4">
           <div className="flex items-center space-x-3">
             <Radio className="w-8 h-8 text-[var(--neon-green)] animate-pulse shrink-0" />
             <div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-black uppercase tracking-wider text-white">
+              <h2 className="font-serif text-2xl sm:text-3xl font-black uppercase tracking-wider text-[var(--color-text)]">
                 FARA FLICK NEWS WIRE
               </h2>
               <p className="text-[9px] sm:text-[10px] uppercase tracking-widest font-mono font-bold text-[var(--neon-green)] mt-1">
@@ -320,7 +320,7 @@ export default function SecureNewsFlow() {
                 playGlitchClickSound();
                 setShowPublisher(!showPublisher);
               }}
-              className="px-4 py-2 border-2 border-red-500 bg-[#050505] text-red-500 hover:bg-red-500 hover:text-white transition-all cursor-pointer flex items-center gap-2 text-xs uppercase font-extrabold shadow-[4px_4px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+              className="px-4 py-2 border-2 border-red-500 bg-[var(--color-background)] text-red-500 hover:bg-red-500 hover:text-[var(--color-text)] transition-all cursor-pointer flex items-center gap-2 text-xs uppercase font-extrabold shadow-[4px_4px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
             >
               <Send className="w-3.5 h-3.5" />
               {showPublisher ? 'CLOSE WRITER' : 'BROADCAST BULLET'}
@@ -328,7 +328,7 @@ export default function SecureNewsFlow() {
 
             <button
               onClick={triggerRefreshFeeds}
-              className="px-4 py-2 border-2 border-[var(--neon-green)] bg-[#050505] text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer flex items-center gap-2 text-xs uppercase font-extrabold shadow-[4px_4px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+              className="px-4 py-2 border-2 border-[var(--neon-green)] bg-[var(--color-background)] text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer flex items-center gap-2 text-xs uppercase font-extrabold shadow-[4px_4px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
               title="Scan remote feeds"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -353,7 +353,7 @@ export default function SecureNewsFlow() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-4 border-red-500 bg-black p-5 shadow-[6px_6px_0px_0px_#000000] space-y-4 overflow-hidden"
+            className="border-4 border-red-500 bg-[var(--color-surface)] p-5 shadow-[6px_6px_0px_0px_#000000] space-y-4 overflow-hidden"
           >
             <div className="flex items-center space-x-2 text-red-500 font-extrabold text-xs uppercase border-b-2 border-red-500/20 pb-2">
               <Radio className="w-4 h-4 animate-pulse" />
@@ -369,7 +369,7 @@ export default function SecureNewsFlow() {
                   value={newsTitle}
                   onChange={(e) => setNewsTitle(e.target.value)}
                   placeholder="e.g. System Breach detected on main campus subgrid..."
-                  className="w-full bg-[#070707] border-2 border-zinc-800 text-white p-2.5 text-xs focus:border-red-500 focus:outline-none focus:ring-0"
+                  className="w-full bg-[var(--color-surface)] border-2 border-[var(--neon-green-border)] text-[var(--color-text)] p-2.5 text-xs focus:border-red-500 focus:outline-none focus:ring-0"
                 />
               </div>
 
@@ -379,7 +379,7 @@ export default function SecureNewsFlow() {
                   <select
                     value={newsCategory}
                     onChange={(e) => setNewsCategory(e.target.value as any)}
-                    className="w-full bg-[#070707] border-2 border-zinc-800 text-white p-2.5 text-xs focus:border-red-500 focus:outline-none"
+                    className="w-full bg-[var(--color-surface)] border-2 border-[var(--neon-green-border)] text-[var(--color-text)] p-2.5 text-xs focus:border-red-500 focus:outline-none"
                   >
                     <option value="CYBERSECURITY">CYBERSECURITY</option>
                     <option value="CRYPTOGRAPHY">CRYPTOGRAPHY</option>
@@ -393,7 +393,7 @@ export default function SecureNewsFlow() {
                   <select
                     value={newsImpact}
                     onChange={(e) => setNewsImpact(e.target.value as any)}
-                    className="w-full bg-[#070707] border-2 border-zinc-800 text-white p-2.5 text-xs focus:border-red-500 focus:outline-none"
+                    className="w-full bg-[var(--color-surface)] border-2 border-[var(--neon-green-border)] text-[var(--color-text)] p-2.5 text-xs focus:border-red-500 focus:outline-none"
                   >
                     <option value="CRITICAL">⚡ CRITICAL</option>
                     <option value="MEDIUM">⚡ MEDIUM</option>
@@ -410,7 +410,7 @@ export default function SecureNewsFlow() {
                 value={newsSummary}
                 onChange={(e) => setNewsSummary(e.target.value)}
                 placeholder="Brief high-level summary of the threat..."
-                className="w-full bg-[#070707] border-2 border-zinc-800 text-white p-2.5 text-xs focus:border-red-500 focus:outline-none focus:ring-0"
+                className="w-full bg-[var(--color-surface)] border-2 border-[var(--neon-green-border)] text-[var(--color-text)] p-2.5 text-xs focus:border-red-500 focus:outline-none focus:ring-0"
               />
             </div>
 
@@ -422,7 +422,7 @@ export default function SecureNewsFlow() {
                 value={newsBody}
                 onChange={(e) => setNewsBody(e.target.value)}
                 placeholder="Full content payload details..."
-                className="w-full bg-[#070707] border-2 border-zinc-800 text-white p-2.5 text-xs focus:border-red-500 focus:outline-none focus:ring-0 resize-none font-sans font-bold"
+                className="w-full bg-[var(--color-surface)] border-2 border-[var(--neon-green-border)] text-[var(--color-text)] p-2.5 text-xs focus:border-red-500 focus:outline-none focus:ring-0 resize-none font-sans font-bold"
               />
             </div>
 
@@ -430,7 +430,7 @@ export default function SecureNewsFlow() {
               <button
                 type="submit"
                 disabled={isPublishing}
-                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase flex items-center gap-2 border-2 border-black shadow-[4px_4px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-[var(--color-text)] font-black text-xs uppercase flex items-center gap-2 border-2 border-black shadow-[4px_4px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all cursor-pointer"
               >
                 {isPublishing ? 'PUBLISHING BROADCAST...' : 'TRANSMIT SIGNAL WIRE'}
                 <Send className="w-3.5 h-3.5" />
@@ -441,7 +441,7 @@ export default function SecureNewsFlow() {
       </AnimatePresence>
 
       {/* Brutalist Category Filter */}
-      <div className="border-2 border-zinc-800 bg-[#0c0c0c] p-4 shadow-[4px_4px_0px_0px_#000000]">
+      <div className="border-2 border-[var(--neon-green-border)] bg-[var(--color-surface)] p-4 shadow-[4px_4px_0px_0px_#000000]">
         <div className="flex items-center gap-1.5 mb-3 text-[10px] text-zinc-400 uppercase tracking-wider font-extrabold">
           <Filter className="w-4 h-4 text-[var(--neon-green)]" />
           <span>Coordinates Selector (Filter Live Categories)</span>
@@ -457,7 +457,7 @@ export default function SecureNewsFlow() {
               className={`px-3 py-1.5 text-xs uppercase tracking-wider border-2 transition-all cursor-pointer font-black ${
                 selectedCategory === cat
                   ? 'bg-[var(--neon-green)] text-black border-black shadow-[3px_3px_0px_0px_#000000]'
-                  : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white hover:border-[var(--neon-green)]/60'
+                  : 'bg-[var(--color-background)] border-[var(--neon-green-border)] text-zinc-400 hover:text-[var(--color-text)] hover:border-[var(--neon-green)]/60'
               }`}
             >
               {cat}
@@ -471,9 +471,9 @@ export default function SecureNewsFlow() {
         const currentItem = items[tickerOffset] || items[0];
         if (!currentItem) return null;
         return (
-          <div className="bg-[#050505] border-2 border-red-500/30 p-3 text-xs flex items-center justify-between overflow-hidden shadow-[4px_4px_0px_0px_rgba(239,68,68,0.1)]">
+          <div className="bg-[var(--color-background)] border-2 border-red-500/30 p-3 text-xs flex items-center justify-between overflow-hidden shadow-[4px_4px_0px_0px_rgba(239,68,68,0.1)]">
             <div className="flex items-center space-x-3.5 truncate">
-              <span className="bg-red-600 text-white font-black px-2 py-0.5 text-[9px] uppercase tracking-wider animate-pulse border border-black">
+              <span className="bg-red-600 text-[var(--color-text)] font-black px-2 py-0.5 text-[9px] uppercase tracking-wider animate-pulse border border-black">
                 BREAKING INTEL
               </span>
               <AnimatePresence mode="wait">
@@ -500,7 +500,7 @@ export default function SecureNewsFlow() {
       {/* Downward Flowing Stories Lists */}
       <div className="space-y-8">
         {filteredItems.length === 0 ? (
-          <div className="p-16 text-center border-4 border-dashed border-[var(--neon-green)]/15 text-zinc-650 italic text-sm uppercase animate-pulse bg-[#070707]">
+          <div className="p-16 text-center border-4 border-dashed border-[var(--neon-green)]/15 text-zinc-650 italic text-sm uppercase animate-pulse bg-[var(--color-surface)]">
             No live signal packets buffered for category {selectedCategory}.
           </div>
         ) : (
@@ -508,7 +508,7 @@ export default function SecureNewsFlow() {
             {/* PINNED CHRONICLES SECTION (Always pinned if active first-class signals are CRITICAL) */}
             {selectedCategory === 'ALL' && filteredItems.some(i => i.impactLevel === 'CRITICAL') && (
               <div className="border-4 border-red-500 bg-red-950/10 p-6 relative shadow-[8px_8px_0px_0px_#ef4444] animate-pulse">
-                <div className="absolute top-[-14px] left-4 bg-red-600 text-white font-black px-3 py-1 text-[10px] uppercase tracking-widest border-2 border-black shadow-[2px_2px_0px_#000000]">
+                <div className="absolute top-[-14px] left-4 bg-red-600 text-[var(--color-text)] font-black px-3 py-1 text-[10px] uppercase tracking-widest border-2 border-black shadow-[2px_2px_0px_#000000]">
                   PINNED CRITICAL INTEL
                 </div>
                 {filteredItems.filter(i => i.impactLevel === 'CRITICAL').slice(0, 1).map(news => (
@@ -524,7 +524,7 @@ export default function SecureNewsFlow() {
                       <span>[ HIGH ENTROPY ENVELOPE SECURED ]</span>
                       <span>{news.timeSlot}</span>
                     </div>
-                    <h3 className="font-serif text-lg sm:text-xl font-black text-white hover:text-red-400 uppercase tracking-tight leading-tight transition duration-150">
+                    <h3 className="font-serif text-lg sm:text-xl font-black text-[var(--color-text)] hover:text-red-400 uppercase tracking-tight leading-tight transition duration-150">
                       ⚡ {news.title}
                     </h3>
                     <p className="text-xs sm:text-sm font-sans text-zinc-300 leading-relaxed font-bold">
@@ -556,7 +556,7 @@ export default function SecureNewsFlow() {
                       playGlitchClickSound();
                       setActiveDossier(news);
                     }}
-                    className={`p-5 bg-[#0e0e0e] hover:bg-[#141414] border transition-all cursor-pointer flex flex-col justify-between ${
+                    className={`p-5 bg-[#0e0e0e] hover:bg-[var(--color-surface)] border transition-all cursor-pointer flex flex-col justify-between ${
                       isCritical 
                         ? 'border-red-500/40 hover:border-red-500 shadow-[3px_3px_0px_rgba(239,68,68,0.15)]' 
                         : 'border-[var(--neon-green)]/20 hover:border-[var(--neon-green)] shadow-[3px_3px_0px_rgba(0,0,0,0.6)]'
@@ -573,7 +573,7 @@ export default function SecureNewsFlow() {
                         </span>
                       </div>
 
-                      <h4 className="font-serif text-sm font-extrabold text-white group-hover:text-[var(--neon-green)] leading-snug tracking-tight uppercase">
+                      <h4 className="font-serif text-sm font-extrabold text-[var(--color-text)] group-hover:text-[var(--neon-green)] leading-snug tracking-tight uppercase">
                         {news.title}
                       </h4>
 
@@ -602,14 +602,14 @@ export default function SecureNewsFlow() {
       {/* Expanded News Dossier lightbox modal with In-App Browser Reader Frame */}
       <AnimatePresence>
         {activeDossier && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[90] flex items-center justify-center p-2 sm:p-4 pointer-events-auto">
+          <div className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-sm z-[90] flex items-center justify-center p-2 sm:p-4 pointer-events-auto">
             <div className="absolute inset-0 cursor-pointer" onClick={() => setActiveDossier(null)} />
             
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="bg-[#0b0b0b] border-2 border-[var(--neon-green)] p-4 sm:p-6 w-full max-w-4xl relative z-10 shadow-[8px_8px_0px_0px_#000000] rounded-none flex flex-col max-h-[92vh] overflow-hidden"
+              className="bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-4 sm:p-6 w-full max-w-4xl relative z-10 shadow-[8px_8px_0px_0px_#000000] rounded-none flex flex-col max-h-[92vh] overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b-2 border-[var(--neon-green)]/30 pb-3 mb-4 shrink-0">
@@ -647,7 +647,7 @@ export default function SecureNewsFlow() {
                       {activeDossier.title}
                     </h3>
 
-                    <div className="text-[11px] leading-relaxed text-zinc-300 bg-[#050505]/80 p-3 border-l-2 border-[var(--neon-green)] italic font-sans">
+                    <div className="text-[11px] leading-relaxed text-zinc-300 bg-[var(--color-background)]/80 p-3 border-l-2 border-[var(--neon-green)] italic font-sans">
                       "{activeDossier.summary}"
                     </div>
 
@@ -679,10 +679,10 @@ export default function SecureNewsFlow() {
 
                 {/* Embedded Frame Panel (ALL external links read INSIDE) */}
                 <div className="lg:col-span-7 border border-[var(--neon-green)]/20 bg-[#020202] flex flex-col h-[320px] lg:h-full min-h-0 relative">
-                  <div className="bg-[#070707] border-b border-[var(--neon-green)]/20 p-2 flex items-center justify-between shrink-0 font-mono text-[9px] text-zinc-400">
+                  <div className="bg-[var(--color-surface)] border-b border-[var(--neon-green)]/20 p-2 flex items-center justify-between shrink-0 font-mono text-[9px] text-zinc-400">
                     <div className="flex items-center gap-1.5 text-zinc-300">
                       <Globe className="w-3.5 h-3.5 text-[var(--neon-green)]" />
-                      <span className="truncate max-w-[200px] font-bold text-zinc-200">
+                      <span className="truncate max-w-[200px] font-bold text-[var(--color-text)]">
                         {activeDossier.url}
                       </span>
                     </div>
@@ -697,7 +697,7 @@ export default function SecureNewsFlow() {
                         className={`px-2 py-0.5 border transition cursor-pointer flex items-center gap-1 ${
                           readerMode === 'plaintext' 
                             ? 'bg-[var(--neon-green)] text-black border-black font-extrabold' 
-                            : 'bg-black text-zinc-500 border-zinc-800 hover:text-white'
+                            : 'bg-[var(--color-surface)] text-zinc-500 border-[var(--neon-green-border)] hover:text-[var(--color-text)]'
                         }`}
                         title="Bypass iframe restrictions and load a clean readable document format"
                       >
@@ -712,7 +712,7 @@ export default function SecureNewsFlow() {
                         className={`px-2 py-0.5 border transition cursor-pointer flex items-center gap-1 ${
                           readerMode === 'normal' 
                             ? 'bg-[var(--neon-green)] text-black border-black font-extrabold' 
-                            : 'bg-black text-zinc-500 border-zinc-800 hover:text-white'
+                            : 'bg-[var(--color-surface)] text-zinc-500 border-[var(--neon-green-border)] hover:text-[var(--color-text)]'
                         }`}
                         title="Load directly (Note: some websites block native iframe display)"
                       >
@@ -738,7 +738,7 @@ export default function SecureNewsFlow() {
                     />
                     
                     {/* Liquid Glass floating corner overlay to label sandboxed frame */}
-                    <div className="absolute bottom-2 right-2 pointer-events-none bg-black/80 backdrop-blur-sm border border-[var(--neon-green)]/35 p-1.5 text-[8px] text-zinc-400 font-mono flex items-center gap-1 uppercase select-none">
+                    <div className="absolute bottom-2 right-2 pointer-events-none bg-[var(--color-surface)]/80 backdrop-blur-sm border border-[var(--neon-green)]/35 p-1.5 text-[8px] text-zinc-400 font-mono flex items-center gap-1 uppercase select-none">
                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--neon-green)] animate-ping" />
                       <span>SECURE IN-APP SHIELD</span>
                     </div>

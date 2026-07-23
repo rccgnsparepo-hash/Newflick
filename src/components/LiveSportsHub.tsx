@@ -439,13 +439,13 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
     <div id="live-sports-arena-root" className="space-y-4 font-mono select-none">
       
       {/* 1. Scrolling Match Event ticker banner */}
-      <div id="sports-event-ticker" className="bg-black border border-zinc-900 px-4 py-2.5 flex items-center justify-between text-[8px] tracking-wider shrink-0 overflow-hidden text-[var(--neon-green)] font-black">
+      <div id="sports-event-ticker" className="bg-[var(--color-surface)] border border-[var(--neon-green-border)] px-4 py-2.5 flex items-center justify-between text-[8px] tracking-wider shrink-0 overflow-hidden text-[var(--neon-green)] font-black">
         <div className="flex items-center gap-2 whitespace-nowrap animate-pulse shrink-0">
           <span className="w-2 h-2 bg-red-600 rounded-full animate-ping"></span>
           <span>LIVE STADIUM DATA PIPELINE</span>
         </div>
         <div className="flex-1 overflow-hidden mx-4">
-          <p className="text-[8px] truncate uppercase font-bold text-zinc-100">
+          <p className="text-[8px] truncate uppercase font-bold text-[var(--color-text)]">
             {tickerMessage}
           </p>
         </div>
@@ -462,7 +462,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
       </div>
 
       {/* 2. Top Navigation and Filters */}
-      <div id="sports-hub-nav-filters" className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div id="sports-hub-nav-filters" className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-2 justify-center md:justify-start">
           <button
             id="tab-arena-hub"
@@ -470,7 +470,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             className={`px-4 py-2 text-xs font-black uppercase rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'arena' 
                 ? 'bg-[var(--neon-green)] text-black' 
-                : 'bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800'
+                : 'bg-[var(--color-surface)] hover:bg-zinc-850 text-zinc-400 hover:text-[var(--color-text)] border border-[var(--neon-green-border)]'
             }`}
           >
             <Tv className="w-3.5 h-3.5" />
@@ -483,7 +483,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             className={`px-4 py-2 text-xs font-black uppercase rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'tables' 
                 ? 'bg-[var(--neon-green)] text-black' 
-                : 'bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800'
+                : 'bg-[var(--color-surface)] hover:bg-zinc-850 text-zinc-400 hover:text-[var(--color-text)] border border-[var(--neon-green-border)]'
             }`}
           >
             <Award className="w-3.5 h-3.5" />
@@ -496,7 +496,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             className={`px-4 py-2 text-xs font-black uppercase rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'news' 
                 ? 'bg-[var(--neon-green)] text-black' 
-                : 'bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800'
+                : 'bg-[var(--color-surface)] hover:bg-zinc-850 text-zinc-400 hover:text-[var(--color-text)] border border-[var(--neon-green-border)]'
             }`}
           >
             <Newspaper className="w-3.5 h-3.5" />
@@ -509,7 +509,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             className={`px-4 py-2 text-xs font-black uppercase rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'notifications' 
                 ? 'bg-[var(--neon-green)] text-black' 
-                : 'bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800'
+                : 'bg-[var(--color-surface)] hover:bg-zinc-850 text-zinc-400 hover:text-[var(--color-text)] border border-[var(--neon-green-border)]'
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
@@ -534,8 +534,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 onClick={() => handleLeagueSelect(l.id)}
                 className={`px-2.5 py-1.5 text-[10px] font-bold uppercase rounded-lg border transition cursor-pointer flex items-center gap-1 ${
                   selectedLeague === l.id 
-                    ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/10 text-white' 
-                    : 'border-zinc-850 bg-black text-zinc-500 hover:text-zinc-300'
+                    ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/10 text-[var(--color-text)]' 
+                    : 'border-zinc-850 bg-[var(--color-surface)] text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 <span>{l.icon}</span>
@@ -558,7 +558,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
               {selectedMatch ? (
                 <>
                   {/* Streaming Block */}
-                  <div className="relative rounded-2xl overflow-hidden border border-zinc-900 bg-black aspect-video shadow-2xl group">
+                  <div className="relative rounded-2xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] aspect-video shadow-2xl group">
                     {selectedMatch.videoUrl.includes('youtube.com') || selectedMatch.videoUrl.includes('youtu.be') ? (
                       <iframe
                         src={`https://www.youtube.com/embed/${
@@ -584,14 +584,14 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                     )}
 
                     {/* LIVE WATERMARK */}
-                    <div className="absolute top-3 left-3 bg-red-600 text-white font-black text-[7.5px] tracking-wider px-2 py-0.5 rounded flex items-center gap-1 z-10">
+                    <div className="absolute top-3 left-3 bg-red-600 text-[var(--color-text)] font-black text-[7.5px] tracking-wider px-2 py-0.5 rounded flex items-center gap-1 z-10">
                       <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
                       <span>{selectedMatch.status === 'live' ? 'LIVE FEED' : 'MATCH STREAM'}</span>
                     </div>
 
                     {/* VIEWER COUNT */}
                     {selectedMatch.status === 'live' && (
-                      <div className="absolute top-3 right-3 bg-black/80 text-zinc-300 font-bold text-[7.5px] px-2 py-0.5 border border-zinc-800 rounded flex items-center gap-1 z-10">
+                      <div className="absolute top-3 right-3 bg-[var(--color-surface)]/80 text-zinc-300 font-bold text-[7.5px] px-2 py-0.5 border border-[var(--neon-green-border)] rounded flex items-center gap-1 z-10">
                         <Users className="w-2.5 h-2.5 text-[var(--neon-green)] animate-pulse" />
                         <span>{selectedMatch.viewerCount} PARTICIPANTS</span>
                       </div>
@@ -603,21 +603,21 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                         <button
                           id="play-pause-stream-btn"
                           onClick={handlePlayPause}
-                          className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer"
+                          className="p-2 bg-white/10 hover:bg-white/20 text-[var(--color-text)] rounded-full transition cursor-pointer"
                         >
                           {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                         </button>
                         <button
                           id="toggle-mute-stream-btn"
                           onClick={handleToggleMute}
-                          className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition cursor-pointer"
+                          className="p-2 bg-white/10 hover:bg-white/20 text-[var(--color-text)] rounded-full transition cursor-pointer"
                         >
-                          {isMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-400" /> : <Volume2 className="w-3.5 h-3.5 text-white" />}
+                          {isMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-400" /> : <Volume2 className="w-3.5 h-3.5 text-[var(--color-text)]" />}
                         </button>
                       </div>
 
                       <div className="text-right">
-                        <p className="text-[9px] font-black text-white uppercase truncate max-w-[250px]">
+                        <p className="text-[9px] font-black text-[var(--color-text)] uppercase truncate max-w-[250px]">
                           {selectedMatch.teamA} vs {selectedMatch.teamB}
                         </p>
                         <p className="text-[7.5px] text-zinc-400 mt-0.5">
@@ -628,9 +628,9 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                   </div>
 
                   {/* SCOREBOARD HUB */}
-                  <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center space-x-3.5 w-full sm:w-auto">
-                      <div className="bg-zinc-950 border border-zinc-900 p-2.5 rounded-xl text-center min-w-[70px] shrink-0">
+                      <div className="bg-[var(--color-background)] border border-[var(--neon-green-border)] p-2.5 rounded-xl text-center min-w-[70px] shrink-0">
                         <span className="block text-[6.5px] text-zinc-500 font-bold uppercase mb-0.5">STATUS</span>
                         <span className={`text-xs font-black tracking-wider uppercase ${selectedMatch.status === 'live' ? 'text-red-500 animate-pulse' : 'text-zinc-400'}`}>
                           {selectedMatch.status === 'live' ? `${selectedMatch.minute}'` : selectedMatch.status}
@@ -638,7 +638,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-xs font-black text-white uppercase truncate flex items-center gap-1.5">
+                        <h3 className="text-xs font-black text-[var(--color-text)] uppercase truncate flex items-center gap-1.5">
                           {isWorldCupSelected && <span className="text-yellow-500 text-[10px]">🏆 WORLD CUP EXPERIENCE</span>}
                           <span>{selectedMatch.title}</span>
                         </h3>
@@ -648,21 +648,21 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-6 bg-zinc-950 border border-zinc-900 p-3 rounded-2xl w-full sm:w-auto justify-center">
+                    <div className="flex items-center space-x-6 bg-[var(--color-background)] border border-[var(--neon-green-border)] p-3 rounded-2xl w-full sm:w-auto justify-center">
                       <div className="text-right">
-                        <span className="block text-[10px] font-black text-white uppercase tracking-tight">
+                        <span className="block text-[10px] font-black text-[var(--color-text)] uppercase tracking-tight">
                           {selectedMatch.teamA}
                         </span>
                       </div>
 
-                      <div className="flex items-center space-x-2.5 bg-black px-3.5 py-1.5 border border-zinc-900 rounded-xl font-black text-base text-[var(--neon-green)] tracking-wider">
+                      <div className="flex items-center space-x-2.5 bg-[var(--color-surface)] px-3.5 py-1.5 border border-[var(--neon-green-border)] rounded-xl font-black text-base text-[var(--neon-green)] tracking-wider">
                         <span>{selectedMatch.scoreA}</span>
                         <span className="text-zinc-600">:</span>
                         <span>{selectedMatch.scoreB}</span>
                       </div>
 
                       <div className="text-left">
-                        <span className="block text-[10px] font-black text-white uppercase tracking-tight">
+                        <span className="block text-[10px] font-black text-[var(--color-text)] uppercase tracking-tight">
                           {selectedMatch.teamB}
                         </span>
                       </div>
@@ -670,8 +670,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                   </div>
 
                   {/* MATCH CENTRE DETAILS CONTAINER (SUB-TABS) */}
-                  <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl overflow-hidden">
-                    <div className="bg-black/50 border-b border-zinc-900 px-4 py-3 flex flex-wrap gap-2 items-center justify-between">
+                  <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden">
+                    <div className="bg-[var(--color-surface)]/50 border-b border-[var(--neon-green-border)] px-4 py-3 flex flex-wrap gap-2 items-center justify-between">
                       <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                         <Activity className="w-3.5 h-3.5 text-red-500" />
                         Match Centre Intelligence
@@ -682,7 +682,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                           id="matchcentre-tab-timeline"
                           onClick={() => { playClickSound(); setMatchCentreTab('timeline'); }}
                           className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded transition cursor-pointer ${
-                            matchCentreTab === 'timeline' ? 'bg-[var(--neon-green)] text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'
+                            matchCentreTab === 'timeline' ? 'bg-[var(--neon-green)] text-black' : 'bg-[var(--color-surface)] text-zinc-500 hover:text-[var(--color-text)]'
                           }`}
                         >
                           Timeline
@@ -691,7 +691,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                           id="matchcentre-tab-stats"
                           onClick={() => { playClickSound(); setMatchCentreTab('stats'); }}
                           className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded transition cursor-pointer ${
-                            matchCentreTab === 'stats' ? 'bg-[var(--neon-green)] text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'
+                            matchCentreTab === 'stats' ? 'bg-[var(--neon-green)] text-black' : 'bg-[var(--color-surface)] text-zinc-500 hover:text-[var(--color-text)]'
                           }`}
                         >
                           Stats
@@ -700,7 +700,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                           id="matchcentre-tab-lineups"
                           onClick={() => { playClickSound(); setMatchCentreTab('lineups'); }}
                           className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded transition cursor-pointer ${
-                            matchCentreTab === 'lineups' ? 'bg-[var(--neon-green)] text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'
+                            matchCentreTab === 'lineups' ? 'bg-[var(--neon-green)] text-black' : 'bg-[var(--color-surface)] text-zinc-500 hover:text-[var(--color-text)]'
                           }`}
                         >
                           Lineups
@@ -710,7 +710,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                             id="matchcentre-tab-worldcup"
                             onClick={() => { playClickSound(); setMatchCentreTab('worldcup'); }}
                             className={`px-2.5 py-1 text-[8.5px] font-black uppercase rounded transition cursor-pointer ${
-                              matchCentreTab === 'worldcup' ? 'bg-yellow-500 text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'
+                              matchCentreTab === 'worldcup' ? 'bg-yellow-500 text-black' : 'bg-[var(--color-surface)] text-zinc-500 hover:text-[var(--color-text)]'
                             }`}
                           >
                             World Cup Stats
@@ -724,10 +724,10 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       {matchCentreTab === 'timeline' && (
                         <div className="space-y-3">
                           {selectedMatch.events.map((evt, index) => (
-                            <div key={index} className="flex items-start gap-3 text-xs border-l-2 border-zinc-800 ml-2 pl-4 py-1.5 relative">
+                            <div key={index} className="flex items-start gap-3 text-xs border-l-2 border-[var(--neon-green-border)] ml-2 pl-4 py-1.5 relative">
                               <span className="absolute -left-[5px] top-3.5 w-2.5 h-2.5 bg-[var(--neon-green)] rounded-full border border-black"></span>
                               <div className="space-y-0.5">
-                                <p className="font-bold text-zinc-100">{evt}</p>
+                                <p className="font-bold text-[var(--color-text)]">{evt}</p>
                               </div>
                             </div>
                           ))}
@@ -747,7 +747,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                               <span>POSSESSION</span>
                               <span>{selectedMatch.teamB.toUpperCase()} ({stats.possessionAway}%)</span>
                             </div>
-                            <div className="h-2.5 bg-zinc-900 rounded-full overflow-hidden flex">
+                            <div className="h-2.5 bg-[var(--color-surface)] rounded-full overflow-hidden flex">
                               <div style={{ width: `${stats.possessionHome}%` }} className="bg-[var(--neon-green)] h-full"></div>
                               <div style={{ width: `${stats.possessionAway}%` }} className="bg-red-500 h-full"></div>
                             </div>
@@ -755,20 +755,20 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
 
                           {/* Numerical metrics */}
                           <div className="grid grid-cols-3 gap-2 text-center text-xs text-zinc-400">
-                            <div className="bg-zinc-950 p-2.5 border border-zinc-900 rounded-xl">
-                              <span className="block text-[14px] font-black text-white">{stats.shotsHome}</span>
+                            <div className="bg-[var(--color-background)] p-2.5 border border-[var(--neon-green-border)] rounded-xl">
+                              <span className="block text-[14px] font-black text-[var(--color-text)]">{stats.shotsHome}</span>
                               <span className="text-[8px] uppercase font-bold text-zinc-500">Shots</span>
-                              <span className="block text-[14px] font-black text-white mt-1">{stats.shotsAway}</span>
+                              <span className="block text-[14px] font-black text-[var(--color-text)] mt-1">{stats.shotsAway}</span>
                             </div>
-                            <div className="bg-zinc-950 p-2.5 border border-zinc-900 rounded-xl">
-                              <span className="block text-[14px] font-black text-white">{stats.accuracyHome}%</span>
+                            <div className="bg-[var(--color-background)] p-2.5 border border-[var(--neon-green-border)] rounded-xl">
+                              <span className="block text-[14px] font-black text-[var(--color-text)]">{stats.accuracyHome}%</span>
                               <span className="text-[8px] uppercase font-bold text-zinc-500">Passing Acc.</span>
-                              <span className="block text-[14px] font-black text-white mt-1">{stats.accuracyAway}%</span>
+                              <span className="block text-[14px] font-black text-[var(--color-text)] mt-1">{stats.accuracyAway}%</span>
                             </div>
-                            <div className="bg-zinc-950 p-2.5 border border-zinc-900 rounded-xl">
-                              <span className="block text-[14px] font-black text-white">{stats.foulsHome}</span>
+                            <div className="bg-[var(--color-background)] p-2.5 border border-[var(--neon-green-border)] rounded-xl">
+                              <span className="block text-[14px] font-black text-[var(--color-text)]">{stats.foulsHome}</span>
                               <span className="text-[8px] uppercase font-bold text-zinc-500">Fouls</span>
-                              <span className="block text-[14px] font-black text-white mt-1">{stats.foulsAway}</span>
+                              <span className="block text-[14px] font-black text-[var(--color-text)] mt-1">{stats.foulsAway}</span>
                             </div>
                           </div>
                         </div>
@@ -777,9 +777,9 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       {/* Lineups Content */}
                       {matchCentreTab === 'lineups' && (
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-black/40 p-3 rounded-xl border border-zinc-900">
-                            <div className="flex justify-between items-center border-b border-zinc-900 pb-1.5 mb-2">
-                              <h4 className="text-xs font-black text-white truncate">{selectedMatch.teamA}</h4>
+                          <div className="bg-[var(--color-surface)]/40 p-3 rounded-xl border border-[var(--neon-green-border)]">
+                            <div className="flex justify-between items-center border-b border-[var(--neon-green-border)] pb-1.5 mb-2">
+                              <h4 className="text-xs font-black text-[var(--color-text)] truncate">{selectedMatch.teamA}</h4>
                               <span className="text-[8px] bg-[var(--neon-green)]/10 text-[var(--neon-green)] px-1 rounded font-bold">{lineups.formationHome}</span>
                             </div>
                             <div className="space-y-1.5">
@@ -792,9 +792,9 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                             </div>
                           </div>
 
-                          <div className="bg-black/40 p-3 rounded-xl border border-zinc-900">
-                            <div className="flex justify-between items-center border-b border-zinc-900 pb-1.5 mb-2">
-                              <h4 className="text-xs font-black text-white truncate">{selectedMatch.teamB}</h4>
+                          <div className="bg-[var(--color-surface)]/40 p-3 rounded-xl border border-[var(--neon-green-border)]">
+                            <div className="flex justify-between items-center border-b border-[var(--neon-green-border)] pb-1.5 mb-2">
+                              <h4 className="text-xs font-black text-[var(--color-text)] truncate">{selectedMatch.teamB}</h4>
                               <span className="text-[8px] bg-red-500/10 text-red-500 px-1 rounded font-bold">{lineups.formationAway}</span>
                             </div>
                             <div className="space-y-1.5">
@@ -823,15 +823,15 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                           </div>
 
                           <div className="grid grid-cols-2 gap-3 text-[10px]">
-                            <div className="bg-zinc-950 p-2.5 border border-zinc-900 rounded-xl space-y-1">
-                              <span className="block font-black text-white uppercase text-[8px] text-zinc-500">Golden Boot race</span>
+                            <div className="bg-[var(--color-background)] p-2.5 border border-[var(--neon-green-border)] rounded-xl space-y-1">
+                              <span className="block font-black text-[var(--color-text)] uppercase text-[8px] text-zinc-500">Golden Boot race</span>
                               <p className="text-zinc-300">1. Lionel Messi (Argentina) - 7 Goals</p>
                               <p className="text-zinc-300">2. Kylian Mbappe (France) - 6 Goals</p>
                               <p className="text-zinc-300">3. Erling Haaland (Norway) - 4 Goals</p>
                             </div>
 
-                            <div className="bg-zinc-950 p-2.5 border border-zinc-900 rounded-xl space-y-1">
-                              <span className="block font-black text-white uppercase text-[8px] text-zinc-500">Golden Glove race</span>
+                            <div className="bg-[var(--color-background)] p-2.5 border border-[var(--neon-green-border)] rounded-xl space-y-1">
+                              <span className="block font-black text-[var(--color-text)] uppercase text-[8px] text-zinc-500">Golden Glove race</span>
                               <p className="text-zinc-300">1. E. Martinez (Argentina) - 4 Clean Sheets</p>
                               <p className="text-zinc-300">2. Mike Maignan (France) - 3 Clean Sheets</p>
                               <p className="text-zinc-300">3. J. Pickford (England) - 3 Clean Sheets</p>
@@ -843,7 +843,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                   </div>
                 </>
               ) : (
-                <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-12 text-center text-zinc-500">
+                <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-12 text-center text-zinc-500">
                   <Tv className="w-12 h-12 text-zinc-650 mx-auto mb-4 animate-pulse" />
                   <p className="text-xs uppercase font-bold">No matches found for selected criteria.</p>
                 </div>
@@ -854,8 +854,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             <div className="lg:col-span-4 flex flex-col gap-4">
               
               {/* Channels list with Live API indicator */}
-              <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+              <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-[var(--neon-green-border)] pb-2">
                   <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                     <ListFilter className="w-3.5 h-3.5 text-[var(--neon-green)]" />
                     Live Channels
@@ -875,7 +875,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                   {isLoadingFixtures ? (
                     <div className="space-y-2 py-4">
                       {[1, 2, 3].map(n => (
-                        <div key={n} className="h-10 bg-zinc-900 rounded-xl animate-pulse"></div>
+                        <div key={n} className="h-10 bg-[var(--color-surface)] rounded-xl animate-pulse"></div>
                       ))}
                     </div>
                   ) : matches.length > 0 ? (
@@ -892,21 +892,21 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                           }}
                           className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between ${
                             isActive 
-                              ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-white font-bold' 
-                              : 'bg-black border-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-850'
+                              ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--color-text)] font-bold' 
+                              : 'bg-[var(--color-surface)] border-[var(--neon-green-border)] text-zinc-400 hover:text-[var(--color-text)] hover:border-zinc-850'
                           }`}
                         >
                           <div className="min-w-0 flex-1 mr-2">
                             <div className="flex items-center gap-1.5">
-                              <span className={`text-[7px] px-1.5 py-0.5 rounded font-black text-white leading-none ${m.status === 'live' ? 'bg-red-600 animate-pulse' : 'bg-zinc-800'}`}>
+                              <span className={`text-[7px] px-1.5 py-0.5 rounded font-black text-[var(--color-text)] leading-none ${m.status === 'live' ? 'bg-red-600 animate-pulse' : 'bg-zinc-800'}`}>
                                 {m.status.toUpperCase()}
                               </span>
-                              <p className="text-[10px] uppercase font-black truncate text-white">{m.teamA} vs {m.teamB}</p>
+                              <p className="text-[10px] uppercase font-black truncate text-[var(--color-text)]">{m.teamA} vs {m.teamB}</p>
                             </div>
                             <p className="text-[7.5px] text-zinc-500 uppercase truncate mt-0.5">{m.title}</p>
                           </div>
 
-                          <div className="bg-[#121214] px-2 py-1 text-[9px] border border-zinc-850 font-black text-[var(--neon-green)] shrink-0 rounded-lg">
+                          <div className="bg-[var(--color-surface)] px-2 py-1 text-[9px] border border-zinc-850 font-black text-[var(--neon-green)] shrink-0 rounded-lg">
                             {m.scoreA} - {m.scoreB}
                           </div>
                         </button>
@@ -919,8 +919,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
               </div>
 
               {/* Real-time Stadium reaction chat */}
-              <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-4 flex-1 flex flex-col min-h-[300px]">
-                <div className="border-b border-zinc-900 pb-2 flex items-center justify-between shrink-0 mb-3">
+              <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-4 flex-1 flex flex-col min-h-[300px]">
+                <div className="border-b border-[var(--neon-green-border)] pb-2 flex items-center justify-between shrink-0 mb-3">
                   <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                     <Users className="w-3.5 h-3.5 text-[var(--neon-green)]" />
                     Stadium Live Reactions
@@ -931,8 +931,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 {/* Message logs */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-72 mb-2">
                   {chatMessages.map((msg) => (
-                    <div key={msg.id} className="text-[9.5px] leading-relaxed bg-black/30 border border-zinc-900/60 p-2 rounded-lg">
-                      <div className="flex items-baseline gap-1.5 border-b border-zinc-900/30 pb-0.5 mb-1 justify-between">
+                    <div key={msg.id} className="text-[9.5px] leading-relaxed bg-[var(--color-surface)]/30 border border-[var(--neon-green-border)]/60 p-2 rounded-lg">
+                      <div className="flex items-baseline gap-1.5 border-b border-[var(--neon-green-border)]/30 pb-0.5 mb-1 justify-between">
                         <span className="text-[var(--neon-green)] font-black text-[8.5px] hover:underline cursor-pointer">
                           {msg.senderName}
                         </span>
@@ -944,13 +944,13 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 </div>
 
                 {/* Submit reactions Form */}
-                <form onSubmit={handleSendChatMessage} className="mt-auto pt-2 border-t border-zinc-900 flex gap-2 shrink-0">
+                <form onSubmit={handleSendChatMessage} className="mt-auto pt-2 border-t border-[var(--neon-green-border)] flex gap-2 shrink-0">
                   <input
                     type="text"
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                     placeholder="Broadcast reaction into arena..."
-                    className="flex-1 bg-black border border-zinc-900 rounded-xl px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-[var(--neon-green)] placeholder-zinc-650"
+                    className="flex-1 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl px-3 py-2 text-[10px] font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] placeholder-zinc-650"
                   />
                   <button
                     type="submit"
@@ -966,11 +966,11 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
 
         {/* TAB 2: STANDINGS & LEAGUE TABLES */}
         {activeTab === 'tables' && (
-          <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl overflow-hidden p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+          <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden p-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--neon-green-border)] pb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[var(--neon-green)]" />
-                <h3 className="text-sm font-black text-white uppercase">Standings Table</h3>
+                <h3 className="text-sm font-black text-[var(--color-text)] uppercase">Standings Table</h3>
               </div>
               <span className="text-[8px] text-zinc-500">PROVIDER: THESPORTSDB</span>
             </div>
@@ -978,14 +978,14 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             {isLoadingTable ? (
               <div className="space-y-3 py-8">
                 {[1, 2, 3, 4, 5].map(n => (
-                  <div key={n} className="h-8 bg-zinc-900 rounded animate-pulse"></div>
+                  <div key={n} className="h-8 bg-[var(--color-surface)] rounded animate-pulse"></div>
                 ))}
               </div>
             ) : tableData.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-zinc-900 text-zinc-500 font-black text-[9px] uppercase tracking-wider">
+                    <tr className="border-b border-[var(--neon-green-border)] text-zinc-500 font-black text-[9px] uppercase tracking-wider">
                       <th className="py-2.5 px-3">Pos</th>
                       <th className="py-2.5 px-3">Team</th>
                       <th className="py-2.5 px-3 text-center">P</th>
@@ -1000,14 +1000,14 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                     {tableData.map((row) => (
                       <tr 
                         key={row.teamId || row.teamName} 
-                        className="border-b border-zinc-900/60 hover:bg-white/5 transition"
+                        className="border-b border-[var(--neon-green-border)]/60 hover:bg-white/5 transition"
                       >
                         <td className="py-3 px-3 font-bold text-zinc-400">{row.position}</td>
-                        <td className="py-3 px-3 font-black text-white flex items-center gap-2">
+                        <td className="py-3 px-3 font-black text-[var(--color-text)] flex items-center gap-2">
                           <img 
                             src={row.teamBadge} 
                             alt={row.teamName} 
-                            className="w-5 h-5 rounded-full object-contain bg-zinc-900"
+                            className="w-5 h-5 rounded-full object-contain bg-[var(--color-surface)]"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
                               // Fallback to initials if image fails to load
@@ -1034,8 +1034,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
             )}
 
             {/* Dynamic statistics section below table */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-zinc-900">
-              <div className="bg-zinc-950 p-3.5 border border-zinc-900 rounded-2xl space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-[var(--neon-green-border)]">
+              <div className="bg-[var(--color-background)] p-3.5 border border-[var(--neon-green-border)] rounded-2xl space-y-2">
                 <span className="block text-[9px] font-black text-zinc-500 uppercase tracking-wider">Top Scorers</span>
                 <div className="space-y-1.5 text-[10px]">
                   <div className="flex justify-between font-bold text-zinc-300">
@@ -1053,7 +1053,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 </div>
               </div>
 
-              <div className="bg-zinc-950 p-3.5 border border-zinc-900 rounded-2xl space-y-2">
+              <div className="bg-[var(--color-background)] p-3.5 border border-[var(--neon-green-border)] rounded-2xl space-y-2">
                 <span className="block text-[9px] font-black text-zinc-500 uppercase tracking-wider">Assists Leaders</span>
                 <div className="space-y-1.5 text-[10px]">
                   <div className="flex justify-between font-bold text-zinc-300">
@@ -1071,7 +1071,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 </div>
               </div>
 
-              <div className="bg-zinc-950 p-3.5 border border-zinc-900 rounded-2xl space-y-2">
+              <div className="bg-[var(--color-background)] p-3.5 border border-[var(--neon-green-border)] rounded-2xl space-y-2">
                 <span className="block text-[9px] font-black text-zinc-500 uppercase tracking-wider">Golden Glove</span>
                 <div className="space-y-1.5 text-[10px]">
                   <div className="flex justify-between font-bold text-zinc-300">
@@ -1094,11 +1094,11 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
 
         {/* TAB 3: BREAKING FOOTBALL NEWS */}
         {activeTab === 'news' && (
-          <div className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+          <div className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--neon-green-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Newspaper className="w-5 h-5 text-[var(--neon-green)]" />
-                <h3 className="text-sm font-black text-white uppercase">Real-Time Football News Feed</h3>
+                <h3 className="text-sm font-black text-[var(--color-text)] uppercase">Real-Time Football News Feed</h3>
               </div>
               <span className="text-[8px] text-[var(--neon-green)] uppercase animate-pulse">● Auto Sync Active</span>
             </div>
@@ -1107,8 +1107,8 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
               <div className="space-y-4 py-8">
                 {[1, 2, 3, 4].map(n => (
                   <div key={n} className="space-y-2">
-                    <div className="h-4 bg-zinc-900 rounded w-1/3 animate-pulse"></div>
-                    <div className="h-12 bg-zinc-900 rounded animate-pulse"></div>
+                    <div className="h-4 bg-[var(--color-surface)] rounded w-1/3 animate-pulse"></div>
+                    <div className="h-12 bg-[var(--color-surface)] rounded animate-pulse"></div>
                   </div>
                 ))}
               </div>
@@ -1117,7 +1117,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 {news.map((item) => (
                   <div 
                     key={item.id} 
-                    className="bg-black border border-zinc-900 rounded-2xl p-4 flex flex-col justify-between hover:border-[var(--neon-green)]/35 transition"
+                    className="bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-2xl p-4 flex flex-col justify-between hover:border-[var(--neon-green)]/35 transition"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -1128,7 +1128,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                           {new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <h4 className="text-xs font-black text-white leading-relaxed uppercase">
+                      <h4 className="text-xs font-black text-[var(--color-text)] leading-relaxed uppercase">
                         {item.title}
                       </h4>
                       <p className="text-[10px] text-zinc-400 font-sans leading-relaxed">
@@ -1136,7 +1136,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-zinc-900/60 mt-4 flex justify-between items-center text-[8.5px] font-bold">
+                    <div className="pt-3 border-t border-[var(--neon-green-border)]/60 mt-4 flex justify-between items-center text-[8.5px] font-bold">
                       <span className="text-zinc-600">PubDate: {new Date(item.pubDate).toDateString()}</span>
                       <a 
                         href={item.link} 
@@ -1158,11 +1158,11 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
 
         {/* TAB 4: ALERTS, NOTIFICATIONS & FCM SUBSCRIPTIONS */}
         {activeTab === 'notifications' && (
-          <form onSubmit={handleSaveAlerts} className="bg-[#0b0b0c] border border-zinc-900 rounded-2xl p-6 space-y-6">
-            <div className="border-b border-zinc-900 pb-3 flex items-center gap-2">
+          <form onSubmit={handleSaveAlerts} className="bg-[#0b0b0c] border border-[var(--neon-green-border)] rounded-2xl p-6 space-y-6">
+            <div className="border-b border-[var(--neon-green-border)] pb-3 flex items-center gap-2">
               <Bell className="w-5 h-5 text-[var(--neon-green)]" />
               <div>
-                <h3 className="text-sm font-black text-white uppercase">OneSignal & FCM Notification Subscriptions</h3>
+                <h3 className="text-sm font-black text-[var(--color-text)] uppercase">OneSignal & FCM Notification Subscriptions</h3>
                 <p className="text-[8px] text-zinc-500 uppercase mt-0.5">Durable cloud database integration for direct device dispatching</p>
               </div>
             </div>
@@ -1188,9 +1188,9 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                         type="checkbox"
                         checked={(notificationPrefs as any)[item.key]}
                         onChange={(e) => setNotificationPrefs(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                        className="rounded border-zinc-800 bg-black text-[var(--neon-green)] focus:ring-[var(--neon-green)] w-4 h-4 cursor-pointer"
+                        className="rounded border-[var(--neon-green-border)] bg-[var(--color-surface)] text-[var(--neon-green)] focus:ring-[var(--neon-green)] w-4 h-4 cursor-pointer"
                       />
-                      <span className="group-hover:text-white transition font-bold">{item.label}</span>
+                      <span className="group-hover:text-[var(--color-text)] transition font-bold">{item.label}</span>
                     </label>
                   ))}
                 </div>
@@ -1208,7 +1208,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       value={notificationPrefs.favouriteClub}
                       onChange={(e) => setNotificationPrefs(prev => ({ ...prev, favouriteClub: e.target.value }))}
                       placeholder="E.g., Chelsea, Arsenal, Real Madrid"
-                      className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] placeholder-zinc-700"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] placeholder-zinc-700"
                     />
                     <p className="text-[7.5px] text-zinc-500 uppercase">We will trigger higher priority FCM alerts when this club plays.</p>
                   </div>
@@ -1220,14 +1220,14 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       value={notificationPrefs.favouritePlayer}
                       onChange={(e) => setNotificationPrefs(prev => ({ ...prev, favouritePlayer: e.target.value }))}
                       placeholder="E.g., Cole Palmer, Saka, Lionel Messi"
-                      className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] placeholder-zinc-700"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] placeholder-zinc-700"
                     />
                     <p className="text-[7.5px] text-zinc-500 uppercase">Get transfers, goals, and assist breakdowns regarding this player.</p>
                   </div>
                 </div>
 
                 {/* Secure Badge */}
-                <div className="bg-black/50 p-3.5 border border-zinc-900 rounded-xl flex items-start gap-2.5 text-[10px] leading-relaxed">
+                <div className="bg-[var(--color-surface)]/50 p-3.5 border border-[var(--neon-green-border)] rounded-xl flex items-start gap-2.5 text-[10px] leading-relaxed">
                   <ShieldAlert className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                   <div className="space-y-0.5 text-zinc-400">
                     <span className="block font-black text-zinc-300 uppercase text-[9px]">Push Services Cryptographed</span>
@@ -1238,7 +1238,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
 
             </div>
 
-            <div className="pt-4 border-t border-zinc-900 flex justify-end">
+            <div className="pt-4 border-t border-[var(--neon-green-border)] flex justify-end">
               <button
                 type="submit"
                 disabled={isSavingAlerts}
@@ -1265,14 +1265,14 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
       {/* 4. USER-LAUNCHED BROADCASTING FRAME OVERLAY */}
       <AnimatePresence>
         {isBroadcasting && (
-          <div data-overlay="true" className="fixed inset-0 bg-black/95 backdrop-blur-md z-[130] flex items-center justify-center p-4">
+          <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-[130] flex items-center justify-center p-4">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="w-full max-w-md bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
-              <div className="p-4 border-b border-zinc-900 flex items-center justify-between bg-black">
+              <div className="p-4 border-b border-[var(--neon-green-border)] flex items-center justify-between bg-[var(--color-surface)]">
                 <span className="text-[9px] font-mono font-black uppercase text-[var(--neon-green)] flex items-center gap-1.5">
                   <Tv className="w-4 h-4" />
                   Provision Live Sports Broadcast Tunnel
@@ -1280,7 +1280,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                 <button
                   type="button"
                   onClick={() => setIsBroadcasting(false)}
-                  className="p-1 text-zinc-400 hover:text-white transition cursor-pointer"
+                  className="p-1 text-zinc-400 hover:text-[var(--color-text)] transition cursor-pointer"
                 >
                   ✕
                 </button>
@@ -1296,7 +1296,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                     value={customTitle}
                     onChange={(e) => setCustomTitle(e.target.value)}
                     placeholder="E.g., UCL Quarterfinals Watchalong"
-                    className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                   />
                 </div>
 
@@ -1308,7 +1308,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       value={customTeamA}
                       onChange={(e) => setCustomTeamA(e.target.value)}
                       placeholder="E.g., Arsenal"
-                      className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1318,7 +1318,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                       value={customTeamB}
                       onChange={(e) => setCustomTeamB(e.target.value)}
                       placeholder="E.g., Bayern Munich"
-                      className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                     />
                   </div>
                 </div>
@@ -1331,7 +1331,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                     value={customVideoUrl}
                     onChange={(e) => setCustomVideoUrl(e.target.value)}
                     placeholder="E.g., https://assets.mixkit.co/...mp4 or Youtube link"
-                    className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                   />
                   <p className="text-[7.5px] text-zinc-500 uppercase leading-relaxed">
                     Must be a direct soccer stream links, custom video playlist, or active Youtube stream for proper player loading.
@@ -1342,7 +1342,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
                   <button
                     type="button"
                     onClick={() => setIsBroadcasting(false)}
-                    className="flex-1 py-3 bg-zinc-900 hover:bg-zinc-850 text-zinc-450 hover:text-white font-mono text-xs uppercase font-black rounded-xl transition cursor-pointer"
+                    className="flex-1 py-3 bg-[var(--color-surface)] hover:bg-zinc-850 text-zinc-450 hover:text-[var(--color-text)] font-mono text-xs uppercase font-black rounded-xl transition cursor-pointer"
                   >
                     Cancel
                   </button>

@@ -104,7 +104,7 @@ export function SettingsAccessibilityTab({
       </h3>
 
       {/* Design System Theme Picker */}
-      <div className="space-y-2.5 border-b border-zinc-900 pb-4">
+      <div className="space-y-2.5 border-b border-[var(--neon-green-border)] pb-4">
         <label className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">
           Aesthetic Design System
         </label>
@@ -139,7 +139,7 @@ export function SettingsAccessibilityTab({
               className={`py-2 text-[9px] font-mono uppercase tracking-wider border transition-all cursor-pointer font-black select-none rounded-none ${
                 theme === ds.id
                   ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)]'
-                  : 'border-zinc-800 bg-black text-zinc-400 hover:border-zinc-700'
+                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-400 hover:border-zinc-700'
               }`}
             >
               {ds.name}
@@ -149,7 +149,7 @@ export function SettingsAccessibilityTab({
       </div>
 
       {/* Color Palette Scheme Selector */}
-      <div className="space-y-2.5 border-b border-zinc-900 pb-4">
+      <div className="space-y-2.5 border-b border-[var(--neon-green-border)] pb-4">
         <label className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">
           Color Scheme Modality
         </label>
@@ -171,7 +171,7 @@ export function SettingsAccessibilityTab({
               className={`py-2 text-[8.5px] font-mono uppercase tracking-wider border transition-all cursor-pointer font-black select-none rounded-none ${
                 colorScheme === cs.id
                   ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)]'
-                  : 'border-zinc-800 bg-black text-zinc-400 hover:border-zinc-700'
+                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-400 hover:border-zinc-700'
               }`}
             >
               {cs.name}
@@ -181,7 +181,7 @@ export function SettingsAccessibilityTab({
       </div>
 
       {/* Accent Color Theme selection */}
-      <div className="space-y-2 border-b border-zinc-900 pb-4">
+      <div className="space-y-2 border-b border-[var(--neon-green-border)] pb-4">
         <label className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">
           Dynamic Accent Palette
         </label>
@@ -210,7 +210,7 @@ export function SettingsAccessibilityTab({
               className={`py-2 text-[8px] font-mono uppercase tracking-wider border transition-all cursor-pointer font-black select-none rounded-none leading-none ${
                 accentColor === ac.id
                   ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)]'
-                  : 'border-zinc-800 bg-black text-zinc-400 hover:border-zinc-700'
+                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-400 hover:border-zinc-700'
               }`}
             >
               {ac.name}
@@ -220,7 +220,7 @@ export function SettingsAccessibilityTab({
       </div>
 
       {/* Real-time Task Monitor toggler */}
-      <div className="flex items-start space-x-3 p-3 bg-zinc-950 border border-zinc-900">
+      <div className="flex items-start space-x-3 p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)]">
         <input
           type="checkbox"
           id="taskMonitorEnabledSub"
@@ -234,13 +234,13 @@ export function SettingsAccessibilityTab({
           className="mt-1 accent-[var(--neon-green)] cursor-pointer"
         />
         <label htmlFor="taskMonitorEnabledSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-          <span className="font-semibold block text-white font-mono uppercase text-[10px] tracking-wide mb-1">Enable Real-Time Task Monitor</span>
+          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Enable Real-Time Task Monitor</span>
           Display floating background transmission and diagnostic monitoring spectrum in bottom-right.
         </label>
       </div>
 
       {/* Haptic properties checkbox */}
-      <div className="flex items-start space-x-3 p-3 bg-zinc-950 border border-zinc-900">
+      <div className="flex items-start space-x-3 p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)]">
         <input
           type="checkbox"
           id="vibrationHapticsSub"
@@ -253,13 +253,13 @@ export function SettingsAccessibilityTab({
           className="mt-1 accent-[var(--neon-green)] cursor-pointer"
         />
         <label htmlFor="vibrationHapticsSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-          <span className="font-semibold block text-white font-mono uppercase text-[10px] tracking-wide mb-1">Physical Vibration Haptics Support</span>
+          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Physical Vibration Haptics Support</span>
           Toggle subtle mechanical haptic response for all buttons and likes.
         </label>
       </div>
 
       {/* Event specific intensity controller sliders */}
-      <div className={`p-3 bg-black/60 border border-emerald-950/40 rounded-none space-y-3 transition-all duration-150 ${vibeEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+      <div className={`p-3 bg-[var(--color-surface)]/60 border border-emerald-950/40 rounded-none space-y-3 transition-all duration-150 ${vibeEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
         {/* Messages intensity setting */}
         <div className="space-y-1.5">
           <div className="flex justify-between items-center text-[9px] font-mono text-zinc-350 uppercase">
@@ -279,7 +279,7 @@ export function SettingsAccessibilityTab({
                 className={`flex-1 py-1 text-[8px] font-mono uppercase border cursor-pointer ${
                   vibeMessageIntensity === level
                     ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-[var(--neon-green)]'
-                    : 'border-zinc-900 bg-zinc-950 text-zinc-500 hover:border-zinc-850'
+                    : 'border-[var(--neon-green-border)] bg-[var(--color-background)] text-zinc-500 hover:border-zinc-850'
                 }`}
               >
                 {level}
@@ -307,7 +307,7 @@ export function SettingsAccessibilityTab({
                 className={`flex-1 py-1 text-[8px] font-mono uppercase border cursor-pointer ${
                   vibeLikeIntensity === level
                     ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-[var(--neon-green)]'
-                    : 'border-zinc-900 bg-zinc-950 text-zinc-500 hover:border-zinc-850'
+                    : 'border-[var(--neon-green-border)] bg-[var(--color-background)] text-zinc-500 hover:border-zinc-850'
                 }`}
               >
                 {level}
@@ -334,7 +334,7 @@ export function SettingsAccessibilityTab({
               className={`py-1.5 text-[8.5px] font-mono uppercase border transition-all cursor-pointer font-bold ${
                 sendShortcut === sh
                   ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-[var(--neon-green)]'
-                  : 'border-zinc-900 bg-black text-zinc-500 hover:border-zinc-805'
+                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-500 hover:border-zinc-805'
               }`}
             >
               {sh === 'enter' ? 'Enter [Standard]' : 'Cmd + Enter [Stealth]'}
@@ -353,7 +353,7 @@ export function SettingsAccessibilityTab({
               setTypingVisualStyle(e.target.value as any);
               playGlitchClickSound();
             }}
-            className="w-full bg-black border border-zinc-800 px-2 py-1 text-[10px] font-mono text-[var(--neon-green)] focus:outline-none"
+            className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] px-2 py-1 text-[10px] font-mono text-[var(--neon-green)] focus:outline-none"
           >
             <option value="pulse">Pulse effect</option>
             <option value="stealth">Stealth (Minimal info)</option>
@@ -369,7 +369,7 @@ export function SettingsAccessibilityTab({
               setSessionCipherTtl(e.target.value as any);
               playGlitchClickSound();
             }}
-            className="w-full bg-black border border-zinc-800 px-2 py-1 text-[10px] font-mono text-[var(--neon-green)] focus:outline-none"
+            className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] px-2 py-1 text-[10px] font-mono text-[var(--neon-green)] focus:outline-none"
           >
             <option value="5m">5 Minutes timeout</option>
             <option value="15m">15 Minutes timeout</option>
@@ -398,13 +398,13 @@ export function SettingsAccessibilityTab({
             className="mt-1 accent-rose-500 cursor-pointer"
           />
           <label htmlFor="lockEnabledOptSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-            <span className="font-semibold block text-white font-mono uppercase text-[10px] tracking-wide mb-1">Enable Secure PIN Chat Lock</span>
+            <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Enable Secure PIN Chat Lock</span>
             Require a custom cryptographic PIN security screen when opening private discussions.
           </label>
         </div>
 
         {chatLockEnabled && (
-          <div className="p-3.5 bg-black border border-rose-950/40 space-y-2 animate-fade-in">
+          <div className="p-3.5 bg-[var(--color-surface)] border border-rose-950/40 space-y-2 animate-fade-in">
             <div className="flex items-center justify-between">
               <label className="text-[9px] font-mono text-zinc-400 uppercase font-bold">Construct secure 4-digit PIN:</label>
               <span className="text-[9px] font-mono text-rose-450 font-bold uppercase">{chatLockPin ? '[SET]' : '[NOT SET]'}</span>
@@ -422,7 +422,7 @@ export function SettingsAccessibilityTab({
                   playLikeSound();
                 }
               }}
-              className="w-full bg-zinc-950 border border-neutral-800 text-neutral-100 placeholder-zinc-700 px-3 py-1.5 font-mono text-xs text-center focus:border-rose-500 outline-none"
+              className="w-full bg-[var(--color-background)] border border-neutral-800 text-neutral-100 placeholder-zinc-700 px-3 py-1.5 font-mono text-xs text-center focus:border-rose-500 outline-none"
             />
             <p className="text-[8px] text-zinc-650 leading-normal font-sans">
               🔒 Secure Pin hashes are stored in encrypted client space and never reach transit logs.
@@ -440,7 +440,7 @@ export function SettingsAccessibilityTab({
         {isElectron ? (
           <div className="space-y-3.5 animate-fade-in">
             {/* Start on Login control */}
-            <div className="flex items-start space-x-3 p-3 bg-zinc-950 border border-zinc-900">
+            <div className="flex items-start space-x-3 p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)]">
               <input
                 type="checkbox"
                 id="startOnLoginSub"
@@ -450,7 +450,7 @@ export function SettingsAccessibilityTab({
                 className="mt-1 accent-[var(--neon-green)] cursor-pointer"
               />
               <label htmlFor="startOnLoginSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-                <span className="font-semibold block text-white font-mono uppercase text-[10px] tracking-wide mb-1">
+                <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">
                   Start on Login {desktopLoading && '(Allying...)'}
                 </span>
                 Launch Flick automatically when your computer system boots up.
@@ -458,7 +458,7 @@ export function SettingsAccessibilityTab({
             </div>
 
             {/* Desktop Status Deck */}
-            <div className="bg-[#080808] border border-zinc-900 p-3 rounded-none space-y-2">
+            <div className="bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-3 rounded-none space-y-2">
               <div className="flex justify-between items-center text-[9px] font-mono">
                 <span className="text-zinc-500">CLIENT ARCHITECTURE:</span>
                 <span className="text-[var(--neon-green)] font-bold uppercase">Electron Native Client</span>
@@ -489,7 +489,7 @@ export function SettingsAccessibilityTab({
                   { keys: 'Ctrl + M', desc: 'Direct Message' },
                   { keys: 'Ctrl + R', desc: 'Refresh Feed' }
                 ].map((item, idx) => (
-                  <div key={idx} className="p-2 bg-[#050505] border border-zinc-950 flex flex-col justify-between">
+                  <div key={idx} className="p-2 bg-[var(--color-background)] border border-zinc-950 flex flex-col justify-between">
                     <span className="text-[8.5px] font-bold text-zinc-400 font-sans">{item.desc}</span>
                     <span className="text-[9px] text-[var(--neon-green)] font-mono font-bold">{item.keys}</span>
                   </div>
@@ -498,7 +498,7 @@ export function SettingsAccessibilityTab({
             </div>
           </div>
         ) : (
-          <div className="p-3 bg-zinc-950/40 border border-zinc-900/60 text-zinc-500 text-center space-y-1.5">
+          <div className="p-3 bg-[var(--color-background)]/40 border border-[var(--neon-green-border)]/60 text-zinc-500 text-center space-y-1.5">
             <Cpu className="w-5 h-5 mx-auto text-zinc-650 animate-pulse" />
             <p className="text-[9px] font-mono uppercase tracking-wide text-zinc-400">Web Sandbox Sandbox Detected</p>
             <p className="text-[8.5px] font-sans text-zinc-650 max-w-xs mx-auto leading-normal">

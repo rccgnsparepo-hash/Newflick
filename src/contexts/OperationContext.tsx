@@ -374,7 +374,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return (
       <div className="font-mono text-[10px] tracking-widest flex items-center gap-1 leading-none select-none">
         <span className={colorClass}>[{filledStr}{emptyStr}]</span>
-        <span className="font-black text-white">{progress}%</span>
+        <span className="font-black text-[var(--color-text)]">{progress}%</span>
       </div>
     );
   };
@@ -385,7 +385,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       case 'NORMAL': return { border: 'border-cyan-500/40 text-cyan-400 bg-cyan-950/20', label: 'NORMAL' };
       case 'SLOW': return { border: 'border-amber-500/40 text-amber-400 bg-amber-950/20', label: 'SLOW' };
       case 'BAD': return { border: 'border-red-500/40 text-red-400 bg-red-950/20', label: 'BAD' };
-      default: return { border: 'border-zinc-800 text-zinc-500 bg-zinc-950/20', label: 'OFFLINE' };
+      default: return { border: 'border-[var(--neon-green-border)] text-zinc-500 bg-[var(--color-background)]/20', label: 'OFFLINE' };
     }
   };
 
@@ -414,8 +414,8 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         <div className="fixed bottom-4 right-4 z-100 font-mono w-80 max-w-[calc(100vw-2rem)] select-none animate-fade-in">
           <div className="bg-[#0b0b0e] border-2 border-red-500/60 p-3.5 [box-shadow:6px_6px_0px_rgba(239,68,68,0.25)] flex flex-col gap-2.5">
             {/* Header Title Bar */}
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
-              <div className="flex items-center gap-1.5 text-xs font-black text-white">
+            <div className="flex items-center justify-between border-b border-[var(--neon-green-border)] pb-2">
+              <div className="flex items-center gap-1.5 text-xs font-black text-[var(--color-text)]">
                 <Terminal className="w-4 h-4 text-red-500 animate-pulse" />
                 <span>TASK_SPECTRUM_MONITOR</span>
               </div>
@@ -429,7 +429,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 <button
                   onClick={() => setIsMonitorExpanded(!isMonitorExpanded)}
-                  className="text-zinc-500 hover:text-white transition cursor-pointer"
+                  className="text-zinc-500 hover:text-[var(--color-text)] transition cursor-pointer"
                   title={isMonitorExpanded ? "Minimize monitor" : "Expand monitor"}
                 >
                   {isMonitorExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -458,7 +458,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                   className="space-y-3.5 max-h-64 overflow-y-auto pr-1 scrollbar-thin"
                 >
                   {tasks.map((task) => {
-                    let badgeColor = 'bg-zinc-950 border-zinc-800 text-zinc-400';
+                    let badgeColor = 'bg-[var(--color-background)] border-[var(--neon-green-border)] text-zinc-400';
                     if (task.state === 'SUCCESS') badgeColor = 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
                     if (task.state === 'FAILED') badgeColor = 'bg-red-950/20 border-red-500/30 text-red-400';
                     if (task.state === 'UPLOADING') badgeColor = 'bg-cyan-950/20 border-cyan-500/30 text-cyan-400';
@@ -471,7 +471,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         initial={{ x: 50, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: -50, opacity: 0 }}
-                        className="p-2.5 border border-zinc-850/60 bg-black/55 hover:border-zinc-800 transition"
+                        className="p-2.5 border border-zinc-850/60 bg-[var(--color-surface)]/55 hover:border-[var(--neon-green-border)] transition"
                       >
                         {/* Task metadata row */}
                         <div className="flex items-start justify-between gap-2">
@@ -479,7 +479,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                             <span className="text-[7.5px] text-zinc-500 font-bold uppercase tracking-wider block leading-none mb-1">
                               {task.type} • {task.id.toUpperCase()}
                             </span>
-                            <span className="text-[10px] text-white font-semibold leading-tight block">
+                            <span className="text-[10px] text-[var(--color-text)] font-semibold leading-tight block">
                               {task.label}
                             </span>
                           </div>
@@ -547,7 +547,7 @@ export const OperationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                             {task.onRetry && (
                               <button
                                 onClick={() => retryTask(task.id)}
-                                className="px-1.5 py-0.5 bg-red-600 hover:bg-red-500 text-white text-[7.5px] uppercase font-bold cursor-pointer rounded flex items-center gap-1 shrink-0"
+                                className="px-1.5 py-0.5 bg-red-600 hover:bg-red-500 text-[var(--color-text)] text-[7.5px] uppercase font-bold cursor-pointer rounded flex items-center gap-1 shrink-0"
                               >
                                 <RotateCcw className="w-2.5 h-2.5" />
                                 <span>RETRY [ {task.retryCount} ]</span>

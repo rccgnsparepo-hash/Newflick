@@ -143,7 +143,7 @@ export default function BrutalistNotificationBanner() {
           className={`pointer-events-auto w-full max-w-lg border-4 ${theme.border} ${theme.bg} ${theme.text} p-4 shadow-[8px_8px_0px_0px_#000000] flex flex-col space-y-3 relative overflow-hidden`}
         >
           {/* Diagnostic Grid Accents */}
-          <div className="absolute top-0 right-0 w-24 h-24 bg-black/5 -mr-10 -mt-10 rotate-45 pointer-events-none border border-black/10" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--color-surface)]/5 -mr-10 -mt-10 rotate-45 pointer-events-none border border-black/10" />
 
           {/* Banner Header */}
           <div className="flex items-center justify-between border-b-2 border-black/20 pb-2">
@@ -152,7 +152,7 @@ export default function BrutalistNotificationBanner() {
               <span className="text-xs uppercase font-black tracking-widest">{theme.title}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="bg-black text-white text-[9px] px-1.5 py-0.5 font-bold animate-pulse">
+              <span className="bg-[var(--color-surface)] text-[var(--color-text)] text-[9px] px-1.5 py-0.5 font-bold animate-pulse">
                 AUTO-DISMISS IN {secondsLeft}S
               </span>
               <button
@@ -160,7 +160,7 @@ export default function BrutalistNotificationBanner() {
                   playGlitchClickSound();
                   setActiveNotif(null);
                 }}
-                className="hover:bg-black hover:text-white p-0.5 border border-transparent hover:border-black transition-all cursor-pointer"
+                className="hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] p-0.5 border border-transparent hover:border-black transition-all cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -186,7 +186,7 @@ export default function BrutalistNotificationBanner() {
 
             <button
               onClick={handleActionClick}
-              className="bg-black text-white hover:bg-zinc-900 active:translate-x-0.5 active:translate-y-0.5 px-3 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all border border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.35)] hover:shadow-none"
+              className="bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-surface)] active:translate-x-0.5 active:translate-y-0.5 px-3 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all border border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.35)] hover:shadow-none"
             >
               <span>DECRYPT CHANNEL</span>
               <ChevronRight className="w-3.5 h-3.5" />

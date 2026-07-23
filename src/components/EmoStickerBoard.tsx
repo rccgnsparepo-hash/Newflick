@@ -124,7 +124,7 @@ export default function EmoStickerBoard({ onSelectEmoji, onSelectSticker }: EmoS
   };
 
   return (
-    <div className="w-full bg-[#0a0a0a] border-2 border-[var(--neon-green)] shadow-[5px_5px_0_0_#000000] p-4 font-mono text-[var(--neon-green)] max-w-md select-none h-80 flex flex-col">
+    <div className="w-full bg-[var(--color-surface)] border-2 border-[var(--neon-green)] shadow-[5px_5px_0_0_#000000] p-4 font-mono text-[var(--neon-green)] max-w-md select-none h-80 flex flex-col">
       
       {/* Board Selector Tabs */}
       <div className="flex border-b border-[var(--neon-green)]/35 pb-2 shrink-0 justify-between items-center text-[9px] font-mono">
@@ -153,7 +153,7 @@ export default function EmoStickerBoard({ onSelectEmoji, onSelectSticker }: EmoS
 
         <button
           onClick={() => { playGlitchClickSound(); setActiveBoardTab('store'); }}
-          className={`flex items-center gap-1 px-2.5 py-1 text-yellow-500 hover:text-white transition cursor-pointer text-[8.5px] uppercase font-bold ${
+          className={`flex items-center gap-1 px-2.5 py-1 text-yellow-500 hover:text-[var(--color-text)] transition cursor-pointer text-[8.5px] uppercase font-bold ${
             activeBoardTab === 'store' ? 'underline' : ''
           }`}
         >
@@ -190,7 +190,7 @@ export default function EmoStickerBoard({ onSelectEmoji, onSelectSticker }: EmoS
             {/* Structured Emoji Categories */}
             {EMOJI_CATEGORIES.map((cat, catIdx) => (
               <div key={catIdx} className="space-y-1.5">
-                <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-widest block border-b border-zinc-800/60 pb-0.5">
+                <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-widest block border-b border-[var(--neon-green-border)]/60 pb-0.5">
                   ✦ {cat.name}
                 </span>
                 <div className="flex flex-wrap gap-2.5">
@@ -214,7 +214,7 @@ export default function EmoStickerBoard({ onSelectEmoji, onSelectSticker }: EmoS
             {downloadedPacks.length === 0 ? (
               <div className="text-center py-6 text-zinc-500 text-[10px]">
                 No sticker packs downloaded currently.<br/>
-                Visit the <span onClick={() => setActiveBoardTab('store')} className="text-yellow-500 cursor-pointer underline hover:text-white">Packs Store</span> to explore content.
+                Visit the <span onClick={() => setActiveBoardTab('store')} className="text-yellow-500 cursor-pointer underline hover:text-[var(--color-text)]">Packs Store</span> to explore content.
               </div>
             ) : (
               stickerPacks.filter(p => downloadedPacks.includes(p.id)).map((pack) => (
@@ -231,7 +231,7 @@ export default function EmoStickerBoard({ onSelectEmoji, onSelectSticker }: EmoS
                         <div
                           key={sIdx}
                           onClick={() => handleStickerClick(stickerUrl)}
-                          className="border border-zinc-800/80 bg-black p-2 flex items-center justify-center cursor-pointer hover:border-[var(--neon-green)] transition relative group"
+                          className="border border-[var(--neon-green-border)]/80 bg-[var(--color-surface)] p-2 flex items-center justify-center cursor-pointer hover:border-[var(--neon-green)] transition relative group"
                         >
                           <img src={stickerUrl} className="w-12 h-12 object-contain" alt="Sticker asset" />
                           
@@ -254,16 +254,16 @@ export default function EmoStickerBoard({ onSelectEmoji, onSelectSticker }: EmoS
 
         {activeBoardTab === 'store' && (
           <div className="space-y-3.5">
-            <span className="text-[8.5px] uppercase text-zinc-400 block font-bold tracking-widest border-b border-zinc-800 pb-1">
+            <span className="text-[8.5px] uppercase text-zinc-400 block font-bold tracking-widest border-b border-[var(--neon-green-border)] pb-1">
               🔋 CLOUD DIRECTORY SYSTEM PACKS
             </span>
 
             {stickerPacks.map((pack) => {
               const isDownloaded = downloadedPacks.includes(pack.id);
               return (
-                <div key={pack.id} className="border border-zinc-800/80 bg-[#0d0d0d] p-3 flex justify-between items-center gap-4">
+                <div key={pack.id} className="border border-[var(--neon-green-border)]/80 bg-[var(--color-surface)] p-3 flex justify-between items-center gap-4">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-[10px] font-black text-white">
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[var(--color-text)]">
                       <span>{pack.name}</span>
                       <span className="text-[7.5px] font-mono text-zinc-500 font-normal">by {pack.author}</span>
                     </div>

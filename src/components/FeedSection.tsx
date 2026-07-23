@@ -1109,13 +1109,13 @@ export default function FeedSection({
   };
 
   return (
-    <div className="w-full h-screen bg-morphic-dark text-zinc-100 flex flex-row relative overflow-hidden font-mono">
+    <div className="w-full h-screen bg-morphic-dark text-[var(--color-text)] flex flex-row relative overflow-hidden font-mono">
       
       {/* 
         PREMIUM MORPHIC NAVIGATION RAIL (Inspired directly by Image 1)
         We package the interface into elegant separate capsules (Logo/Primary Nav, Profile Card, and Tactical Utility)
       */}
-      <nav className={`hidden md:flex flex-col justify-between shrink-0 h-full z-50 select-none border-r border-zinc-900/30 bg-[#0a0a0c] py-6 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] relative ${
+      <nav className={`hidden md:flex flex-col justify-between shrink-0 h-full z-50 select-none border-r border-[var(--neon-green-border)]/30 bg-[#0a0a0c] py-6 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] relative ${
         sidebarExpanded ? 'w-64 px-4' : 'w-20 px-2'
       }`}>
         
@@ -1128,7 +1128,7 @@ export default function FeedSection({
             setSidebarExpanded(next);
             localStorage.setItem('flick_sidebar_expanded', String(next));
           }}
-          className="absolute -right-3 top-7 w-6 h-6 rounded-full bg-[#121214] border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:border-red-500/50 transition cursor-pointer shadow-md z-[60]"
+          className="absolute -right-3 top-7 w-6 h-6 rounded-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center justify-center text-zinc-400 hover:text-[var(--color-text)] hover:border-red-500/50 transition cursor-pointer shadow-md z-[60]"
           title={sidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-500 ${sidebarExpanded ? 'rotate-180 text-red-500' : 'text-[var(--neon-green)]'}`} />
@@ -1137,15 +1137,15 @@ export default function FeedSection({
         {/* TOP BLOCK: LOGO & IDENTITY PROFILE CAPSULE */}
         <div className="w-full space-y-6">
           {/* Cyber Logo Capsule */}
-          <div className={`flex items-center gap-3 bg-[#131315] rounded-2xl border border-zinc-900 p-2 shadow-sm ${
+          <div className={`flex items-center gap-3 bg-[var(--color-surface)] rounded-2xl border border-[var(--neon-green-border)] p-2 shadow-sm ${
             sidebarExpanded ? 'px-3 py-2.5' : 'justify-center'
           }`}>
-            <div className="w-9 h-9 border border-[var(--neon-green)] flex items-center justify-center font-serif text-sm font-black bg-black text-[var(--neon-green)] shadow-[1px_1px_0px_var(--neon-green)] rounded-full animate-pulse shrink-0">
+            <div className="w-9 h-9 border border-[var(--neon-green)] flex items-center justify-center font-serif text-sm font-black bg-[var(--color-surface)] text-[var(--neon-green)] shadow-[1px_1px_0px_var(--neon-green)] rounded-full animate-pulse shrink-0">
               F
             </div>
             {sidebarExpanded && (
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-mono font-black text-white block tracking-widest leading-none">FLICK NODE</span>
+                <span className="text-[10px] font-mono font-black text-[var(--color-text)] block tracking-widest leading-none">FLICK NODE</span>
                 <span className="text-[6.5px] font-mono text-zinc-500 uppercase tracking-widest block mt-0.5">CSC UNIVERSITY</span>
               </div>
             )}
@@ -1154,10 +1154,10 @@ export default function FeedSection({
           {/* User Profile Card Capsule */}
           <button
             onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('profile'); }}
-            className={`w-full bg-[#111113]/90 border transition-all duration-300 flex items-center shadow-md cursor-pointer hover:border-red-500/30 ${
+            className={`w-full bg-[var(--color-surface)]/90 border transition-all duration-300 flex items-center shadow-md cursor-pointer hover:border-red-500/30 ${
               activeTab === 'profile' 
                 ? 'border-red-500/30 bg-[#1e1416]/40 shadow-[0_0_12px_rgba(239,68,68,0.15)]' 
-                : 'border-zinc-900/60 hover:bg-zinc-950'
+                : 'border-[var(--neon-green-border)]/60 hover:bg-[var(--color-background)]'
             } ${
               sidebarExpanded ? 'p-3 rounded-2xl gap-3' : 'py-3 rounded-[24px] flex-col justify-center gap-1.5'
             }`}
@@ -1168,7 +1168,7 @@ export default function FeedSection({
                 src={profile?.photoURL}
                 alt={profile?.displayName}
                 className={`rounded-full object-cover border ${
-                  activeTab === 'profile' ? 'border-red-500' : 'border-zinc-800'
+                  activeTab === 'profile' ? 'border-red-500' : 'border-[var(--neon-green-border)]'
                 } ${sidebarExpanded ? 'w-9 h-9' : 'w-8 h-8'}`}
                 referrerPolicy="no-referrer"
               />
@@ -1177,7 +1177,7 @@ export default function FeedSection({
             
             {sidebarExpanded ? (
               <div className="text-left min-w-0 flex-1">
-                <h5 className="text-[10.5px] font-mono font-black text-white truncate uppercase leading-tight">
+                <h5 className="text-[10.5px] font-mono font-black text-[var(--color-text)] truncate uppercase leading-tight">
                   {profile?.displayName || 'OPERATOR'}
                 </h5>
                 <span className="text-[6.5px] font-mono text-red-400 uppercase tracking-wider block font-bold mt-0.5">
@@ -1210,7 +1210,7 @@ export default function FeedSection({
                   className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
                     activeTab === 'home' 
                       ? 'text-[var(--neon-green)]' 
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-950/50'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
                   } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
                   title="Campus Feed"
                 >
@@ -1230,7 +1230,7 @@ export default function FeedSection({
                 {/* Search Action (Interactive trigger) */}
                 <button
                   onClick={() => { playGlitchClickSound(); triggerVibration('light'); setIsSearchOpen(true); }}
-                  className={`relative flex items-center w-full text-zinc-500 hover:text-[var(--neon-green)] hover:bg-zinc-950/50 transition-all duration-200 cursor-pointer rounded-xl ${
+                  className={`relative flex items-center w-full text-zinc-500 hover:text-[var(--neon-green)] hover:bg-[var(--color-background)]/50 transition-all duration-200 cursor-pointer rounded-xl ${
                     sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
                   }`}
                   title="Search Campus Registry"
@@ -1247,7 +1247,7 @@ export default function FeedSection({
                   className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
                     activeTab === 'news' 
                       ? 'text-[var(--neon-green)]' 
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-950/50'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
                   } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
                   title="Campus Radio"
                 >
@@ -1273,7 +1273,7 @@ export default function FeedSection({
                   className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
                     activeTab === 'workspace'
                        ? 'text-[var(--neon-green)]'
-                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-950/50'
+                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
                   } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
                   title="Google Workspace"
                 >
@@ -1305,7 +1305,7 @@ export default function FeedSection({
                   className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
                     activeTab === 'chat' 
                       ? 'text-[var(--neon-green)]' 
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-950/50'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
                   } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
                   title="Secured Chats"
                 >
@@ -1319,7 +1319,7 @@ export default function FeedSection({
                   <div className="relative shrink-0 z-10">
                     <MessageSquare className="w-4.5 h-4.5" />
                     {unreadE2EECount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white font-mono font-black text-[6.5px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-black animate-pulse">
+                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-[var(--color-text)] font-mono font-black text-[6.5px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-black animate-pulse">
                         {unreadE2EECount}
                       </span>
                     )}
@@ -1342,7 +1342,7 @@ export default function FeedSection({
                   className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
                     activeTab === 'match' 
                       ? 'text-pink-500' 
-                      : 'text-zinc-500 hover:text-pink-400 hover:bg-zinc-950/50'
+                      : 'text-zinc-500 hover:text-pink-400 hover:bg-[var(--color-background)]/50'
                   } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
                   title="Peer Matching"
                 >
@@ -1368,7 +1368,7 @@ export default function FeedSection({
         {/* BOTTOM BLOCK: UTILITIES & SOUND CONTROLLER */}
         <div className="w-full space-y-4">
           
-          <div className={`bg-[#111113]/90 border border-zinc-900 rounded-2xl p-1.5 flex shadow-inner relative ${
+          <div className={`bg-[var(--color-surface)]/90 border border-[var(--neon-green-border)] rounded-2xl p-1.5 flex shadow-inner relative ${
             sidebarExpanded ? 'flex-row items-center justify-between px-3 py-2' : 'flex-col items-center gap-2.5'
           }`}>
             {sidebarExpanded && (
@@ -1378,14 +1378,14 @@ export default function FeedSection({
             {/* Custom Sound ON/OFF slider */}
             <div 
               onClick={handleToggleSound}
-              className="w-11 h-6 bg-zinc-950 rounded-full p-0.5 border border-zinc-900 cursor-pointer relative transition-colors duration-200 select-none"
+              className="w-11 h-6 bg-[var(--color-background)] rounded-full p-0.5 border border-[var(--neon-green-border)] cursor-pointer relative transition-colors duration-200 select-none"
               title="Toggle Audio Terminal"
             >
               <div 
                 className={`w-4 h-4 rounded-full absolute top-0.5 transition-all duration-200 flex items-center justify-center text-[5.5px] font-black ${
                   soundMuted 
                     ? 'left-0.5 bg-zinc-850 text-zinc-500' 
-                    : 'left-6 bg-red-600 text-white shadow-[0_0_8px_#ef4444]'
+                    : 'left-6 bg-red-600 text-[var(--color-text)] shadow-[0_0_8px_#ef4444]'
                 }`}
               >
                 {soundMuted ? 'OFF' : 'ON'}
@@ -1396,12 +1396,12 @@ export default function FeedSection({
           {/* Action Dump Button */}
           <button
             onClick={handleQuickTacticalDownload}
-            className={`w-full bg-gradient-to-b from-red-600 to-rose-750 text-white flex items-center justify-center shadow-[0_4px_12px_rgba(225,29,72,0.35)] hover:shadow-[0_6px_18px_rgba(225,29,72,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer border border-red-500/20 ${
+            className={`w-full bg-gradient-to-b from-red-600 to-rose-750 text-[var(--color-text)] flex items-center justify-center shadow-[0_4px_12px_rgba(225,29,72,0.35)] hover:shadow-[0_6px_18px_rgba(225,29,72,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer border border-red-500/20 ${
               sidebarExpanded ? 'px-4 py-3 rounded-xl gap-2 text-[10px] font-mono font-bold uppercase tracking-wider' : 'h-11 w-11 rounded-full'
             }`}
             title="Execute Network Diagnostics"
           >
-            <ChevronRight className={`w-4.5 h-4.5 text-white shrink-0 transform rotate-90`} />
+            <ChevronRight className={`w-4.5 h-4.5 text-[var(--color-text)] shrink-0 transform rotate-90`} />
             {sidebarExpanded && <span>SYSTEM DUMP</span>}
           </button>
 
@@ -1416,7 +1416,7 @@ export default function FeedSection({
         <div className="morphic-junction-br hidden md:block" />
 
         {/* Dynamic, fully curved interactive desktop/tablet window frame */}
-        <div className="flex-1 w-full h-full flex flex-col min-w-0 bg-[#121214] rounded-none md:rounded-[36px] border border-zinc-850/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden relative retro-cyber-grid">
+        <div className="flex-1 w-full h-full flex flex-col min-w-0 bg-[var(--color-surface)] rounded-none md:rounded-[36px] border border-zinc-850/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden relative retro-cyber-grid">
           
           {/* Responsive Main Layout Container */}
           <div className="flex-1 flex flex-col md:flex-row min-h-0 w-full overflow-hidden">
@@ -1430,12 +1430,12 @@ export default function FeedSection({
         {activeTab === 'home' && (
           <div className="max-w-xl md:max-w-2xl mx-auto w-full space-y-5 pb-12 animate-fade-in">
             {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
-            <div className="sticky -top-3.5 z-30 flex bg-[#121214]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+            <div className="sticky -top-3.5 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
               <button
                 onClick={() => { playGlitchClickSound(); setHomeSubView('feed'); }}
                 className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
                   homeSubView === 'feed'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-white font-extrabold shadow-md'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-[var(--color-text)] font-extrabold shadow-md'
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
@@ -1445,7 +1445,7 @@ export default function FeedSection({
                 onClick={() => { playGlitchClickSound(); setHomeSubView('live'); }}
                 className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl flex items-center justify-center gap-1 ${
                   homeSubView === 'live'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-white font-extrabold shadow-md'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-[var(--color-text)] font-extrabold shadow-md'
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
@@ -1456,7 +1456,7 @@ export default function FeedSection({
                 onClick={() => { playGlitchClickSound(); setHomeSubView('network'); }}
                 className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
                   homeSubView === 'network'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-white font-extrabold shadow-md'
+                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-[var(--color-text)] font-extrabold shadow-md'
                     : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
@@ -1479,7 +1479,7 @@ export default function FeedSection({
             ) : (
               <>
                 {/* =================================== EPHEMERAL CHRONICLES (STORIES) BAR =================================== */}
-                <div id="tour-stories-bar" className="bg-[#121214]/40 border border-zinc-900/60 p-4 rounded-2xl space-y-3">
+                <div id="tour-stories-bar" className="bg-[var(--color-surface)]/40 border border-[var(--neon-green-border)]/60 p-4 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[8px] font-mono font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span>
@@ -1522,10 +1522,10 @@ export default function FeedSection({
                                   ? (ownStoriesViewed 
                                       ? 'bg-zinc-800 p-0.5' 
                                       : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse p-0.5')
-                                  : 'bg-zinc-950 border-2 border-dashed border-zinc-800 hover:border-[var(--neon-green)] p-0'
+                                  : 'bg-[var(--color-background)] border-2 border-dashed border-[var(--neon-green-border)] hover:border-[var(--neon-green)] p-0'
                               }`}
                             >
-                              <div className={`w-full h-full rounded-full bg-black flex items-center justify-center ${currentUserGroup ? 'p-[1.5px]' : 'p-0'}`}>
+                              <div className={`w-full h-full rounded-full bg-[var(--color-surface)] flex items-center justify-center ${currentUserGroup ? 'p-[1.5px]' : 'p-0'}`}>
                                 {profile?.photoURL ? (
                                   <img 
                                     src={profile.photoURL} 
@@ -1573,7 +1573,7 @@ export default function FeedSection({
                                   : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse'
                               }`}
                             >
-                              <div className="w-full h-full rounded-full bg-black p-[1.5px] flex items-center justify-center">
+                              <div className="w-full h-full rounded-full bg-[var(--color-surface)] p-[1.5px] flex items-center justify-center">
                                 <img 
                                   src={group.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
                                   alt={group.authorName} 
@@ -1594,7 +1594,7 @@ export default function FeedSection({
               <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
                 <button
                   onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
-                  className="flex items-center space-x-1.5 shrink-0 bg-zinc-950 border border-zinc-900 hover:border-pink-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-pink-400 hover:text-white transition transform active:scale-95 shadow-[0_2px_10px_rgba(236,72,153,0.05)]"
+                  className="flex items-center space-x-1.5 shrink-0 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-pink-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-pink-400 hover:text-[var(--color-text)] transition transform active:scale-95 shadow-[0_2px_10px_rgba(236,72,153,0.05)]"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-pink-500 animate-pulse" />
                   <span>Match Mate</span>
@@ -1611,7 +1611,7 @@ export default function FeedSection({
                     setSearchQuery('#exams');
                     setIsSearchOpen(true);
                   }}
-                  className="flex items-center space-x-1.5 shrink-0 bg-zinc-950 border border-zinc-900 hover:border-amber-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-amber-500 hover:text-white transition transform active:scale-95 shadow-[0_2px_10px_rgba(245,158,11,0.05)]"
+                  className="flex items-center space-x-1.5 shrink-0 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-amber-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-amber-500 hover:text-[var(--color-text)] transition transform active:scale-95 shadow-[0_2px_10px_rgba(245,158,11,0.05)]"
                 >
                   <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
                   <span>Trending</span>
@@ -1623,24 +1623,24 @@ export default function FeedSection({
             <div className="space-y-6">
               {isFeedLoading ? (
                 Array.from({ length: 3 }).map((_, idx) => (
-                  <div key={idx} className="p-5 border border-zinc-900 bg-zinc-950/40 rounded-2xl space-y-4 animate-pulse">
+                  <div key={idx} className="p-5 border border-[var(--neon-green-border)] bg-[var(--color-background)]/40 rounded-2xl space-y-4 animate-pulse">
                     <div className="flex items-center space-x-3">
-                      <div className="w-9 h-9 bg-zinc-900 rounded-full" />
+                      <div className="w-9 h-9 bg-[var(--color-surface)] rounded-full" />
                       <div className="space-y-1.5 flex-1">
-                        <div className="h-3 bg-zinc-900 rounded w-1/4" />
-                        <div className="h-2 bg-zinc-900 rounded w-1/6" />
+                        <div className="h-3 bg-[var(--color-surface)] rounded w-1/4" />
+                        <div className="h-2 bg-[var(--color-surface)] rounded w-1/6" />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <div className="h-3 bg-zinc-900 rounded w-full" />
-                      <div className="h-3 bg-zinc-900 rounded w-5/6" />
+                      <div className="h-3 bg-[var(--color-surface)] rounded w-full" />
+                      <div className="h-3 bg-[var(--color-surface)] rounded w-5/6" />
                     </div>
-                    <div className="h-32 bg-zinc-900/30 rounded-xl border border-zinc-900" />
+                    <div className="h-32 bg-[var(--color-surface)]/30 rounded-xl border border-[var(--neon-green-border)]" />
                   </div>
                 ))
               ) : getMergedPosts().length === 0 ? (
-                <div className="p-12 text-center bg-zinc-950/40 border-2 border-dashed border-zinc-900 rounded-2xl flex flex-col items-center justify-center space-y-4">
-                  <div className="w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center text-zinc-500 font-mono text-lg font-black animate-bounce">
+                <div className="p-12 text-center bg-[var(--color-background)]/40 border-2 border-dashed border-[var(--neon-green-border)] rounded-2xl flex flex-col items-center justify-center space-y-4">
+                  <div className="w-12 h-12 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-full flex items-center justify-center text-zinc-500 font-mono text-lg font-black animate-bounce">
                     ?
                   </div>
                   <div className="space-y-1">
@@ -1667,7 +1667,7 @@ export default function FeedSection({
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: -30 }}
                             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                            className="p-5 border border-red-500/20 bg-zinc-950/85 rounded-2xl space-y-3 relative overflow-hidden shadow-xl animate-pulse-slow"
+                            className="p-5 border border-red-500/20 bg-[var(--color-background)]/85 rounded-2xl space-y-3 relative overflow-hidden shadow-xl animate-pulse-slow"
                           >
                             <div className="absolute top-0 right-0 p-1 px-2.5 bg-red-600/15 text-[7px] text-red-400 font-black uppercase tracking-widest font-mono">
                               CAMPUS RECOMMENDATION
@@ -1675,12 +1675,12 @@ export default function FeedSection({
 
                             <div className="space-y-2">
                               <span className="text-[8px] font-mono text-rose-400 font-bold block uppercase">⏱️ SCHOLASTIC countdown</span>
-                              <h4 className="text-sm font-black text-white font-mono uppercase">First Semester Exams</h4>
+                              <h4 className="text-sm font-black text-[var(--color-text)] font-mono uppercase">First Semester Exams</h4>
                               <p className="text-[10px] text-zinc-400">Exams start in exactly 4 days. Connect with other students to study together!</p>
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
-                                  className="w-full text-center py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-mono text-[9px] font-black uppercase rounded-lg transition shadow-md cursor-pointer font-sans"
+                                  className="w-full text-center py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-[var(--color-text)] font-mono text-[9px] font-black uppercase rounded-lg transition shadow-md cursor-pointer font-sans"
                                 >
                                   Find study partner
                                 </button>
@@ -1725,17 +1725,17 @@ export default function FeedSection({
                             src={post.authorPhoto}
                             alt={post.authorName}
                             onClick={() => triggerViewProfile(post.authorId)}
-                            className="w-10 h-10 rounded-full object-cover border border-zinc-800 cursor-pointer"
+                            className="w-10 h-10 rounded-full object-cover border border-[var(--neon-green-border)] cursor-pointer"
                           />
                           <div>
                             <div className="flex items-center space-x-1.5">
                               <h4 
                                 onClick={() => triggerViewProfile(post.authorId)}
-                                className="text-xs font-mono font-black text-white cursor-pointer hover:text-[var(--neon-green)] transition uppercase"
+                                className="text-xs font-mono font-black text-[var(--color-text)] cursor-pointer hover:text-[var(--neon-green)] transition uppercase"
                               >
                                 {post.authorName}
                               </h4>
-                              <span className="text-[7.5px] bg-zinc-900 text-zinc-400 border border-zinc-800 px-1.5 rounded-full uppercase tracking-tight font-mono">
+                              <span className="text-[7.5px] bg-[var(--color-surface)] text-zinc-400 border border-[var(--neon-green-border)] px-1.5 rounded-full uppercase tracking-tight font-mono">
                                 {(post.school || 'Global').split(' ')[0]}
                               </span>
                             </div>
@@ -1780,14 +1780,14 @@ export default function FeedSection({
                                 <div 
                                   key={oi}
                                   onClick={() => handleVotePoll(post.id, oi)}
-                                  className="relative border border-zinc-850 bg-black hover:border-zinc-700 rounded-lg p-3 text-xs font-mono font-bold cursor-pointer transition select-none overflow-hidden"
+                                  className="relative border border-zinc-850 bg-[var(--color-surface)] hover:border-zinc-700 rounded-lg p-3 text-xs font-mono font-bold cursor-pointer transition select-none overflow-hidden"
                                 >
                                   <div 
                                     className="absolute left-0 top-0 bottom-0 bg-amber-500/15 transition-all duration-500"
                                     style={{ width: `${percentage}%` }}
                                   />
                                   <div className="relative z-10 flex items-center justify-between">
-                                    <span className="text-zinc-200">{opt}</span>
+                                    <span className="text-[var(--color-text)]">{opt}</span>
                                     <span className="text-amber-400">{percentage}% ({votesCount})</span>
                                   </div>
                                 </div>
@@ -1822,7 +1822,7 @@ export default function FeedSection({
                             const igEmbedUrl = igMatch ? `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed/captioned/` : `${url}/embed/`;
                             
                             return (
-                              <div className="rounded-xl overflow-hidden border border-zinc-900 bg-white relative w-full aspect-[4/5] max-h-[500px] shadow-lg flex flex-col">
+                              <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-white relative w-full aspect-[4/5] max-h-[500px] shadow-lg flex flex-col">
                                 <div className="bg-zinc-50 border-b border-zinc-100 px-3 py-2 flex items-center justify-between text-[8px] font-mono font-bold text-zinc-500 uppercase">
                                   <span>📷 INSTAGRAM REEL ATTACHMENT</span>
                                   <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
@@ -1853,7 +1853,7 @@ export default function FeedSection({
                             const ytEmbedUrl = `https://www.youtube.com/embed/${ytId}?autoplay=0&mute=0&rel=0`;
                             
                             return (
-                              <div className="rounded-xl overflow-hidden border border-zinc-900 bg-black relative w-full aspect-video shadow-lg">
+                              <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] relative w-full aspect-video shadow-lg">
                                 <iframe
                                   src={ytEmbedUrl}
                                   className="w-full h-full"
@@ -1866,7 +1866,7 @@ export default function FeedSection({
                           } else {
                             // Fallback to standard premium looping video player for raw MP4/WebM files
                             return (
-                              <div className="rounded-xl overflow-hidden border border-zinc-900 bg-black relative max-h-96 flex items-center justify-center shadow-lg">
+                              <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] relative max-h-96 flex items-center justify-center shadow-lg">
                                 <video
                                   src={post.videoUrl}
                                   autoPlay
@@ -1883,7 +1883,7 @@ export default function FeedSection({
                                       playGlitchClickSound();
                                       setReelsMuted(!reelsMuted);
                                     }}
-                                    className="p-2 bg-black/70 hover:bg-black text-white rounded-full transition shadow"
+                                    className="p-2 bg-[var(--color-surface)]/70 hover:bg-[var(--color-surface)] text-[var(--color-text)] rounded-full transition shadow"
                                   >
                                     {reelsMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-[var(--neon-green)]" />}
                                   </button>
@@ -1895,7 +1895,7 @@ export default function FeedSection({
                       </div>
 
                       {/* Bottom action panel */}
-                      <div className="p-3.5 bg-black/40 border-t border-zinc-950 flex items-center justify-between text-zinc-500 text-[10px] font-mono">
+                      <div className="p-3.5 bg-[var(--color-surface)]/40 border-t border-zinc-950 flex items-center justify-between text-zinc-500 text-[10px] font-mono">
                         <div className="flex items-center space-x-4">
                           <button
                             onClick={() => handleLikeTrigger(post)}
@@ -1969,28 +1969,28 @@ export default function FeedSection({
                 <div className="relative w-24 h-24 flex items-center justify-center">
                   <span className="absolute inset-0 rounded-full bg-pink-500/10 animate-ping"></span>
                   <span className="absolute inset-4 rounded-full bg-pink-500/20 animate-pulse"></span>
-                  <div className="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center text-white">
+                  <div className="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center text-[var(--color-text)]">
                     <Sparkles className="w-6 h-6 animate-spin" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white uppercase font-mono">SEARCHING REMOTE CLASSROOMS...</h3>
+                  <h3 className="text-sm font-black text-[var(--color-text)] uppercase font-mono">SEARCHING REMOTE CLASSROOMS...</h3>
                   <p className="text-[10px] text-zinc-500 font-mono mt-1">ALIGNING ENCRYPTION TUNNEL TO SAME INTERESTS</p>
                 </div>
                 
                 {/* Progress bar */}
-                <div className="w-48 bg-zinc-950 h-1 rounded-full overflow-hidden border border-zinc-900">
+                <div className="w-48 bg-[var(--color-background)] h-1 rounded-full overflow-hidden border border-[var(--neon-green-border)]">
                   <div className="bg-pink-500 h-full transition-all duration-300" style={{ width: `${matchProgress}%` }}></div>
                 </div>
               </div>
             ) : isMatchedActive && matchPartner ? (
               <div className="space-y-4">
                 {/* Met matched peer panel */}
-                <div className="p-4 bg-zinc-950 border border-zinc-900 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <img src={matchPartner.photoURL} alt="" className="w-10 h-10 rounded-full border border-pink-500 object-cover" />
                     <div>
-                      <h4 className="text-xs font-mono font-black text-white">MATCHED CLASSMATE</h4>
+                      <h4 className="text-xs font-mono font-black text-[var(--color-text)]">MATCHED CLASSMATE</h4>
                       <p className="text-[8px] text-zinc-400 uppercase font-mono tracking-wider">
                         {matchPartner.displayName} // {matchPartner.school || 'Unilag'}
                       </p>
@@ -1999,17 +1999,17 @@ export default function FeedSection({
                   
                   <button
                     onClick={handleStartMatching}
-                    className="p-2 bg-pink-600/15 hover:bg-pink-600 text-pink-500 hover:text-white border border-pink-500/20 rounded-lg text-[9px] uppercase font-black transition font-mono"
+                    className="p-2 bg-pink-600/15 hover:bg-pink-600 text-pink-500 hover:text-[var(--color-text)] border border-pink-500/20 rounded-lg text-[9px] uppercase font-black transition font-mono"
                   >
                     [ NEXT MATCH ]
                   </button>
                 </div>
 
                 {/* Simulated Chat Feed */}
-                <div className="h-80 bg-[#080808] border border-zinc-900 rounded-xl p-4 overflow-y-auto space-y-3 font-mono text-[11px] flex flex-col justify-end">
+                <div className="h-80 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-4 overflow-y-auto space-y-3 font-mono text-[11px] flex flex-col justify-end">
                   {matchMessages.map((m, mi) => (
                     <div key={mi} className={`flex ${m.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] p-2.5 rounded-lg ${m.sender === 'me' ? 'bg-pink-600 text-white' : 'bg-zinc-900 text-zinc-300'}`}>
+                      <div className={`max-w-[75%] p-2.5 rounded-lg ${m.sender === 'me' ? 'bg-pink-600 text-[var(--color-text)]' : 'bg-[var(--color-surface)] text-zinc-300'}`}>
                         {m.text}
                       </div>
                     </div>
@@ -2023,24 +2023,24 @@ export default function FeedSection({
                     value={matchInput}
                     onChange={(e) => setMatchInput(e.target.value)}
                     placeholder="Type encrypted classmate transmission..."
-                    className="flex-1 bg-zinc-950 border border-zinc-900 rounded-xl px-4 text-xs font-mono text-white focus:outline-none focus:border-pink-500 focus:ring-0"
+                    className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl px-4 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-pink-500 focus:ring-0"
                   />
                   <button
                     type="submit"
-                    className="p-3 bg-pink-600 hover:bg-pink-500 text-white rounded-xl transition"
+                    className="p-3 bg-pink-600 hover:bg-pink-500 text-[var(--color-text)] rounded-xl transition"
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 </form>
               </div>
             ) : (
-              <div className="p-6 border border-zinc-900 bg-zinc-950/60 rounded-xl space-y-5 text-center">
+              <div className="p-6 border border-[var(--neon-green-border)] bg-[var(--color-background)]/60 rounded-xl space-y-5 text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center">
                   <Sparkles className="w-6 h-6 text-pink-500" />
                 </div>
                 
                 <div className="space-y-1">
-                  <h3 className="text-xs font-mono font-black text-white uppercase">CONNECT TO VERIFIED CAMPUS NODES</h3>
+                  <h3 className="text-xs font-mono font-black text-[var(--color-text)] uppercase">CONNECT TO VERIFIED CAMPUS NODES</h3>
                   <p className="text-[10px] text-zinc-400">Match with random active students matching your department or community.</p>
                 </div>
 
@@ -2051,7 +2051,7 @@ export default function FeedSection({
                     <select
                       value={matchSchoolFilter}
                       onChange={(e) => setMatchSchoolFilter(e.target.value)}
-                      className="w-full bg-black border border-zinc-900 p-2 text-white focus:outline-none rounded text-[9.5px]"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] focus:outline-none rounded text-[9.5px]"
                     >
                       <option value="any">ANY CAMPUS</option>
                       <option value="University of Lagos">UNILAG</option>
@@ -2065,7 +2065,7 @@ export default function FeedSection({
                     <select
                       value={matchInterestFilter}
                       onChange={(e) => setMatchInterestFilter(e.target.value)}
-                      className="w-full bg-black border border-zinc-900 p-2 text-white focus:outline-none rounded text-[9.5px]"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] focus:outline-none rounded text-[9.5px]"
                     >
                       <option value="General Chat">GENERAL STUDY</option>
                       <option value="CSC301">CSC CODING</option>
@@ -2077,7 +2077,7 @@ export default function FeedSection({
 
                 <button
                   onClick={handleStartMatching}
-                  className="w-full py-3 bg-pink-600 hover:bg-pink-500 text-white font-mono text-xs font-black uppercase rounded-lg transition"
+                  className="w-full py-3 bg-pink-600 hover:bg-pink-500 text-[var(--color-text)] font-mono text-xs font-black uppercase rounded-lg transition"
                 >
                   [ INITIATE SECURE MATCHING ]
                 </button>
@@ -2104,7 +2104,7 @@ export default function FeedSection({
 
         {/* ==================== SECURE CRYPTO CHATS TAB ==================== */}
         {activeTab === 'chat' && (
-          <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col animate-fade-in bg-black">
+          <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col animate-fade-in bg-[var(--color-surface)]">
             <ChatSection 
               deepLinkedPeerId={deepLinkedPeerId} 
               onClearDeepLink={onClearDeepLink} 
@@ -2132,12 +2132,12 @@ export default function FeedSection({
 
         {/* Right Column: Desktop Sidebar */}
         {activeTab !== 'chat' && (
-          <div className="hidden md:flex w-80 shrink-0 flex-col bg-[#070707] border-l border-zinc-900/80 p-5 space-y-6 overflow-y-auto font-mono">
+          <div className="hidden md:flex w-80 shrink-0 flex-col bg-[var(--color-surface)] border-l border-[var(--neon-green-border)]/80 p-5 space-y-6 overflow-y-auto font-mono">
             {/* User profile card */}
-            <div className="p-4 bg-[#0c0c0c] border border-zinc-900 flex items-center space-x-3 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.1)]">
+            <div className="p-4 bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center space-x-3 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.1)]">
               <img src={profile?.photoURL} className="w-10 h-10 border border-[var(--neon-green)]/35 object-cover shrink-0" referrerPolicy="no-referrer" />
               <div className="min-w-0 flex-1 font-mono">
-                <h3 className="text-[10px] font-black text-white uppercase truncate">{profile?.displayName}</h3>
+                <h3 className="text-[10px] font-black text-[var(--color-text)] uppercase truncate">{profile?.displayName}</h3>
                 <p className="text-[8px] text-zinc-500 truncate lowercase mt-0.5">{profile?.email}</p>
                 <div className="flex items-center gap-1 mt-1 text-[7.5px] text-[var(--neon-green)] font-black">
                   <span className="w-1.5 h-1.5 bg-[var(--neon-green)] rounded-full animate-ping"></span>
@@ -2151,7 +2151,7 @@ export default function FeedSection({
               <h4 className="text-[8px] font-mono font-black text-zinc-500 uppercase tracking-widest border-l-2 border-[var(--neon-green)] pl-1.5">
                 ACTIVE GATEWAY
               </h4>
-              <div className="p-3 bg-[#0a0a0a] border border-zinc-900 space-y-2 text-[9.5px] text-zinc-400">
+              <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] space-y-2 text-[9.5px] text-zinc-400">
                 <div className="flex items-center justify-between">
                   <span>📍 GATEWAY LOCATION</span>
                   <span className="text-[var(--neon-green)] font-black uppercase">{selectedCampus}</span>
@@ -2164,7 +2164,7 @@ export default function FeedSection({
             </div>
 
             {/* Guidelines or Info Panel */}
-            <div className="p-4 bg-[#090909] border border-zinc-900 space-y-2">
+            <div className="p-4 bg-[var(--color-surface)] border border-[var(--neon-green-border)] space-y-2">
               <h4 className="text-[9px] font-black text-[var(--neon-green)] uppercase">
                 Flick Campus Hub
               </h4>
@@ -2197,7 +2197,7 @@ export default function FeedSection({
                     setShowPostCreator(true);
                     setIsRadialOpen(false);
                   }}
-                  className="flex items-center space-x-2 bg-zinc-950 border border-zinc-800 hover:border-[var(--neon-green)] p-2.5 rounded-full text-[10px] font-mono uppercase font-black text-white cursor-pointer transition shadow-2xl"
+                  className="flex items-center space-x-2 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] p-2.5 rounded-full text-[10px] font-mono uppercase font-black text-[var(--color-text)] cursor-pointer transition shadow-2xl"
                 >
                   <span>PUBLISH POST</span>
                   <span className="p-1.5 bg-[var(--neon-green)] text-black rounded-full"><ImageIcon className="w-3.5 h-3.5" /></span>
@@ -2216,7 +2216,7 @@ export default function FeedSection({
                     setPostCreatorType('story');
                     setShowPostCreator(true);
                   }}
-                  className="flex items-center space-x-2 bg-zinc-950 border border-zinc-800 hover:border-[var(--neon-green)] p-2.5 rounded-full text-[10px] font-mono uppercase font-black text-white cursor-pointer transition shadow-2xl"
+                  className="flex items-center space-x-2 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] p-2.5 rounded-full text-[10px] font-mono uppercase font-black text-[var(--color-text)] cursor-pointer transition shadow-2xl"
                 >
                   <span>BROADCAST STORY</span>
                   <span className="p-1.5 bg-amber-500 text-black rounded-full"><Sparkles className="w-3.5 h-3.5" /></span>
@@ -2243,28 +2243,28 @@ export default function FeedSection({
       {/* =================================== SEARCH MODAL =================================== */}
       <AnimatePresence>
         {isSearchOpen && (
-          <div data-overlay="true" className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+          <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
               {/* Header */}
-              <div className="p-4 border-b border-zinc-900 flex items-center justify-between">
+              <div className="p-4 border-b border-[var(--neon-green-border)] flex items-center justify-between">
                 <span className="text-[9px] font-mono font-black uppercase text-[var(--neon-green)]">Spotlight search</span>
                 <button
                   onClick={() => setIsSearchOpen(false)}
-                  className="p-1 text-zinc-400 hover:text-white transition"
+                  className="p-1 text-zinc-400 hover:text-[var(--color-text)] transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Input */}
-              <div className="p-4 border-b border-zinc-900/40 relative">
+              <div className="p-4 border-b border-[var(--neon-green-border)]/40 relative">
                 <Search className="absolute left-7 top-7 text-zinc-500 w-4 h-4" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter courses, groups, people, hashtags..."
-                  className="w-full bg-black border border-zinc-900 rounded-xl py-3 pl-10 pr-4 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl py-3 pl-10 pr-4 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
                   autoFocus
                 />
               </div>
@@ -2285,7 +2285,7 @@ export default function FeedSection({
                               setActiveDiscussionPost(post);
                               setIsSearchOpen(false);
                             }}
-                            className="p-3 bg-zinc-900/40 hover:bg-zinc-900 rounded-lg cursor-pointer transition flex items-center justify-between text-xs font-mono"
+                            className="p-3 bg-[var(--color-surface)]/40 hover:bg-[var(--color-surface)] rounded-lg cursor-pointer transition flex items-center justify-between text-xs font-mono"
                           >
                             <span className="truncate text-zinc-300 max-w-[200px]">{post.content}</span>
                             <span className="text-zinc-500 text-[8px] uppercase">{post.authorName}</span>
@@ -2305,9 +2305,9 @@ export default function FeedSection({
                               triggerViewProfile(user.uid);
                               setIsSearchOpen(false);
                             }}
-                            className="p-3 bg-zinc-900/40 hover:bg-zinc-900 rounded-lg cursor-pointer transition flex items-center justify-between text-xs font-mono"
+                            className="p-3 bg-[var(--color-surface)]/40 hover:bg-[var(--color-surface)] rounded-lg cursor-pointer transition flex items-center justify-between text-xs font-mono"
                           >
-                            <span className="text-white font-bold">{user.displayName}</span>
+                            <span className="text-[var(--color-text)] font-bold">{user.displayName}</span>
                             <span className="text-zinc-500 text-[8px] uppercase">{user.email}</span>
                           </div>
                       ))}
@@ -2327,7 +2327,7 @@ export default function FeedSection({
       {/* =================================== STORY VIEWERS FULL SCREEN =================================== */}
       <AnimatePresence>
         {activeStoryGroupId !== null && (
-          <div data-overlay="true" className="fixed inset-0 bg-black/98 z-[200] flex items-center justify-center p-4">
+          <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/98 z-[200] flex items-center justify-center p-4">
             {(() => {
               const groups = getGroupedStories();
               const currentGroup = groups.find(g => g.authorId === activeStoryGroupId);
@@ -2344,7 +2344,7 @@ export default function FeedSection({
                   {(groupIdx > 0 || activeStoryIndexInGroup > 0) && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handlePrevStory(); }}
-                      className="hidden md:flex absolute -left-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer animate-fade-in"
+                      className="hidden md:flex absolute -left-16 p-3 bg-[var(--color-surface)]/60 hover:bg-zinc-800 text-[var(--color-text)] border border-[var(--neon-green-border)] rounded-full hover:scale-110 transition z-50 cursor-pointer animate-fade-in"
                       title="Previous Story"
                     >
                       <ChevronLeft className="w-5 h-5" />
@@ -2352,7 +2352,7 @@ export default function FeedSection({
                   )}
 
                   {/* Central Story Card */}
-                  <div className="w-full max-w-md h-[90vh] bg-[#0c0c0c] border border-zinc-900 rounded-2xl overflow-hidden relative flex flex-col justify-between shadow-2xl">
+                  <div className="w-full max-w-md h-[90vh] bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden relative flex flex-col justify-between shadow-2xl">
                     {/* Progress Indicators */}
                     <div className={`absolute top-4 left-4 right-4 z-50 flex gap-1.5 transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                       {currentGroup.stories.map((s, idx) => (
@@ -2374,16 +2374,16 @@ export default function FeedSection({
                     {/* Header bar */}
                     <div className={`p-4 pt-8 flex items-center justify-between relative z-40 bg-gradient-to-b from-black/80 to-transparent transition-opacity duration-300 ${isStoryPaused ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                       <div className="flex items-center space-x-2.5">
-                        <img src={currentGroup.authorPhoto} alt="" className="w-8 h-8 rounded-full border border-zinc-800 object-cover" />
+                        <img src={currentGroup.authorPhoto} alt="" className="w-8 h-8 rounded-full border border-[var(--neon-green-border)] object-cover" />
                         <div>
-                          <h4 className="text-xs font-mono font-black text-white uppercase">{currentGroup.authorName}</h4>
+                          <h4 className="text-xs font-mono font-black text-[var(--color-text)] uppercase">{currentGroup.authorName}</h4>
                           <span className="text-[7.5px] text-[var(--neon-green)] uppercase font-mono tracking-wider">CAMPUS INTEL NETWORK</span>
                         </div>
                       </div>
 
                       <button
                         onClick={() => setActiveStoryGroupId(null)}
-                        className="p-1 bg-black/45 rounded-full text-zinc-400 hover:text-white transition cursor-pointer"
+                        className="p-1 bg-[var(--color-surface)]/45 rounded-full text-zinc-400 hover:text-[var(--color-text)] transition cursor-pointer"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -2426,29 +2426,29 @@ export default function FeedSection({
                           {activeStory.mediaType === 'image' && activeStory.imageUrl ? (
                             <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center relative overflow-hidden pointer-events-none">
                               <img src={activeStory.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-35 blur-lg scale-115" referrerPolicy="no-referrer" />
-                              <img src={activeStory.imageUrl} alt="" className="relative z-10 max-w-full max-h-[60vh] object-contain rounded-xl border border-zinc-900 shadow-2xl" referrerPolicy="no-referrer" />
+                              <img src={activeStory.imageUrl} alt="" className="relative z-10 max-w-full max-h-[60vh] object-contain rounded-xl border border-[var(--neon-green-border)] shadow-2xl" referrerPolicy="no-referrer" />
                               {activeStory.content && (
-                                <p className="relative z-10 text-xs font-mono text-white leading-relaxed mt-4 bg-black/60 px-3 py-1.5 rounded-lg border border-zinc-800 max-w-[85%]">{activeStory.content}</p>
+                                <p className="relative z-10 text-xs font-mono text-[var(--color-text)] leading-relaxed mt-4 bg-[var(--color-surface)]/60 px-3 py-1.5 rounded-lg border border-[var(--neon-green-border)] max-w-[85%]">{activeStory.content}</p>
                               )}
                             </div>
                           ) : activeStory.mediaType === 'video' && activeStory.videoUrl ? (
                             <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center relative overflow-hidden pointer-events-none">
-                              <div className="absolute inset-0 bg-black/40 z-0" />
+                              <div className="absolute inset-0 bg-[var(--color-surface)]/40 z-0" />
                               <video 
                                 ref={videoRef}
                                 src={activeStory.videoUrl} 
-                                className="relative z-10 max-w-full max-h-[60vh] object-contain rounded-xl border border-zinc-900 shadow-2xl"
+                                className="relative z-10 max-w-full max-h-[60vh] object-contain rounded-xl border border-[var(--neon-green-border)] shadow-2xl"
                                 autoPlay
                                 loop
                                 muted
                                 playsInline
                               />
                               {activeStory.content && (
-                                <p className="relative z-10 text-xs font-mono text-white leading-relaxed mt-4 bg-black/60 px-3 py-1.5 rounded-lg border border-zinc-800 max-w-[85%]">{activeStory.content}</p>
+                                <p className="relative z-10 text-xs font-mono text-[var(--color-text)] leading-relaxed mt-4 bg-[var(--color-surface)]/60 px-3 py-1.5 rounded-lg border border-[var(--neon-green-border)] max-w-[85%]">{activeStory.content}</p>
                               )}
                             </div>
                           ) : activeStory.mediaType === 'audio' && activeStory.audioUrl ? (
-                            <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center bg-zinc-950 p-6">
+                            <div className="absolute inset-0 w-full h-full flex flex-col justify-center items-center bg-[var(--color-background)] p-6">
                               <audio 
                                 ref={audioRef}
                                 src={activeStory.audioUrl}
@@ -2456,7 +2456,7 @@ export default function FeedSection({
                                 loop
                               />
                               <div className="flex flex-col items-center justify-center space-y-6 relative z-10 pointer-events-none">
-                                <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-zinc-800 via-zinc-900 to-black border-4 border-zinc-800 shadow-2xl flex items-center justify-center animate-spin" style={{ animationDuration: '10s' }}>
+                                <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-zinc-800 via-zinc-900 to-black border-4 border-[var(--neon-green-border)] shadow-2xl flex items-center justify-center animate-spin" style={{ animationDuration: '10s' }}>
                                   <div className="w-12 h-12 rounded-full bg-[var(--neon-green)] flex items-center justify-center border-4 border-zinc-950">
                                     <Volume2 className="w-5 h-5 text-black" />
                                   </div>
@@ -2466,7 +2466,7 @@ export default function FeedSection({
                                   <p className="text-[10px] font-mono text-zinc-500 uppercase">{activeStory.musicArtist || 'Campus Node Broadcast'}</p>
                                 </div>
                                 {activeStory.content && (
-                                  <p className="text-sm font-serif italic text-white leading-relaxed max-w-xs whitespace-pre-wrap mt-2">
+                                  <p className="text-sm font-serif italic text-[var(--color-text)] leading-relaxed max-w-xs whitespace-pre-wrap mt-2">
                                     "{activeStory.content}"
                                   </p>
                                 )}
@@ -2483,7 +2483,7 @@ export default function FeedSection({
                               activeStory.gradientPreset === 'neon' ? 'bg-gradient-to-tr from-black via-zinc-900 to-[var(--neon-green)]/40' :
                               'bg-gradient-to-tr from-orange-600 to-rose-600' /* default sunset */
                             }`}>
-                              <p className="text-lg md:text-xl font-mono font-black text-white leading-relaxed max-w-xs whitespace-pre-wrap select-none pointer-events-none drop-shadow-lg">
+                              <p className="text-lg md:text-xl font-mono font-black text-[var(--color-text)] leading-relaxed max-w-xs whitespace-pre-wrap select-none pointer-events-none drop-shadow-lg">
                                 {activeStory.content}
                               </p>
                             </div>
@@ -2514,7 +2514,7 @@ export default function FeedSection({
                         <input
                           type="text"
                           placeholder={`Reply directly to ${(currentGroup.authorName || 'User').split(' ')[0]}...`}
-                          className="flex-1 bg-zinc-950 border border-zinc-900 rounded-full px-4 py-2 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
+                          className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-full px-4 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] focus:ring-0"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               playGlitchClickSound();
@@ -2532,7 +2532,7 @@ export default function FeedSection({
                   {(groupIdx < groups.length - 1 || activeStoryIndexInGroup < currentGroup.stories.length - 1) && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleNextStory(); }}
-                      className="hidden md:flex absolute -right-16 p-3 bg-zinc-900/60 hover:bg-zinc-800 text-white border border-zinc-800 rounded-full hover:scale-110 transition z-50 cursor-pointer animate-fade-in"
+                      className="hidden md:flex absolute -right-16 p-3 bg-[var(--color-surface)]/60 hover:bg-zinc-800 text-[var(--color-text)] border border-[var(--neon-green-border)] rounded-full hover:scale-110 transition z-50 cursor-pointer animate-fade-in"
                       title="Next Story"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -2550,17 +2550,17 @@ export default function FeedSection({
       {/* =================================== POST CREATOR DRAWER/MODAL =================================== */}
       <AnimatePresence>
         {showPostCreator && (
-          <div data-overlay="true" className="fixed inset-0 bg-black/95 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-[120] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
               {/* Header */}
-              <div className="p-4 border-b border-zinc-900 flex items-center justify-between">
+              <div className="p-4 border-b border-[var(--neon-green-border)] flex items-center justify-between">
                 <span className="text-[9px] font-mono font-black uppercase text-[var(--neon-green)]">
                   DEPLOY {postCreatorType.toUpperCase()} PACKET
                 </span>
                 
                 <button
                   onClick={() => setShowPostCreator(false)}
-                  className="p-1 text-zinc-400 hover:text-white transition"
+                  className="p-1 text-zinc-400 hover:text-[var(--color-text)] transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2568,7 +2568,7 @@ export default function FeedSection({
 
               {/* Category tabs inside creator */}
               {postCreatorType !== 'story' ? (
-                <div className="flex bg-black border-b border-zinc-900 text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none shrink-0">
+                <div className="flex bg-[var(--color-surface)] border-b border-[var(--neon-green-border)] text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none shrink-0">
                   {(['social', 'academic', 'question', 'poll'] as const).map(t => (
                     <button
                       key={t}
@@ -2584,7 +2584,7 @@ export default function FeedSection({
                   ))}
                 </div>
               ) : (
-                <div className="flex bg-black border-b border-zinc-900 text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none shrink-0">
+                <div className="flex bg-[var(--color-surface)] border-b border-[var(--neon-green-border)] text-[9px] font-mono font-bold text-zinc-500 uppercase overflow-x-auto scrollbar-none shrink-0">
                   {(['text', 'image', 'video', 'audio'] as const).map(t => (
                     <button
                       key={t}
@@ -2626,7 +2626,7 @@ export default function FeedSection({
                             : "Write what's flickering across campus nodes..."
                     }
                     rows={4}
-                    className="w-full bg-black border border-zinc-900 rounded-xl p-3.5 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] focus:ring-0 resize-none leading-relaxed"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3.5 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] focus:ring-0 resize-none leading-relaxed"
                   />
                 </div>
 
@@ -2655,7 +2655,7 @@ export default function FeedSection({
                                   setStoryGradientPreset(preset.id);
                                 }}
                                 className={`w-8 h-8 rounded-full bg-gradient-to-tr ${preset.css} border-2 transition transform active:scale-95 ${
-                                  storyGradientPreset === preset.id ? 'border-white scale-110 shadow-lg' : 'border-zinc-900'
+                                  storyGradientPreset === preset.id ? 'border-white scale-110 shadow-lg' : 'border-[var(--neon-green-border)]'
                                 }`}
                                 title={preset.id}
                               />
@@ -2670,7 +2670,7 @@ export default function FeedSection({
                           <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
                             ATTACH IMAGE (DIRECT FILE UPLOAD):
                           </span>
-                          <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                          <div className="relative border-2 border-dashed border-[var(--neon-green-border)] rounded-xl p-5 bg-[var(--color-surface)] hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
                             <input
                               type="file"
                               accept="image/*"
@@ -2697,7 +2697,7 @@ export default function FeedSection({
                                 <img
                                   src={storyImg}
                                   alt="Story preview"
-                                  className="max-h-24 mx-auto rounded-lg object-cover border border-zinc-800"
+                                  className="max-h-24 mx-auto rounded-lg object-cover border border-[var(--neon-green-border)]"
                                 />
                                 <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
                                   ✓ Image Ready for Deployment
@@ -2734,7 +2734,7 @@ export default function FeedSection({
                           <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
                             ATTACH VIDEO (DIRECT FILE UPLOAD):
                           </span>
-                          <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                          <div className="relative border-2 border-dashed border-[var(--neon-green-border)] rounded-xl p-5 bg-[var(--color-surface)] hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
                             <input
                               type="file"
                               accept="video/*"
@@ -2758,7 +2758,7 @@ export default function FeedSection({
                               <div className="space-y-2 relative z-20 w-full">
                                 <video
                                   src={storyVideo}
-                                  className="max-h-24 mx-auto rounded-lg object-contain border border-zinc-800"
+                                  className="max-h-24 mx-auto rounded-lg object-contain border border-[var(--neon-green-border)]"
                                   controls
                                 />
                                 <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
@@ -2797,7 +2797,7 @@ export default function FeedSection({
                             <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
                               ATTACH AUDIO / SOUNDTRACK (DIRECT FILE UPLOAD):
                             </span>
-                            <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                            <div className="relative border-2 border-dashed border-[var(--neon-green-border)] rounded-xl p-5 bg-[var(--color-surface)] hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
                               <input
                                 type="file"
                                 accept="audio/*"
@@ -2819,7 +2819,7 @@ export default function FeedSection({
                               />
                               {storyAudio ? (
                                 <div className="space-y-2 relative z-20 w-full">
-                                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-between">
+                                  <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-lg flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
                                       <Volume2 className="w-4 h-4 text-[var(--neon-green)]" />
                                       <span className="text-[10px] font-mono text-zinc-300 truncate max-w-[150px]">Sound Track Attached</span>
@@ -2858,7 +2858,7 @@ export default function FeedSection({
                                 value={storyMusicTitle}
                                 onChange={(e) => setStoryMusicTitle(e.target.value)}
                                 placeholder="E.g., Virtual Synth"
-                                className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                                className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                               />
                             </div>
                             <div className="space-y-1">
@@ -2868,7 +2868,7 @@ export default function FeedSection({
                                 value={storyMusicArtist}
                                 onChange={(e) => setStoryMusicArtist(e.target.value)}
                                 placeholder="E.g., Faratech Labs"
-                                className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                                className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                               />
                             </div>
                           </div>
@@ -2882,7 +2882,7 @@ export default function FeedSection({
                         <span className="block text-[8px] font-mono text-zinc-500 uppercase font-black">
                           ATTACH IMAGE (DIRECT FILE UPLOAD):
                         </span>
-                        <div className="relative border-2 border-dashed border-zinc-800 rounded-xl p-5 bg-black hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
+                        <div className="relative border-2 border-dashed border-[var(--neon-green-border)] rounded-xl p-5 bg-[var(--color-surface)] hover:border-[var(--neon-green)]/40 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px]">
                           <input
                             type="file"
                             accept="image/*"
@@ -2909,7 +2909,7 @@ export default function FeedSection({
                               <img
                                 src={postImage}
                                 alt="Direct upload preview"
-                                className="max-h-24 mx-auto rounded-lg object-cover border border-zinc-800"
+                                className="max-h-24 mx-auto rounded-lg object-cover border border-[var(--neon-green-border)]"
                               />
                               <p className="text-[9px] text-[var(--neon-green)] font-mono font-bold uppercase tracking-wider animate-pulse">
                                 ✓ Image Ready for Deployment
@@ -2948,7 +2948,7 @@ export default function FeedSection({
                           value={postVideo}
                           onChange={(e) => setPostVideo(e.target.value)}
                           placeholder="Paste Instagram Reel/Post, YouTube link, or raw MP4 URL..."
-                          className="w-full bg-black border border-zinc-900 rounded-xl p-3.5 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)]"
+                          className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3.5 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
                         />
                         <p className="text-[7.5px] text-zinc-500 font-mono leading-relaxed uppercase">
                           Supports full embedded in-feed playback for Instagram reels, YouTube videos, and direct video clips.
@@ -2960,11 +2960,11 @@ export default function FeedSection({
               </div>
 
               {/* Action buttons */}
-              <div className="p-4 border-t border-zinc-900 bg-black flex gap-3">
+              <div className="p-4 border-t border-[var(--neon-green-border)] bg-[var(--color-surface)] flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowPostCreator(false)}
-                  className="flex-1 text-center py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white font-mono text-xs uppercase font-black rounded-xl transition"
+                  className="flex-1 text-center py-3 bg-[var(--color-surface)] hover:bg-zinc-800 text-zinc-400 hover:text-[var(--color-text)] font-mono text-xs uppercase font-black rounded-xl transition"
                 >
                   Cancel
                 </button>
@@ -2985,11 +2985,11 @@ export default function FeedSection({
       {/* =================================== GROUP CREATE POPUP =================================== */}
       <AnimatePresence>
         {showCreateGroup && (
-          <div data-overlay="true" className="fixed inset-0 bg-black/95 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-              <div className="p-4 border-b border-zinc-900 flex items-center justify-between">
+          <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-[120] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+              <div className="p-4 border-b border-[var(--neon-green-border)] flex items-center justify-between">
                 <span className="text-[9px] font-mono font-black uppercase text-blue-400">DEPLOY GROUP CONDUIT</span>
-                <button onClick={() => setShowCreateGroup(false)} className="p-1 text-zinc-400 hover:text-white transition">
+                <button onClick={() => setShowCreateGroup(false)} className="p-1 text-zinc-400 hover:text-[var(--color-text)] transition">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -3002,7 +3002,7 @@ export default function FeedSection({
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}
                     placeholder="E.g., COMPUTER SCIENCE 300L"
-                    className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -3013,7 +3013,7 @@ export default function FeedSection({
                     onChange={(e) => setNewGroupDesc(e.target.value)}
                     placeholder="Describe study guides, class coordinates, fellowship schedules..."
                     rows={3}
-                    className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-blue-500 resize-none"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-blue-500 resize-none"
                   />
                 </div>
 
@@ -3023,7 +3023,7 @@ export default function FeedSection({
                     <select
                       value={newGroupType}
                       onChange={(e) => setNewGroupType(e.target.value as any)}
-                      className="w-full bg-black border border-zinc-900 p-2 text-white text-xs font-mono rounded"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] text-xs font-mono rounded"
                     >
                       <option value="school">SCHOOL</option>
                       <option value="friends">FRIENDS</option>
@@ -3036,7 +3036,7 @@ export default function FeedSection({
                     <select
                       value={newGroupPrivacy}
                       onChange={(e) => setNewGroupPrivacy(e.target.value as any)}
-                      className="w-full bg-black border border-zinc-900 p-2 text-white text-xs font-mono rounded"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] text-xs font-mono rounded"
                     >
                       <option value="public">PUBLIC CONCOURSE</option>
                       <option value="private">PRIVATE LOCKED</option>
@@ -3052,22 +3052,22 @@ export default function FeedSection({
                       value={newGroupPass}
                       onChange={(e) => setNewGroupPass(e.target.value)}
                       placeholder="CYBERPASS101"
-                      className="w-full bg-black border border-zinc-900 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-3 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="p-4 border-t border-zinc-900 bg-black flex gap-3">
+              <div className="p-4 border-t border-[var(--neon-green-border)] bg-[var(--color-surface)] flex gap-3">
                 <button
                   onClick={() => setShowCreateGroup(false)}
-                  className="flex-1 text-center py-3 bg-zinc-900 text-zinc-400 hover:text-white font-mono text-xs uppercase font-black rounded-xl"
+                  className="flex-1 text-center py-3 bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] font-mono text-xs uppercase font-black rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeployGroup}
-                  className="flex-1 text-center py-3 bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs uppercase font-black rounded-xl"
+                  className="flex-1 text-center py-3 bg-blue-600 hover:bg-blue-500 text-[var(--color-text)] font-mono text-xs uppercase font-black rounded-xl"
                 >
                   [ DEPLOY GROUP ]
                 </button>
@@ -3080,18 +3080,18 @@ export default function FeedSection({
       {/* =================================== DISCUSSIONS / COMMENTS SHEET =================================== */}
       <AnimatePresence>
         {activeDiscussionPost && (
-          <div data-overlay="true" className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[85vh]">
+          <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/95 z-[150] flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[85vh]">
               {/* Header */}
-              <div className="p-4 border-b border-zinc-900 flex items-center justify-between">
+              <div className="p-4 border-b border-[var(--neon-green-border)] flex items-center justify-between">
                 <span className="text-[9px] font-mono font-black uppercase text-[var(--neon-green)]">DISPATCH DISCUSSION CONCOURSE</span>
-                <button onClick={() => setActiveDiscussionPost(null)} className="p-1 text-zinc-400 hover:text-white transition">
+                <button onClick={() => setActiveDiscussionPost(null)} className="p-1 text-zinc-400 hover:text-[var(--color-text)] transition">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* OP Post Preview */}
-              <div className="p-4 bg-zinc-950/40 border-b border-zinc-900/60 font-mono text-[11px] text-zinc-400">
+              <div className="p-4 bg-[var(--color-background)]/40 border-b border-[var(--neon-green-border)]/60 font-mono text-[11px] text-zinc-400">
                 <span className="text-[7.5px] text-zinc-500 font-bold block uppercase">ORIGINAL MESSAGE BROADCAST:</span>
                 <p className="mt-1 italic">"{activeDiscussionPost.content.substring(0, 150)}..."</p>
               </div>
@@ -3104,11 +3104,11 @@ export default function FeedSection({
                   </div>
                 ) : (
                   currentPostComments.map((c, ci) => (
-                    <div key={c.id || ci} className="p-3.5 bg-zinc-900/30 border border-zinc-900 rounded-xl space-y-2">
+                    <div key={c.id || ci} className="p-3.5 bg-[var(--color-surface)]/30 border border-[var(--neon-green-border)] rounded-xl space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <img src={c.authorPhoto} alt="" className="w-6 h-6 rounded-full border border-zinc-800" />
-                          <span className="font-black text-white">{c.authorName}</span>
+                          <img src={c.authorPhoto} alt="" className="w-6 h-6 rounded-full border border-[var(--neon-green-border)]" />
+                          <span className="font-black text-[var(--color-text)]">{c.authorName}</span>
                         </div>
                         <span className="text-[8px] text-zinc-500">
                           {c.createdAt instanceof Date ? c.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
@@ -3155,7 +3155,7 @@ export default function FeedSection({
                     setIsSendingComment(false);
                   }
                 }}
-                className="p-4 border-t border-zinc-900 flex gap-2 bg-black"
+                className="p-4 border-t border-[var(--neon-green-border)] flex gap-2 bg-[var(--color-surface)]"
               >
                 <input
                   type="text"
@@ -3163,7 +3163,7 @@ export default function FeedSection({
                   onChange={(e) => setNewCommentText(e.target.value)}
                   disabled={isSendingComment}
                   placeholder={isSendingComment ? "TRANSFERS ACTIVE..." : "Transmit reply to OP..."}
-                  className="flex-1 bg-zinc-950 border border-zinc-900 rounded-xl px-4 text-xs font-mono text-white focus:outline-none focus:border-[var(--neon-green)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl px-4 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] disabled:opacity-50"
                 />
                 <button
                   type="submit"
@@ -3182,11 +3182,11 @@ export default function FeedSection({
       {zoomImg && (
         <div
           data-overlay="true"
-          className="fixed inset-0 bg-black/95 flex items-center justify-center z-[9999] p-4 pointer-events-auto cursor-zoom-out"
+          className="fixed inset-0 bg-[var(--color-surface)]/95 flex items-center justify-center z-[9999] p-4 pointer-events-auto cursor-zoom-out"
           onClick={() => setZoomImg(null)}
         >
           <div className="relative max-w-full max-h-full">
-            <img src={zoomImg} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl m-auto border border-zinc-800" alt="Magnified Campus Narrative" />
+            <img src={zoomImg} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl m-auto border border-[var(--neon-green-border)]" alt="Magnified Campus Narrative" />
             <div className="absolute bottom-[-32px] left-0 right-0 text-center text-[10px] text-zinc-400 font-mono tracking-wider">
               TAP ANYWHERE TO EXIT MAGNIFIER
             </div>
@@ -3195,7 +3195,7 @@ export default function FeedSection({
       )}
 
       {/* =================================== MOBILE FLOATING BOTTOM NAVIGATION BAR =================================== */}
-      <nav className="fixed bottom-5 left-5 right-5 md:hidden z-50 bg-[#0a0a0c]/85 backdrop-blur-lg border border-zinc-900/60 p-1.5 rounded-2xl flex items-center justify-around shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden">
+      <nav className="fixed bottom-5 left-5 right-5 md:hidden z-50 bg-[#0a0a0c]/85 backdrop-blur-lg border border-[var(--neon-green-border)]/60 p-1.5 rounded-2xl flex items-center justify-around shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden">
         
         {/* Feed Tab */}
         <button
@@ -3268,7 +3268,7 @@ export default function FeedSection({
           <div className="relative">
             <MessageSquare className="w-4.5 h-4.5" />
             {unreadE2EECount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white font-mono font-black text-[6px] w-3 h-3 rounded-full flex items-center justify-center border border-black animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-[var(--color-text)] font-mono font-black text-[6px] w-3 h-3 rounded-full flex items-center justify-center border border-black animate-pulse">
                 {unreadE2EECount}
               </span>
             )}

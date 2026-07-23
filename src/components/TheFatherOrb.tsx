@@ -27,7 +27,7 @@ export const TheFatherOrb: React.FC<TheFatherOrbProps> = ({ isThinking = false }
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 25, ease: 'linear' }}
-          className="absolute inset-4 rounded-full border border-zinc-800 border-t-cyan-400/40 border-b-fuchsia-500/40"
+          className="absolute inset-4 rounded-full border border-[var(--neon-green-border)] border-t-cyan-400/40 border-b-fuchsia-500/40"
         />
 
         {/* Orbital Path Particle Nodes */}
@@ -79,7 +79,7 @@ export const TheFatherOrb: React.FC<TheFatherOrbProps> = ({ isThinking = false }
             scale: { repeat: Infinity, duration: isThinking ? 1.5 : 4, ease: 'easeInOut' },
             rotate: { repeat: Infinity, duration: isThinking ? 4 : 12, ease: 'linear' }
           }}
-          className={`w-32 h-32 rounded-full bg-black border-[3px] flex items-center justify-center relative shadow-[0_0_40px_rgba(139,92,246,0.3)] cursor-pointer overflow-hidden group ${
+          className={`w-32 h-32 rounded-full bg-[var(--color-surface)] border-[3px] flex items-center justify-center relative shadow-[0_0_40px_rgba(139,92,246,0.3)] cursor-pointer overflow-hidden group ${
             isThinking ? 'border-fuchsia-500 shadow-[0_0_50px_rgba(244,114,182,0.6)]' : 'border-violet-500 hover:border-cyan-400'
           }`}
         >
@@ -93,7 +93,7 @@ export const TheFatherOrb: React.FC<TheFatherOrbProps> = ({ isThinking = false }
           <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin opacity-80" style={{ animationDuration: isThinking ? '2s' : '8s' }} />
 
           {/* Central Black Hole Mask */}
-          <div className="absolute inset-3 rounded-full bg-black flex flex-col items-center justify-center border border-violet-500/30 shadow-inner">
+          <div className="absolute inset-3 rounded-full bg-[var(--color-surface)] flex flex-col items-center justify-center border border-violet-500/30 shadow-inner">
             {/* Pulsating Quantum Ring inside */}
             <div className={`absolute inset-2 rounded-full border border-violet-400/40 animate-ping opacity-35 ${isThinking ? 'duration-500' : 'duration-1000'}`} />
             

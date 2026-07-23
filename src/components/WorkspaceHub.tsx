@@ -20,9 +20,9 @@ export default function WorkspaceHub() {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-zinc-400">
         <HardDrive className="w-16 h-16 mb-4 text-zinc-600" />
-        <h2 className="text-xl font-bold text-white mb-2 uppercase font-mono tracking-widest">Workspace Integration</h2>
+        <h2 className="text-xl font-bold text-[var(--color-text)] mb-2 uppercase font-mono tracking-widest">Workspace Integration</h2>
         <p className="text-sm mb-6 text-center max-w-sm">Connect your Google Workspace to access Drive, Tasks, Chat, Gmail, Calendar, Contacts, and Picker.</p>
-        <button onClick={handleConnect} className="px-6 py-3 bg-[var(--neon-green)] text-black font-extrabold uppercase text-xs tracking-wider border-2 border-[var(--neon-green)] hover:bg-black hover:text-[var(--neon-green)] transition-all">
+        <button onClick={handleConnect} className="px-6 py-3 bg-[var(--neon-green)] text-black font-extrabold uppercase text-xs tracking-wider border-2 border-[var(--neon-green)] hover:bg-[var(--color-surface)] hover:text-[var(--neon-green)] transition-all">
           Connect Workspace
         </button>
       </div>
@@ -30,47 +30,47 @@ export default function WorkspaceHub() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black/40 border border-zinc-800 rounded-lg overflow-hidden">
-      <div className="flex bg-zinc-950 border-b border-zinc-800 flex-wrap">
+    <div className="flex flex-col h-full bg-[var(--color-surface)]/40 border border-[var(--neon-green-border)] rounded-lg overflow-hidden">
+      <div className="flex bg-[var(--color-background)] border-b border-[var(--neon-green-border)] flex-wrap">
         <button 
           onClick={() => setActiveTab('drive')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'drive' ? 'text-[var(--neon-green)] border-b-2 border-[var(--neon-green)] bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'drive' ? 'text-[var(--neon-green)] border-b-2 border-[var(--neon-green)] bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <HardDrive className="w-4 h-4" /> Drive
         </button>
         <button 
           onClick={() => setActiveTab('tasks')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'tasks' ? 'text-[#00ccff] border-b-2 border-[#00ccff] bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'tasks' ? 'text-[#00ccff] border-b-2 border-[#00ccff] bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <CheckSquare className="w-4 h-4" /> Tasks
         </button>
         <button 
           onClick={() => setActiveTab('chat')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'text-[#ff0055] border-b-2 border-[#ff0055] bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'text-[#ff0055] border-b-2 border-[#ff0055] bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <MessageSquare className="w-4 h-4" /> Chat
         </button>
         <button 
           onClick={() => setActiveTab('gmail')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'gmail' ? 'text-[#ea4335] border-b-2 border-[#ea4335] bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'gmail' ? 'text-[#ea4335] border-b-2 border-[#ea4335] bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <Mail className="w-4 h-4" /> Gmail
         </button>
         <button 
           onClick={() => setActiveTab('calendar')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'calendar' ? 'text-[#4285f4] border-b-2 border-[#4285f4] bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'calendar' ? 'text-[#4285f4] border-b-2 border-[#4285f4] bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <Calendar className="w-4 h-4" /> Cal
         </button>
         <button 
           onClick={() => setActiveTab('contacts')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'contacts' ? 'text-[#fbbc05] border-b-2 border-[#fbbc05] bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'contacts' ? 'text-[#fbbc05] border-b-2 border-[#fbbc05] bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <Users className="w-4 h-4" /> Contacts
         </button>
         <button 
           onClick={() => setActiveTab('picker')}
-          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'picker' ? 'text-white border-b-2 border-white bg-zinc-900/50' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`flex-1 min-w-[80px] p-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'picker' ? 'text-[var(--color-text)] border-b-2 border-white bg-[var(--color-surface)]/50' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           <FolderOpen className="w-4 h-4" /> Picker
         </button>
@@ -108,7 +108,7 @@ function DriveSection({ token }: { token: string }) {
   return (
     <div className="p-4 h-full overflow-y-auto space-y-2">
       {files.map(f => (
-        <a key={f.id} href={f.webViewLink} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-zinc-900/50 border border-zinc-800 hover:border-[var(--neon-green)]/50 transition-colors group">
+        <a key={f.id} href={f.webViewLink} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-[var(--color-surface)]/50 border border-[var(--neon-green-border)] hover:border-[var(--neon-green)]/50 transition-colors group">
           <span className="text-sm text-zinc-300 font-medium truncate">{f.name}</span>
           <ExternalLink className="w-4 h-4 text-zinc-600 group-hover:text-[var(--neon-green)] shrink-0 ml-2" />
         </a>
@@ -186,26 +186,26 @@ function TasksSection({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col h-full">
-      <form onSubmit={addTask} className="p-3 border-b border-zinc-800 flex gap-2">
+      <form onSubmit={addTask} className="p-3 border-b border-[var(--neon-green-border)] flex gap-2">
         <input 
           type="text" 
           value={newTaskTitle} 
           onChange={e => setNewTaskTitle(e.target.value)}
           placeholder="New Task..." 
-          className="flex-1 bg-zinc-950 border border-zinc-800 p-2 text-sm text-white focus:outline-none focus:border-[#00ccff]"
+          className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] p-2 text-sm text-[var(--color-text)] focus:outline-none focus:border-[#00ccff]"
         />
         <button type="submit" className="bg-[#00ccff] text-black px-4 font-bold uppercase text-xs hover:bg-white transition-colors">Add</button>
       </form>
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {tasks.map(t => (
-          <div key={t.id} className="flex items-center gap-3 p-3 bg-zinc-900/50 border border-zinc-800">
+          <div key={t.id} className="flex items-center gap-3 p-3 bg-[var(--color-surface)]/50 border border-[var(--neon-green-border)]">
             <button 
               onClick={() => completeTask(t)}
               className={`w-5 h-5 border-2 flex items-center justify-center shrink-0 ${t.status === 'completed' ? 'bg-[#00ccff] border-[#00ccff]' : 'border-zinc-600'}`}
             >
               {t.status === 'completed' && <CheckSquare className="w-3 h-3 text-black" />}
             </button>
-            <span className={`text-sm flex-1 ${t.status === 'completed' ? 'line-through text-zinc-500' : 'text-zinc-200'}`}>{t.title}</span>
+            <span className={`text-sm flex-1 ${t.status === 'completed' ? 'line-through text-zinc-500' : 'text-[var(--color-text)]'}`}>{t.title}</span>
           </div>
         ))}
       </div>
@@ -235,10 +235,10 @@ function ChatSection({ token }: { token: string }) {
         <div className="text-zinc-500 text-sm">No Google Chat spaces found.</div>
       ) : (
         spaces.map(s => (
-          <div key={s.name} className="p-3 bg-zinc-900/50 border border-zinc-800 flex items-center gap-3">
+          <div key={s.name} className="p-3 bg-[var(--color-surface)]/50 border border-[var(--neon-green-border)] flex items-center gap-3">
             <MessageSquare className="w-4 h-4 text-[#ff0055]" />
             <div className="flex-1 min-w-0">
-              <div className="text-sm text-zinc-200 font-bold truncate">{s.displayName || 'Direct Message'}</div>
+              <div className="text-sm text-[var(--color-text)] font-bold truncate">{s.displayName || 'Direct Message'}</div>
               <div className="text-xs text-zinc-500 capitalize">{s.spaceType?.toLowerCase().replace('_', ' ')}</div>
             </div>
           </div>
@@ -285,8 +285,8 @@ function GmailSection({ token }: { token: string }) {
           const subject = m.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || 'No Subject';
           const from = m.payload?.headers?.find((h: any) => h.name === 'From')?.value || 'Unknown';
           return (
-            <div key={m.id} className="p-3 bg-zinc-900/50 border border-zinc-800 flex flex-col gap-1">
-              <span className="text-sm text-zinc-200 font-bold truncate">{subject}</span>
+            <div key={m.id} className="p-3 bg-[var(--color-surface)]/50 border border-[var(--neon-green-border)] flex flex-col gap-1">
+              <span className="text-sm text-[var(--color-text)] font-bold truncate">{subject}</span>
               <span className="text-xs text-zinc-500 truncate">{from}</span>
             </div>
           );
@@ -319,8 +319,8 @@ function CalendarSection({ token }: { token: string }) {
         <div className="text-zinc-500 text-sm">No upcoming events.</div>
       ) : (
         events.map((e: any) => (
-          <div key={e.id} className="p-3 bg-zinc-900/50 border border-zinc-800 flex flex-col gap-1">
-            <span className="text-sm text-zinc-200 font-bold truncate">{e.summary || 'Untitled Event'}</span>
+          <div key={e.id} className="p-3 bg-[var(--color-surface)]/50 border border-[var(--neon-green-border)] flex flex-col gap-1">
+            <span className="text-sm text-[var(--color-text)] font-bold truncate">{e.summary || 'Untitled Event'}</span>
             <span className="text-xs text-zinc-500">{new Date(e.start?.dateTime || e.start?.date).toLocaleString()}</span>
           </div>
         ))
@@ -355,10 +355,10 @@ function ContactsSection({ token }: { token: string }) {
           const email = c.emailAddresses?.[0]?.value || '';
           const photo = c.photos?.[0]?.url;
           return (
-            <div key={c.resourceName} className="p-3 bg-zinc-900/50 border border-zinc-800 flex items-center gap-3">
+            <div key={c.resourceName} className="p-3 bg-[var(--color-surface)]/50 border border-[var(--neon-green-border)] flex items-center gap-3">
               {photo ? <img src={photo} alt={name} className="w-8 h-8 rounded-full bg-zinc-800" referrerPolicy="no-referrer" /> : <div className="w-8 h-8 rounded-full bg-zinc-800" />}
               <div className="flex-1 min-w-0">
-                <div className="text-sm text-zinc-200 font-bold truncate">{name}</div>
+                <div className="text-sm text-[var(--color-text)] font-bold truncate">{name}</div>
                 {email && <div className="text-xs text-zinc-500 truncate">{email}</div>}
               </div>
             </div>
@@ -416,7 +416,7 @@ function PickerSection({ token }: { token: string }) {
         Open Google Picker
       </button>
       {pickedFile && (
-        <div className="mt-4 p-4 bg-zinc-900 border border-[var(--neon-green)] rounded w-full max-w-sm">
+        <div className="mt-4 p-4 bg-[var(--color-surface)] border border-[var(--neon-green)] rounded w-full max-w-sm">
           <p className="text-sm text-zinc-300">Selected File:</p>
           <a href={pickedFile.url} target="_blank" rel="noreferrer" className="text-[var(--neon-green)] font-bold text-lg hover:underline truncate block">{pickedFile.name}</a>
         </div>

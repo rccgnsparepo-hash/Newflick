@@ -36,14 +36,14 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[180] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[var(--color-surface)]/60 backdrop-blur-xs z-[180] flex items-center justify-center p-4">
           <div className="absolute inset-0" onClick={onClose} />
           
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 15 }}
-            className="relative bg-[#FAF9F6] dark:bg-zinc-950 border-2 border-black dark:border-[var(--neon-green)] p-6 sm:p-8 rounded-none max-w-lg w-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_var(--neon-green)] overflow-hidden z-10 font-mono text-zinc-900 dark:text-zinc-100"
+            className="relative bg-[#FAF9F6] dark:bg-[var(--color-background)] border-2 border-black dark:border-[var(--neon-green)] p-6 sm:p-8 rounded-none max-w-lg w-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_var(--neon-green)] overflow-hidden z-10 font-mono text-zinc-900 dark:text-[var(--color-text)]"
           >
             {/* Corner Decorative Brutalist Tech details */}
             <div className="absolute top-2 left-2 text-[8px] opacity-25 uppercase tracking-widest pointer-events-none select-none">
@@ -62,7 +62,7 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
             </button>
 
             <div className="flex items-center space-x-3 mb-6 border-b-2 border-black dark:border-[var(--neon-green)]/30 pb-4">
-              <div className="p-1 bg-black text-[var(--neon-green)] border border-[var(--neon-green)]/30">
+              <div className="p-1 bg-[var(--color-surface)] text-[var(--neon-green)] border border-[var(--neon-green)]/30">
                 <Keyboard className="w-5 h-5" />
               </div>
               <div>
@@ -91,7 +91,7 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
                           {item.keys.map((k, keyIdx) => (
                             <React.Fragment key={keyIdx}>
                               {keyIdx > 0 && <span className="text-[9px] text-zinc-400">or</span>}
-                              <kbd className="px-1.5 py-0.5 bg-black text-[var(--neon-green)] text-[10px] font-black border border-[var(--neon-green)]/30 shadow-[1.5px_1.5px_0px_var(--neon-green)] uppercase tracking-tight">
+                              <kbd className="px-1.5 py-0.5 bg-[var(--color-surface)] text-[var(--neon-green)] text-[10px] font-black border border-[var(--neon-green)]/30 shadow-[1.5px_1.5px_0px_var(--neon-green)] uppercase tracking-tight">
                                 {k}
                               </kbd>
                             </React.Fragment>

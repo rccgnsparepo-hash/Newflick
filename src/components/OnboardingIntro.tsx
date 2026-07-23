@@ -59,7 +59,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
   const SlideIcon = currentSlide.icon;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#070c0e] text-zinc-100 flex flex-col items-center justify-between p-6 select-none overflow-hidden font-sans">
+    <div className="fixed inset-0 z-[100] bg-[#070c0e] text-[var(--color-text)] flex flex-col items-center justify-between p-6 select-none overflow-hidden font-sans">
       
       {/* Background elegant lighting spot & connection grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0b1517_1px,transparent_1px),linear-gradient(to_bottom,#0b1517_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] opacity-60 pointer-events-none" />
@@ -68,7 +68,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
       {/* Top Margin Header */}
       <div className="z-10 w-full flex items-center justify-between opacity-80 pt-2">
         <div className="flex items-center space-x-2">
-          <div className="w-5 h-5 border border-[var(--neon-green)]/40 flex items-center justify-center font-serif text-xs font-black bg-black text-[var(--neon-green)]">
+          <div className="w-5 h-5 border border-[var(--neon-green)]/40 flex items-center justify-center font-serif text-xs font-black bg-[var(--color-surface)] text-[var(--neon-green)]">
             F
           </div>
           <span className="text-[8.5px] font-mono tracking-[0.2em] font-extrabold uppercase text-emerald-500">SECURE SHELL GATE</span>
@@ -96,13 +96,13 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
               <div className="relative flex items-center justify-center">
                 <div className="absolute w-32 h-32 rounded-full border border-emerald-500/20 animate-ping duration-1000" />
                 <div className="absolute w-24 h-24 rounded-full border border-[var(--neon-green)]/30 animate-pulse duration-700" />
-                <div className="w-18 h-18 bg-black border-2 border-[var(--neon-green)] rounded-3xl flex items-center justify-center font-serif text-4xl italic font-black text-[var(--neon-green)] shadow-[0px_0px_20px_rgba(0,255,102,0.15)]">
+                <div className="w-18 h-18 bg-[var(--color-surface)] border-2 border-[var(--neon-green)] rounded-3xl flex items-center justify-center font-serif text-4xl italic font-black text-[var(--neon-green)] shadow-[0px_0px_20px_rgba(0,255,102,0.15)]">
                   F
                 </div>
               </div>
 
               <div>
-                <h1 className="text-3xl font-serif font-black tracking-widest text-white uppercase italic">
+                <h1 className="text-3xl font-serif font-black tracking-widest text-[var(--color-text)] uppercase italic">
                   FLICK
                 </h1>
                 <p className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--neon-green)] mt-2 font-bold animate-pulse">
@@ -143,7 +143,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
               </div>
 
               <div className="space-y-3.5">
-                <h1 className="text-3xl font-sans font-extrabold tracking-tight text-white">
+                <h1 className="text-3xl font-sans font-extrabold tracking-tight text-[var(--color-text)]">
                   Welcome to Flick
                 </h1>
                 <p className="text-zinc-400 text-xs leading-relaxed max-w-xs mx-auto px-1 font-mono uppercase tracking-tight">
@@ -154,7 +154,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
               {/* Meta Terms Accordance styling */}
               <div className="bg-[#091113] border border-emerald-950/40 p-4 max-w-sm rounded-2xl">
                 <p className="text-zinc-350 text-[11px] leading-relaxed font-sans font-medium">
-                  Read our <span className="text-[var(--neon-green)] underline cursor-pointer hover:opacity-85">Privacy Policy</span>. Tap <span className="font-extrabold text-white">"Agree and Continue"</span> to establish local handshake structures and accept our terms.
+                  Read our <span className="text-[var(--neon-green)] underline cursor-pointer hover:opacity-85">Privacy Policy</span>. Tap <span className="font-extrabold text-[var(--color-text)]">"Agree and Continue"</span> to establish local handshake structures and accept our terms.
                 </p>
               </div>
 
@@ -224,7 +224,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
                       </div>
                     </div>
 
-                    <h2 className="text-2xl font-sans font-black text-white tracking-tight leading-tight mb-4 uppercase">
+                    <h2 className="text-2xl font-sans font-black text-[var(--color-text)] tracking-tight leading-tight mb-4 uppercase">
                       {currentSlide.title}
                     </h2>
 
@@ -241,7 +241,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
                       playGlitchClickSound();
                       onComplete();
                     }}
-                    className="text-zinc-400 hover:text-white text-[10px] font-mono tracking-widest uppercase cursor-pointer transition-colors"
+                    className="text-zinc-400 hover:text-[var(--color-text)] text-[10px] font-mono tracking-widest uppercase cursor-pointer transition-colors"
                   >
                     Skip
                   </button>
@@ -276,7 +276,7 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
         <span className="text-[8px] font-sans font-bold uppercase tracking-[0.3em] text-zinc-400">
           by
         </span>
-        <span className="text-[11px] font-sans font-extrabold text-white tracking-[0.4em] mr-[-0.4em] uppercase">
+        <span className="text-[11px] font-sans font-extrabold text-[var(--color-text)] tracking-[0.4em] mr-[-0.4em] uppercase">
           Faratech
         </span>
       </div>

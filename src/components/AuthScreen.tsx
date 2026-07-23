@@ -473,7 +473,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
   const avatarUrl = `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${avatarSeed}`;
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 sm:p-6 md:p-12 lg:p-16 relative overflow-hidden bg-[#050505] text-[#f4f4f5] font-sans">
+    <div className="flex items-center justify-center min-h-screen p-4 sm:p-6 md:p-12 lg:p-16 relative overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] font-sans">
       
       {/* 1. Immersive Atmospheric Cyber-Traditional Courtyard Background */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden select-none">
@@ -488,7 +488,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
         
         {/* Soft glowing architectural light nodes */}
         <div className="absolute top-[20%] left-[30%] w-96 h-96 rounded-full bg-emerald-900/10 blur-[130px] animate-pulse" />
-        <div className="absolute bottom-[10%] right-[20%] w-[450px] h-[450px] rounded-full bg-zinc-900/40 blur-[160px]" />
+        <div className="absolute bottom-[10%] right-[20%] w-[450px] h-[450px] rounded-full bg-[var(--color-surface)]/40 blur-[160px]" />
       </div>
 
       {/* 2. Main Portal Floating Hub (Responsive Desktop Frame) */}
@@ -496,7 +496,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
         initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-5xl h-auto md:h-[80vh] min-h-[580px] max-h-[820px] bg-white rounded-[2rem] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] border border-zinc-900/10 overflow-hidden flex flex-col md:flex-row relative z-10"
+        className="w-full max-w-5xl h-auto md:h-[80vh] min-h-[580px] max-h-[820px] bg-white rounded-[2rem] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] border border-[var(--neon-green-border)]/10 overflow-hidden flex flex-col md:flex-row relative z-10"
       >
         
         {/* LEFT COLUMN: Modern, pristine off-white interactive login form */}
@@ -505,7 +505,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
           {/* Top layout: Brand logo */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 border-2 border-black flex items-center justify-center font-serif text-lg italic font-black bg-black text-[#00ff66] shadow-[2.5px_2.5px_0px_0px_rgba(0,0,0,0.15)]">
+              <div className="w-9 h-9 border-2 border-black flex items-center justify-center font-serif text-lg italic font-black bg-[var(--color-surface)] text-[#00ff66] shadow-[2.5px_2.5px_0px_0px_rgba(0,0,0,0.15)]">
                 F
               </div>
               <span className="font-serif font-black text-sm tracking-widest text-black">
@@ -613,7 +613,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
 
                       <button
                         type="submit"
-                        className="flex items-center justify-center w-full px-5 py-3.5 bg-black hover:bg-zinc-800 text-white transition rounded-full font-sans text-xs tracking-wider font-extrabold cursor-pointer"
+                        className="flex items-center justify-center w-full px-5 py-3.5 bg-[var(--color-surface)] hover:bg-zinc-800 text-[var(--color-text)] transition rounded-full font-sans text-xs tracking-wider font-extrabold cursor-pointer"
                       >
                         <Key className="w-3.5 h-3.5 mr-2 text-[#00ff66]" />
                         Reset Password
@@ -711,7 +711,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
 
                       <button
                         type="submit"
-                        className="flex items-center justify-center w-full px-5 py-3.5 bg-black hover:bg-zinc-800 text-white transition rounded-full font-sans text-xs tracking-wider font-extrabold cursor-pointer mt-1"
+                        className="flex items-center justify-center w-full px-5 py-3.5 bg-[var(--color-surface)] hover:bg-zinc-800 text-[var(--color-text)] transition rounded-full font-sans text-xs tracking-wider font-extrabold cursor-pointer mt-1"
                       >
                         {isSignUp ? (
                           <>
@@ -788,18 +788,18 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
         </div>
 
         {/* RIGHT COLUMN: Cinematic "Flick Sphere" Canvas & Physics Sandbox (Desktop only) */}
-        <div className="hidden md:flex md:w-1/2 bg-[#0c0c0c] border-l border-zinc-900/60 relative flex-col justify-between p-8 overflow-hidden">
+        <div className="hidden md:flex md:w-1/2 bg-[var(--color-surface)] border-l border-[var(--neon-green-border)]/60 relative flex-col justify-between p-8 overflow-hidden">
           
           {/* Top navigation header matching the basketball aesthetic */}
           <div className="flex items-center justify-between z-10 font-mono">
-            <div className="flex items-center space-x-2 bg-zinc-900/65 px-4 py-1.5 rounded-full border border-zinc-800/80">
-              <span className="text-[10px] font-black text-white tracking-widest uppercase">
+            <div className="flex items-center space-x-2 bg-[var(--color-surface)]/65 px-4 py-1.5 rounded-full border border-[var(--neon-green-border)]/80">
+              <span className="text-[10px] font-black text-[var(--color-text)] tracking-widest uppercase">
                 COVENANT HUB
               </span>
             </div>
             
             {/* Nav Pill bar representation from reference video */}
-            <div className="flex items-center space-x-1 bg-zinc-900/40 p-1 rounded-full border border-zinc-800/40">
+            <div className="flex items-center space-x-1 bg-[var(--color-surface)]/40 p-1 rounded-full border border-[var(--neon-green-border)]/40">
               <div className="px-3 py-1 bg-zinc-800 text-[9px] text-[#00ff66] font-bold rounded-full flex items-center space-x-1 select-none">
                 <Globe className="w-3 h-3" />
                 <span>Home</span>
@@ -820,7 +820,7 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
             
             {/* Absolute instructional subtitle */}
             <div className="absolute top-4 text-center z-10 pointer-events-none">
-              <span className="text-[9px] font-mono font-black text-zinc-500 uppercase tracking-widest bg-black/40 px-2 py-0.5 rounded-full">
+              <span className="text-[9px] font-mono font-black text-zinc-500 uppercase tracking-widest bg-[var(--color-surface)]/40 px-2 py-0.5 rounded-full">
                 Drag to Spin // Hover to Morph Nodes
               </span>
             </div>
@@ -835,18 +835,18 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
           </div>
 
           {/* Bottom styled details from reference basketball poster */}
-          <div className="border-t border-zinc-900 pt-5 z-10 flex items-end justify-between font-mono">
+          <div className="border-t border-[var(--neon-green-border)] pt-5 z-10 flex items-end justify-between font-mono">
             <div className="space-y-1 text-left">
               <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
                 CAMPUS MATCHES
               </div>
-              <h1 className="text-xl font-serif font-black italic text-white leading-tight uppercase tracking-tight">
+              <h1 className="text-xl font-serif font-black italic text-[var(--color-text)] leading-tight uppercase tracking-tight">
                 FIND YOUR<br />CAMPUS PEERS
               </h1>
             </div>
             
             <div className="text-right space-y-0.5">
-              <div className="text-[12px] font-black text-white tracking-widest font-mono">
+              <div className="text-[12px] font-black text-[var(--color-text)] tracking-widest font-mono">
                 FLICK // COVENANT
               </div>
               <div className="text-[8px] text-zinc-500 tracking-wider">

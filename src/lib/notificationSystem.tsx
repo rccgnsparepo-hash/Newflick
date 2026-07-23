@@ -333,7 +333,7 @@ const NotificationRenderer: React.FC<RendererProps> = ({ activeBanners, onDismis
                 DeepLinkService.executeDeepLink({ chatId: banner.chatId, peerId: banner.senderId });
                 onDismiss(banner.id);
               }}
-              className="w-full pointer-events-auto cursor-pointer rounded-2xl backdrop-blur-xl bg-[#121214]/85 border border-zinc-800/60 shadow-[0_12px_40px_rgba(0,0,0,0.5)] p-4 flex gap-3 select-none active:scale-98 transition-transform duration-100 group overflow-hidden"
+              className="w-full pointer-events-auto cursor-pointer rounded-2xl backdrop-blur-xl bg-[var(--color-surface)]/85 border border-[var(--neon-green-border)]/60 shadow-[0_12px_40px_rgba(0,0,0,0.5)] p-4 flex gap-3 select-none active:scale-98 transition-transform duration-100 group overflow-hidden"
             >
               {/* Premium iOS Gloss Overlay */}
               <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-2xl" />
@@ -352,7 +352,7 @@ const NotificationRenderer: React.FC<RendererProps> = ({ activeBanners, onDismis
               {/* Banner Details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-zinc-100 tracking-tight truncate">
+                  <h4 className="text-sm font-semibold text-[var(--color-text)] tracking-tight truncate">
                     {banner.senderName}
                   </h4>
                   <span className="text-[10px] text-zinc-500 font-medium">
@@ -370,7 +370,7 @@ const NotificationRenderer: React.FC<RendererProps> = ({ activeBanners, onDismis
                   <motion.div 
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
-                    className="mt-2 pt-2 border-t border-zinc-800/50 flex flex-col gap-1 text-[11px] text-zinc-400 font-mono"
+                    className="mt-2 pt-2 border-t border-[var(--neon-green-border)]/50 flex flex-col gap-1 text-[11px] text-zinc-400 font-mono"
                   >
                     {banner.messageHistory.map((msg, i) => (
                       <div key={i} className="flex gap-1.5 items-start truncate">

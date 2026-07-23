@@ -147,7 +147,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-[#050505]/85 backdrop-blur-md cursor-pointer"
+          className="absolute inset-0 bg-[var(--color-background)]/85 backdrop-blur-md cursor-pointer"
         />
 
         {/* Modal Brutalist frame */}
@@ -156,7 +156,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.93, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full max-w-2xl bg-[#090909] border-2 border-[var(--neon-green)] p-6 md:p-8 shadow-[6px_6px_0px_#000000] z-10 overflow-hidden font-mono text-zinc-100 max-h-[85vh] flex flex-col"
+          className="relative w-full max-w-2xl bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-6 md:p-8 shadow-[6px_6px_0px_#000000] z-10 overflow-hidden font-mono text-[var(--color-text)] max-h-[85vh] flex flex-col"
         >
           {/* Header coordinates decoration (Brutalism aesthetic) */}
           <div className="flex items-center justify-between border-b-2 border-[var(--neon-green)]/35 pb-4 mb-6 shrink-0">
@@ -181,39 +181,39 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
           {loading ? (
             <div className="flex-1 space-y-6 overflow-y-auto animate-pulse">
               {/* Profile Card Identity skeleton */}
-              <div className="bg-black/55 border border-zinc-900 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-5">
-                <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 shrink-0" />
+              <div className="bg-[var(--color-surface)]/55 border border-[var(--neon-green-border)] p-5 flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                <div className="w-16 h-16 bg-[var(--color-surface)] border border-[var(--neon-green-border)] shrink-0" />
                 <div className="space-y-3 flex-1 w-full">
-                  <div className="h-4 bg-zinc-900 w-1/3 rounded" />
-                  <div className="h-2.5 bg-zinc-900 w-1/5 rounded" />
-                  <div className="h-3 bg-zinc-900 w-2/3 rounded mt-2" />
+                  <div className="h-4 bg-[var(--color-surface)] w-1/3 rounded" />
+                  <div className="h-2.5 bg-[var(--color-surface)] w-1/5 rounded" />
+                  <div className="h-3 bg-[var(--color-surface)] w-2/3 rounded mt-2" />
                   <div className="space-y-1.5 pt-1">
-                    <div className="h-2 bg-zinc-900 w-1/2 rounded" />
-                    <div className="h-2 bg-zinc-900 w-2/5 rounded" />
+                    <div className="h-2 bg-[var(--color-surface)] w-1/2 rounded" />
+                    <div className="h-2 bg-[var(--color-surface)] w-2/5 rounded" />
                   </div>
                 </div>
               </div>
 
               {/* Public key skeleton */}
-              <div className="bg-zinc-950 border border-zinc-900 p-4 space-y-2">
-                <div className="h-3 bg-zinc-900 w-1/4 rounded" />
-                <div className="h-2 bg-zinc-900 w-full rounded" />
-                <div className="h-2 bg-zinc-900 w-5/6 rounded" />
+              <div className="bg-[var(--color-background)] border border-[var(--neon-green-border)] p-4 space-y-2">
+                <div className="h-3 bg-[var(--color-surface)] w-1/4 rounded" />
+                <div className="h-2 bg-[var(--color-surface)] w-full rounded" />
+                <div className="h-2 bg-[var(--color-surface)] w-5/6 rounded" />
               </div>
 
               {/* Dialogue feeds published skeleton */}
               <div className="space-y-3">
-                <div className="h-3 bg-zinc-900 w-1/5 rounded" />
+                <div className="h-3 bg-[var(--color-surface)] w-1/5 rounded" />
                 <div className="space-y-3">
                   {Array.from({ length: 2 }).map((_, idx) => (
-                    <div key={idx} className="p-4 bg-zinc-950/40 border border-zinc-900 space-y-3">
+                    <div key={idx} className="p-4 bg-[var(--color-background)]/40 border border-[var(--neon-green-border)] space-y-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-zinc-900 rounded-full" />
-                        <div className="h-2 bg-zinc-900 w-20 rounded" />
+                        <div className="w-6 h-6 bg-[var(--color-surface)] rounded-full" />
+                        <div className="h-2 bg-[var(--color-surface)] w-20 rounded" />
                       </div>
                       <div className="space-y-1.5">
-                        <div className="h-2.5 bg-zinc-900 w-full rounded" />
-                        <div className="h-2.5 bg-zinc-900 w-4/5 rounded" />
+                        <div className="h-2.5 bg-[var(--color-surface)] w-full rounded" />
+                        <div className="h-2.5 bg-[var(--color-surface)] w-4/5 rounded" />
                       </div>
                     </div>
                   ))}
@@ -232,7 +232,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
           ) : (
             <div className="flex-1 space-y-6 overflow-y-auto pr-1">
               {/* Profile Card Identity */}
-              <div className="bg-black/55 border border-[var(--neon-green)]/20 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-5 relative overflow-hidden">
+              <div className="bg-[var(--color-surface)]/55 border border-[var(--neon-green)]/20 p-5 flex flex-col sm:flex-row items-center sm:items-start gap-5 relative overflow-hidden">
                 <div className="absolute top-2 right-2 pointer-events-none text-[8px] text-[var(--neon-green)]/25 uppercase select-none font-bold">
                   REGISTRY VERIFIED
                 </div>
@@ -256,14 +256,14 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
 
                 <div className="space-y-2 text-center sm:text-left min-w-0 flex-1">
                   <div>
-                    <h2 className="text-xl font-serif italic text-white font-black leading-tight">
+                    <h2 className="text-xl font-serif italic text-[var(--color-text)] font-black leading-tight">
                       {profile.displayName}
                     </h2>
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1.5">
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[8.5px] font-mono font-bold uppercase border ${
                         profile.status === 'online' 
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' 
-                          : 'border-zinc-700 bg-zinc-900/50 text-zinc-500'
+                          : 'border-zinc-700 bg-[var(--color-surface)]/50 text-zinc-500'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${profile.status === 'online' ? 'bg-emerald-400 animate-ping' : 'bg-zinc-600'}`} />
                         {profile.status === 'online' ? 'ONLINE' : 'OFFLINE'}
@@ -323,7 +323,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
 
               {/* public keys coordinates keys */}
               {profile.publicKey && (
-                <div className="bg-zinc-950 border border-zinc-800 p-4 space-y-1.5">
+                <div className="bg-[var(--color-background)] border border-[var(--neon-green-border)] p-4 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-black text-[var(--neon-green)] font-mono">
                     <Key className="w-3.5 h-3.5 text-[var(--neon-green)]" />
                     <span>Active E2EE Public Key Coordinates</span>
@@ -336,14 +336,14 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
 
               {/* Granular Privacy Settings Section */}
               {uid !== myProfile?.uid && (
-                <div className="bg-zinc-950 border border-[var(--neon-green)]/35 p-4 space-y-3">
+                <div className="bg-[var(--color-background)] border border-[var(--neon-green)]/35 p-4 space-y-3">
                   <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-black text-[var(--neon-green)] font-mono">
                     <Shield className="w-3.5 h-3.5 text-[var(--neon-green)]" />
                     <span>Granular Privacy Preferences</span>
                   </div>
-                  <div className="flex items-center justify-between p-2.5 bg-[#090909] border border-zinc-900 gap-4">
+                  <div className="flex items-center justify-between p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)] gap-4">
                     <div className="space-y-0.5">
-                      <span className="text-[10px] text-white font-mono uppercase font-bold block">
+                      <span className="text-[10px] text-[var(--color-text)] font-mono uppercase font-bold block">
                         Read Receipts for this Chat
                       </span>
                       <span className="text-[8.5px] text-zinc-500 font-mono block leading-normal">
@@ -367,7 +367,7 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
 
               {/* dialogue feeds published */}
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs uppercase font-extrabold tracking-wider text-white border-b border-dashed border-zinc-800 pb-2">
+                <div className="flex items-center gap-2 text-xs uppercase font-extrabold tracking-wider text-[var(--color-text)] border-b border-dashed border-[var(--neon-green-border)] pb-2">
                   <FileText className="w-4 h-4 text-[var(--neon-green)] shrink-0" />
                   <span>DIALOGUE FEEDS PUBLISHED ({posts.length})</span>
                 </div>
@@ -381,14 +381,14 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
                     {posts.map((post) => (
                       <div 
                         key={post.id} 
-                        className="p-3 bg-[#0c0c0c] border border-zinc-800 hover:border-zinc-700 transition rounded-none text-[11px] leading-relaxed relative"
+                        className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] hover:border-zinc-700 transition rounded-none text-[11px] leading-relaxed relative"
                       >
                         <p className="text-zinc-300 font-sans">{post.content}</p>
                         {post.imageUrl && (
                           <img 
                             src={post.imageUrl} 
                             alt="Attached node graphics" 
-                            className="mt-2 text-center max-h-24 w-auto object-cover border border-zinc-800/40"
+                            className="mt-2 text-center max-h-24 w-auto object-cover border border-[var(--neon-green-border)]/40"
                           />
                         )}
                         <span className="text-[7.5px] uppercase text-zinc-400 font-mono block text-right mt-1.5 tracking-wide">

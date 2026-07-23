@@ -43,10 +43,10 @@ export default function AchievementMorphicCard({
     <ThreeDCardTilt maxTilt={8} scale={1.03} className="h-full">
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`relative h-full bg-[#121214]/90 backdrop-blur-xl border p-4.5 rounded-[28px] cursor-pointer transition-all duration-300 flex flex-col justify-between select-none ${
+        className={`relative h-full bg-[var(--color-surface)]/90 backdrop-blur-xl border p-4.5 rounded-[28px] cursor-pointer transition-all duration-300 flex flex-col justify-between select-none ${
           unlocked 
-            ? 'border-zinc-800/80 hover:border-red-500/30' 
-            : 'border-zinc-900 opacity-60'
+            ? 'border-[var(--neon-green-border)]/80 hover:border-red-500/30' 
+            : 'border-[var(--neon-green-border)] opacity-60'
         }`}
       >
         <div className="space-y-3">
@@ -81,7 +81,7 @@ export default function AchievementMorphicCard({
 
           {/* Title / Description */}
           <div className="space-y-1">
-            <h5 className="text-[11.5px] font-mono font-black text-white uppercase leading-none tracking-tight flex items-center gap-1">
+            <h5 className="text-[11.5px] font-mono font-black text-[var(--color-text)] uppercase leading-none tracking-tight flex items-center gap-1">
               {title}
             </h5>
             <p className="text-[9.5px] text-zinc-400 font-sans leading-tight">
@@ -98,7 +98,7 @@ export default function AchievementMorphicCard({
               <span>SYNC FACTOR</span>
               <span style={{ color: accentColor }}>{pct}%</span>
             </div>
-            <div className="w-full bg-black/60 h-1.5 rounded-full overflow-hidden border border-zinc-900">
+            <div className="w-full bg-[var(--color-surface)]/60 h-1.5 rounded-full overflow-hidden border border-[var(--neon-green-border)]">
               <div 
                 className="h-full rounded-full transition-all duration-1000 ease-out"
                 style={{ 
@@ -110,7 +110,7 @@ export default function AchievementMorphicCard({
           </div>
 
           {/* Interactive Collapse details */}
-          <div className="flex justify-center text-zinc-600 hover:text-zinc-400 transition pt-1 border-t border-zinc-900/40">
+          <div className="flex justify-center text-zinc-600 hover:text-zinc-400 transition pt-1 border-t border-[var(--neon-green-border)]/40">
             <ChevronDown 
               className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-red-500' : ''}`} 
             />

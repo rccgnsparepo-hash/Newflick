@@ -531,7 +531,7 @@ function DecryptedMessageBubble({
         
         {/* reply anchor overlay if quoted */}
         {quotedSnippet && (
-          <div className="mb-1 p-2 bg-[#121212]/90 border-l-2 border-[var(--neon-green)] text-left text-[10px] space-y-0.5 rounded-none max-w-sm opacity-85 select-none font-mono">
+          <div className="mb-1 p-2 bg-[var(--color-surface)]/90 border-l-2 border-[var(--neon-green)] text-left text-[10px] space-y-0.5 rounded-none max-w-sm opacity-85 select-none font-mono">
             <p className="font-bold text-[var(--neon-green)]">@{quotedAuthor}</p>
             <p className="text-zinc-400 line-clamp-1 italic">"{quotedSnippet}"</p>
           </div>
@@ -544,18 +544,18 @@ function DecryptedMessageBubble({
             <span>🚫 This message was deleted</span>
           </div>
         ) : isEditing ? (
-          <div className="mt-1 bg-black/60 border border-[var(--neon-green)]/35 p-2 space-y-2">
+          <div className="mt-1 bg-[var(--color-surface)]/60 border border-[var(--neon-green)]/35 p-2 space-y-2">
             <textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white p-2 focus:outline-none focus:border-[var(--neon-green)] font-mono resize-none min-h-[50px] pointer-events-auto"
+              className="w-full bg-[var(--color-background)] border border-[var(--neon-green-border)] text-xs text-[var(--color-text)] p-2 focus:outline-none focus:border-[var(--neon-green)] font-mono resize-none min-h-[50px] pointer-events-auto"
               placeholder="Edit message..."
               disabled={isUpdating}
             />
             <div className="flex justify-end space-x-1.5 pointer-events-auto">
               <button
                 onClick={() => setIsEditing(false)}
-                className="px-2 py-1 text-[8.5px] font-black uppercase font-mono tracking-wider border border-zinc-800 hover:border-zinc-500 text-zinc-400 hover:text-white cursor-pointer"
+                className="px-2 py-1 text-[8.5px] font-black uppercase font-mono tracking-wider border border-[var(--neon-green-border)] hover:border-zinc-500 text-zinc-400 hover:text-[var(--color-text)] cursor-pointer"
                 disabled={isUpdating}
               >
                 Cancel
@@ -573,22 +573,22 @@ function DecryptedMessageBubble({
           <>
             {/* Attachment render content */}
             {hasAttachment && (
-              <div className="mb-2 overflow-hidden border border-[var(--neon-green)]/25 bg-[#0a0a0a] p-2 max-w-full">
+              <div className="mb-2 overflow-hidden border border-[var(--neon-green)]/25 bg-[var(--color-surface)] p-2 max-w-full">
                 {attachmentType === 'image' && (
                   <div className="relative group cursor-pointer" onClick={() => setZoomImg(attachmentUrl)}>
                     <img src={attachmentUrl} className="max-h-60 rounded object-cover border border-[var(--neon-green)]/15 hover:opacity-90 transition" alt="E2EE media" />
-                    <div className="absolute top-2 right-2 bg-black/75 p-1 rounded-none opacity-0 group-hover:opacity-100 transition">
+                    <div className="absolute top-2 right-2 bg-[var(--color-surface)]/75 p-1 rounded-none opacity-0 group-hover:opacity-100 transition">
                       <ZoomIn className="w-3.5 h-3.5 text-[var(--neon-green)]" />
                     </div>
                   </div>
                 )}
 
                 {attachmentType === 'video' && (
-                  <video src={attachmentUrl} controls className="max-h-64 max-w-full rounded border border-[var(--neon-green)]/15 bg-black" />
+                  <video src={attachmentUrl} controls className="max-h-64 max-w-full rounded border border-[var(--neon-green)]/15 bg-[var(--color-surface)]" />
                 )}
 
                 {attachmentType === 'audio' && (
-                  <div className="flex items-center space-x-3 bg-[#0a0a0a] border border-[var(--neon-green)]/35 p-2.5 rounded-none w-full max-w-xs justify-between">
+                  <div className="flex items-center space-x-3 bg-[var(--color-surface)] border border-[var(--neon-green)]/35 p-2.5 rounded-none w-full max-w-xs justify-between">
                     <button
                       type="button"
                       onClick={toggleAudioPlayback}
@@ -650,11 +650,11 @@ function DecryptedMessageBubble({
                     const totalVotes = Object.keys(votesMap).length;
 
                     return (
-                      <div className="border border-[var(--neon-green)]/35 bg-black/60 p-3 mt-1.5 space-y-2 font-mono w-full max-w-sm rounded-none">
+                      <div className="border border-[var(--neon-green)]/35 bg-[var(--color-surface)]/60 p-3 mt-1.5 space-y-2 font-mono w-full max-w-sm rounded-none">
                         <div className="flex items-center gap-1.5 border-b border-[var(--neon-green)]/15 pb-1">
                           <span className="text-[10px] text-[var(--neon-green)] font-black">📊 SECURE DEMOCRACY PROTOCOL</span>
                         </div>
-                        <p className="text-[11px] font-bold text-white uppercase">{pollQuestion}</p>
+                        <p className="text-[11px] font-bold text-[var(--color-text)] uppercase">{pollQuestion}</p>
                         <div className="space-y-1.5 pt-1">
                           {pollOptions.map((opt: string, idx: number) => {
                             const optVotes = Object.values(votesMap).filter(v => v.toString() === idx.toString()).length;
@@ -669,7 +669,7 @@ function DecryptedMessageBubble({
                                 className={`w-full block p-2 border text-left text-[9.5px] uppercase relative overflow-hidden transition cursor-pointer select-none leading-none ${
                                   hasVotedThis
                                     ? 'bg-[var(--neon-green)]/20 border-[var(--neon-green)] text-[var(--neon-green)] font-extrabold shadow-sm'
-                                    : 'border-zinc-850 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-white'
+                                    : 'border-zinc-850 bg-[var(--color-background)] text-zinc-400 hover:border-zinc-500 hover:text-[var(--color-text)]'
                                 }`}
                               >
                                 <div
@@ -808,7 +808,7 @@ function DecryptedMessageBubble({
         {/* Reaction picker portal modal overlay */}
         <AnimatePresence>
           {showPicker && (
-            <div className="absolute bottom-6 left-0 bg-[#0d0d0d] border border-[var(--neon-green)] p-1 shadow-lg z-50 flex space-x-1 font-mono">
+            <div className="absolute bottom-6 left-0 bg-[var(--color-surface)] border border-[var(--neon-green)] p-1 shadow-lg z-50 flex space-x-1 font-mono">
               {pickerEmojis.map(emoji => (
                 <button
                   key={emoji}
@@ -825,7 +825,7 @@ function DecryptedMessageBubble({
         {/* Aggregate displayed reactions as a small floating overlay on each message bubble */}
         {groupedReactions.length > 0 && (
           <div 
-            className={`absolute bottom-[-11px] ${message.senderId === currentUserId ? 'right-3' : 'left-3'} flex items-center gap-1.5 bg-[#090909] border border-[var(--neon-green)] px-1.5 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] select-none z-10 font-mono`}
+            className={`absolute bottom-[-11px] ${message.senderId === currentUserId ? 'right-3' : 'left-3'} flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--neon-green)] px-1.5 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] select-none z-10 font-mono`}
             style={{ pointerEvents: 'auto' }}
           >
             {groupedReactions.map((g, idx) => (
@@ -878,7 +878,7 @@ function DecryptedMessageBubble({
 
       {/* Full Resolution Zoom modal integration */}
       {zoomImg && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[9999] p-4 pointer-events-auto" onClick={() => setZoomImg(null)}>
+        <div className="fixed inset-0 bg-[var(--color-surface)]/95 flex items-center justify-center z-[9999] p-4 pointer-events-auto" onClick={() => setZoomImg(null)}>
           <div className="relative max-w-full max-h-full">
             <img src={zoomImg} className="max-w-full max-h-[90vh] rounded shadow-2xl m-auto cursor-zoom-out" alt="High Resolution Asset" />
             <div className="absolute bottom-[-30px] left-0 right-0 text-center text-[11px] text-[var(--neon-green)] font-mono">
@@ -2651,13 +2651,13 @@ export default function ChatSection({
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 bg-[#0c0c0c] overflow-hidden h-full w-full font-mono">
+    <div className="grid grid-cols-1 md:grid-cols-12 bg-[var(--color-surface)] overflow-hidden h-full w-full font-mono">
       
       {/* Contact Panel sidebar - spans 4 cols */}
-      <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[#050505] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'} ${guideHighlight === 'highlight_tunnels' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse' : ''}`}>
+      <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[var(--color-background)] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'} ${guideHighlight === 'highlight_tunnels' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse' : ''}`}>
         
         {/* Compact Snapchat-inspired Sidebar Header */}
-        <div className="p-4 border-b border-zinc-900/40 bg-neutral-950 flex-shrink-0 flex items-center justify-between select-none">
+        <div className="p-4 border-b border-[var(--neon-green-border)]/40 bg-neutral-950 flex-shrink-0 flex items-center justify-between select-none">
           <div className="flex items-center space-x-3">
             <div className={`relative ${guideHighlight === 'highlight_profile' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black rounded-full z-[95] animate-pulse scale-110' : ''}`}>
               <img 
@@ -2674,7 +2674,7 @@ export default function ChatSection({
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black" title="System secured" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-sans font-black tracking-tight text-white text-base leading-none uppercase">CHAT</h2>
+              <h2 className="font-sans font-black tracking-tight text-[var(--color-text)] text-base leading-none uppercase">CHAT</h2>
               <span className="text-[7.5px] uppercase tracking-widest font-mono text-zinc-500 mt-0.5 block truncate">SECURE DIRECT ARCHITECTURE</span>
             </div>
           </div>
@@ -2685,7 +2685,7 @@ export default function ChatSection({
                 playGlitchClickSound();
                 setIsShortcutModalOpen(true);
               }}
-              className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+              className="p-2 rounded-full bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-zinc-800 transition cursor-pointer"
               title="Keyboard hotkeys"
             >
               <Keyboard className="w-4 h-4" />
@@ -2695,7 +2695,7 @@ export default function ChatSection({
                 playGlitchClickSound();
                 setShowQrShareModal(true);
               }}
-              className={`p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer ${guideHighlight === 'highlight_qr' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black z-[95] animate-pulse scale-110' : ''}`}
+              className={`p-2 rounded-full bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-zinc-800 transition cursor-pointer ${guideHighlight === 'highlight_qr' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black z-[95] animate-pulse scale-110' : ''}`}
               title="My QR code"
             >
               <QrCode className="w-4 h-4" />
@@ -2706,7 +2706,7 @@ export default function ChatSection({
                 setShowQrScanModal(true);
                 startScanning();
               }}
-              className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+              className="p-2 rounded-full bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-zinc-800 transition cursor-pointer"
               title="Scan peer QR"
             >
               <ScanLine className="w-4 h-4" />
@@ -2717,7 +2717,7 @@ export default function ChatSection({
                 setIsCreateGroupOpen(!isCreateGroupOpen);
                 setIsJoinGroupOpen(false);
               }}
-              className={`p-2 rounded-full transition cursor-pointer ${isCreateGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'} ${guideHighlight === 'highlight_create_group' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black z-[95] animate-pulse scale-110' : ''}`}
+              className={`p-2 rounded-full transition cursor-pointer ${isCreateGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-zinc-800'} ${guideHighlight === 'highlight_create_group' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black z-[95] animate-pulse scale-110' : ''}`}
               title="Create Group Concourse"
             >
               <Plus className="w-4 h-4" />
@@ -2728,7 +2728,7 @@ export default function ChatSection({
                 setIsJoinGroupOpen(!isJoinGroupOpen);
                 setIsCreateGroupOpen(false);
               }}
-              className={`p-2 rounded-full transition cursor-pointer ${isJoinGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
+              className={`p-2 rounded-full transition cursor-pointer ${isJoinGroupOpen ? 'bg-[var(--neon-green)] text-black font-black' : 'bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-zinc-800'}`}
               title="Join Group Concourse"
             >
               <Users className="w-4 h-4" />
@@ -2737,20 +2737,20 @@ export default function ChatSection({
         </div>
 
         {/* Real-time search to instantly filter contacts */}
-        <div className="px-3 pb-2 pt-2 border-b border-zinc-950 bg-black/30">
-          <div className="relative flex items-center border border-zinc-900 bg-black/60 px-2.5 py-1.5">
+        <div className="px-3 pb-2 pt-2 border-b border-zinc-950 bg-[var(--color-surface)]/30">
+          <div className="relative flex items-center border border-[var(--neon-green-border)] bg-[var(--color-surface)]/60 px-2.5 py-1.5">
             <Search className="w-3.5 h-3.5 text-zinc-550 mr-2 shrink-0" />
             <input
               type="text"
               placeholder={filterType === 'all-nodes' ? "SEARCH ALL SYSTEMS NODES..." : "SEARCH DIALOGUES & TRANSMISSIONS..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-[9.5px] text-white placeholder-zinc-500 tracking-wider w-full uppercase font-mono"
+              className="bg-transparent border-none outline-none text-[9.5px] text-[var(--color-text)] placeholder-zinc-500 tracking-wider w-full uppercase font-mono"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="text-zinc-500 hover:text-white font-mono text-[9px] pl-1 cursor-pointer select-none font-bold"
+                className="text-zinc-500 hover:text-[var(--color-text)] font-mono text-[9px] pl-1 cursor-pointer select-none font-bold"
               >
                 ✕
               </button>
@@ -2759,7 +2759,7 @@ export default function ChatSection({
         </div>
 
         {/* Horizontal filter capsules Snapchat-inspired Layout */}
-        <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-none select-none border-b border-zinc-900/40 bg-neutral-950 shrink-0">
+        <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-none select-none border-b border-[var(--neon-green-border)]/40 bg-neutral-950 shrink-0">
           {[
             { id: 'all', label: 'All 💬' },
             { id: 'unread', label: 'Unread 🔴' },
@@ -2815,13 +2815,13 @@ export default function ChatSection({
                 className={`px-3.5 py-1.5 rounded-full text-[10px] font-sans font-semibold tracking-normal transition-all duration-150 shrink-0 cursor-pointer ${
                   isActive 
                     ? 'bg-white text-black font-extrabold shadow-sm' 
-                    : 'bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
+                    : 'bg-[var(--color-surface)]/80 border border-[var(--neon-green-border)] text-zinc-300 hover:text-[var(--color-text)] hover:bg-zinc-800'
                 }`}
               >
                 <span className="flex items-center gap-1.5">
                   {pill.label}
                   {badgeCount > 0 && (
-                    <span className={`px-1.5 py-0.5 text-[8.5px] rounded-full font-bold ${isActive ? 'bg-black text-white font-black' : 'bg-red-500 text-white font-black'}`}>
+                    <span className={`px-1.5 py-0.5 text-[8.5px] rounded-full font-bold ${isActive ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-black' : 'bg-red-500 text-[var(--color-text)] font-black'}`}>
                       {badgeCount}
                     </span>
                   )}
@@ -2832,7 +2832,7 @@ export default function ChatSection({
         </div>
 
         {/* Chat folders secondary filter bar */}
-        <div className="flex gap-1 px-3 py-1.5 overflow-x-auto scrollbar-none select-none border-b border-zinc-950 bg-[#090909] shrink-0 items-center">
+        <div className="flex gap-1 px-3 py-1.5 overflow-x-auto scrollbar-none select-none border-b border-zinc-950 bg-[var(--color-surface)] shrink-0 items-center">
           <span className="text-[7.5px] text-zinc-500 font-mono tracking-wider font-extrabold mr-1 uppercase">FOLDERS:</span>
           {['All', 'Personal', 'Work', 'Family'].map((folder) => {
             const isSelected = selectedFolder === folder;
@@ -2846,7 +2846,7 @@ export default function ChatSection({
                 className={`px-2 py-0.5 border text-[8px] uppercase tracking-wider font-mono font-bold transition duration-150 cursor-pointer ${
                   isSelected
                     ? 'bg-[var(--neon-green)] text-black border-transparent font-black'
-                    : 'border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900'
+                    : 'border-[var(--neon-green-border)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
                 }`}
               >
                 {folder}
@@ -2863,8 +2863,8 @@ export default function ChatSection({
             }}
             className={`ml-auto px-2 py-0.5 border text-[8px] uppercase tracking-wider font-mono font-bold transition duration-150 cursor-pointer ${
               multiSelectMode
-                ? 'bg-red-500 text-white border-transparent animate-pulse'
-                : 'border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900'
+                ? 'bg-red-500 text-[var(--color-text)] border-transparent animate-pulse'
+                : 'border-[var(--neon-green-border)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
             }`}
           >
             {multiSelectMode ? 'CANCEL SELECT' : 'SELECT 🗳️'}
@@ -2875,7 +2875,7 @@ export default function ChatSection({
         {multiSelectMode && (
           <div className="p-3 bg-neutral-900 border-b border-[var(--neon-green)]/20 space-y-1.5 shrink-0 select-none">
             <div className="flex justify-between items-center">
-              <span className="text-[9px] font-mono font-bold text-white uppercase">
+              <span className="text-[9px] font-mono font-bold text-[var(--color-text)] uppercase">
                 🗳️ SELECTION: <span className="text-[var(--neon-green)]">{selectedChatIds.length} SELECTED</span>
               </span>
               <button
@@ -2899,7 +2899,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-[var(--neon-green)] disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-[var(--neon-green)] disabled:opacity-40 transition cursor-pointer"
               >
                 Pin
               </button>
@@ -2913,7 +2913,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-yellow-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-yellow-400 disabled:opacity-40 transition cursor-pointer"
               >
                 Star
               </button>
@@ -2927,7 +2927,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-blue-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-blue-400 disabled:opacity-40 transition cursor-pointer"
               >
                 Archive
               </button>
@@ -2941,7 +2941,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-orange-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-orange-400 disabled:opacity-40 transition cursor-pointer"
               >
                 Mute
               </button>
@@ -2955,7 +2955,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-zinc-800 bg-black/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-zinc-950 hover:text-purple-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-purple-400 disabled:opacity-40 transition cursor-pointer"
               >
                 + Work
               </button>
@@ -2964,11 +2964,11 @@ export default function ChatSection({
         )}
 
         {/* Main Sidebar Scroll Area */}
-        <div className="flex-1 overflow-y-auto divide-y divide-zinc-950 bg-black/40">
+        <div className="flex-1 overflow-y-auto divide-y divide-zinc-950 bg-[var(--color-surface)]/40">
           
           {/* Group Joining Form inline pop */}
           {isJoinGroupOpen && (
-            <div className="p-3 border-b border-[var(--neon-green)]/20 bg-black/90 text-zinc-350 space-y-2 select-none text-[9.5px]">
+            <div className="p-3 border-b border-[var(--neon-green)]/20 bg-[var(--color-surface)]/90 text-zinc-350 space-y-2 select-none text-[9.5px]">
               <p className="font-bold text-[var(--neon-green)] text-[8.5px] border-b border-[var(--neon-green)]/15 pb-1 uppercase">JOIN CONDUIT BY ACCESS CODE</p>
               <div>
                 <span className="block text-[8px] text-zinc-500 mb-0.5">TARGET CHAT ID:</span>
@@ -2977,7 +2977,7 @@ export default function ChatSection({
                   placeholder="e.g. chats/xxxxxxxxx or just chatId"
                   value={joinGroupInputChatId}
                   onChange={(e) => setJoinGroupInputChatId(e.target.value)}
-                  className="w-full text-xs bg-zinc-950 text-white p-1 border border-zinc-850 focus:outline-none h-7 uppercase font-mono"
+                  className="w-full text-xs bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none h-7 uppercase font-mono"
                 />
               </div>
               <div>
@@ -2987,7 +2987,7 @@ export default function ChatSection({
                   placeholder="e.g. CYBERPASS99"
                   value={joinGroupInputCode}
                   onChange={(e) => setJoinGroupInputCode(e.target.value)}
-                  className="w-full text-xs bg-zinc-950 text-white p-1 border border-zinc-850 focus:outline-none h-7 uppercase font-mono"
+                  className="w-full text-xs bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none h-7 uppercase font-mono"
                 />
               </div>
               <button
@@ -3022,8 +3022,8 @@ export default function ChatSection({
 
           {/* Group Creation Form inline pop */}
           {isCreateGroupOpen && (
-            <div className="p-3 border-b border-red-500/20 bg-zinc-950 text-zinc-350 space-y-3 select-none text-[9.5px]">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-1.5">
+            <div className="p-3 border-b border-red-500/20 bg-[var(--color-background)] text-zinc-350 space-y-3 select-none text-[9.5px]">
+              <div className="flex items-center justify-between border-b border-[var(--neon-green-border)] pb-1.5">
                 <p className="font-bold text-[var(--neon-green)] text-[8.5px] uppercase tracking-wider font-mono">
                   INITIALIZE SECURE GROUP [STEP {createGroupStep}/3]
                 </p>
@@ -3058,7 +3058,7 @@ export default function ChatSection({
                         className={`p-2 border text-left flex flex-col justify-between transition h-14 ${
                           newGroupType === type.id 
                             ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' 
-                            : 'border-zinc-850 bg-black/40 text-zinc-400 hover:border-zinc-700 hover:text-white'
+                            : 'border-zinc-850 bg-[var(--color-surface)]/40 text-zinc-400 hover:border-zinc-700 hover:text-[var(--color-text)]'
                         }`}
                       >
                         <span className="font-mono text-[9px] font-bold uppercase">{type.label}</span>
@@ -3080,7 +3080,7 @@ export default function ChatSection({
                         placeholder="e.g. CYBER COVENANT ALPHA"
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        className="w-full text-xs bg-zinc-950 text-white p-1 border border-zinc-850 focus:outline-none uppercase h-7 font-bold placeholder:text-zinc-700 font-mono"
+                        className="w-full text-xs bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase h-7 font-bold placeholder:text-zinc-700 font-mono"
                       />
                     </div>
                     <div className="w-1/3">
@@ -3088,7 +3088,7 @@ export default function ChatSection({
                       <select
                         value={newGroupPrivacy}
                         onChange={(e) => setNewGroupPrivacy(e.target.value as any)}
-                        className="w-full text-[9px] bg-zinc-950 text-white p-1 border border-zinc-850 focus:outline-none uppercase h-7"
+                        className="w-full text-[9px] bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase h-7"
                       >
                         <option value="private">PRIVATE</option>
                         <option value="public">PUBLIC</option>
@@ -3103,7 +3103,7 @@ export default function ChatSection({
                       placeholder="e.g. SECURE CHANNEL FOR CRITICAL OPERATIONS"
                       value={newGroupDescription}
                       onChange={(e) => setNewGroupDescription(e.target.value)}
-                      className="w-full text-[9px] bg-zinc-950 text-white p-1 border border-zinc-850 focus:outline-none uppercase h-7 placeholder:text-zinc-700 font-mono"
+                      className="w-full text-[9px] bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase h-7 placeholder:text-zinc-700 font-mono"
                     />
                   </div>
 
@@ -3132,7 +3132,7 @@ export default function ChatSection({
                         />
                         <label
                           htmlFor="new-group-avatar-upload"
-                          className="flex-1 text-center py-1 border border-dashed border-zinc-800 hover:border-zinc-600 bg-zinc-950 text-[8px] uppercase tracking-wider text-zinc-400 hover:text-white cursor-pointer select-none transition h-7 flex items-center justify-center font-mono leading-none"
+                          className="flex-1 text-center py-1 border border-dashed border-[var(--neon-green-border)] hover:border-zinc-600 bg-[var(--color-background)] text-[8px] uppercase tracking-wider text-zinc-400 hover:text-[var(--color-text)] cursor-pointer select-none transition h-7 flex items-center justify-center font-mono leading-none"
                         >
                           {newGroupAvatarUrl ? "READY" : "UPLOAD AVATAR"}
                         </label>
@@ -3165,7 +3165,7 @@ export default function ChatSection({
                         />
                         <label
                           htmlFor="new-group-banner-upload"
-                          className="flex-1 text-center py-1 border border-dashed border-zinc-800 hover:border-zinc-600 bg-zinc-950 text-[8px] uppercase tracking-wider text-zinc-400 hover:text-white cursor-pointer select-none transition h-7 flex items-center justify-center font-mono leading-none"
+                          className="flex-1 text-center py-1 border border-dashed border-[var(--neon-green-border)] hover:border-zinc-600 bg-[var(--color-background)] text-[8px] uppercase tracking-wider text-zinc-400 hover:text-[var(--color-text)] cursor-pointer select-none transition h-7 flex items-center justify-center font-mono leading-none"
                         >
                           {newGroupBannerUrl ? "READY" : "UPLOAD BANNER"}
                         </label>
@@ -3184,7 +3184,7 @@ export default function ChatSection({
                         placeholder="e.g. CYBERPASS99"
                         value={newGroupInviteCode}
                         onChange={(e) => setNewGroupInviteCode(e.target.value)}
-                        className="w-full text-[9px] bg-zinc-950 text-white p-1 border border-zinc-850 focus:outline-none uppercase h-7 placeholder:text-zinc-700 font-mono"
+                        className="w-full text-[9px] bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase h-7 placeholder:text-zinc-700 font-mono"
                       />
                     </div>
                   )}
@@ -3193,7 +3193,7 @@ export default function ChatSection({
                     <button
                       type="button"
                       onClick={() => { playGlitchClickSound(); setCreateGroupStep(1); }}
-                      className="px-3 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-mono text-[8.5px] uppercase border border-zinc-800"
+                      className="px-3 py-1 bg-[var(--color-surface)] hover:bg-zinc-800 text-zinc-400 font-mono text-[8.5px] uppercase border border-[var(--neon-green-border)]"
                     >
                       &lt; BACK
                     </button>
@@ -3214,13 +3214,13 @@ export default function ChatSection({
                 <div className="space-y-2.5 animate-fade-in">
                   <p className="text-[7.5px] text-zinc-500 uppercase tracking-widest font-mono">CONDUIT SECURITY PERMISSIONS:</p>
                   
-                  <div className="grid grid-cols-2 gap-1.5 p-1.5 border border-zinc-900 bg-black/40">
+                  <div className="grid grid-cols-2 gap-1.5 p-1.5 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40">
                     <div>
                       <span className="block text-[7px] text-zinc-500 uppercase mb-0.5 font-mono">WHO CAN TRANSMIT?</span>
                       <select
                         value={newGroupPermSend}
                         onChange={(e) => setNewGroupPermSend(e.target.value as any)}
-                        className="w-full text-[8px] bg-zinc-950 text-white p-0.5 border border-zinc-850 focus:outline-none uppercase h-6 font-mono"
+                        className="w-full text-[8px] bg-[var(--color-background)] text-[var(--color-text)] p-0.5 border border-zinc-850 focus:outline-none uppercase h-6 font-mono"
                       >
                         <option value="all">ALL NODES</option>
                         <option value="admins">ADMINS ONLY</option>
@@ -3232,46 +3232,46 @@ export default function ChatSection({
                       <select
                         value={newGroupPermAdd}
                         onChange={(e) => setNewGroupPermAdd(e.target.value as any)}
-                        className="w-full text-[8px] bg-zinc-950 text-white p-0.5 border border-zinc-850 focus:outline-none uppercase h-6 font-mono"
+                        className="w-full text-[8px] bg-[var(--color-background)] text-[var(--color-text)] p-0.5 border border-zinc-850 focus:outline-none uppercase h-6 font-mono"
                       >
                         <option value="all">ALL NODES</option>
                         <option value="admins">ADMINS ONLY</option>
                       </select>
                     </div>
 
-                    <div className="flex items-center justify-between col-span-2 py-0.5 border-t border-zinc-900 pt-1">
+                    <div className="flex items-center justify-between col-span-2 py-0.5 border-t border-[var(--neon-green-border)] pt-1">
                       <span className="text-[7.5px] text-zinc-400 uppercase font-mono">MEMBERS CAN PIN MESSAGES:</span>
                       <button
                         type="button"
                         onClick={() => setNewGroupPermPin(!newGroupPermPin)}
                         className={`px-1.5 py-0.5 border text-[7px] font-mono leading-none ${
-                          newGroupPermPin ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-zinc-800 text-zinc-500'
+                          newGroupPermPin ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-[var(--neon-green-border)] text-zinc-500'
                         }`}
                       >
                         {newGroupPermPin ? 'ALLOWED' : 'FORBIDDEN'}
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between col-span-2 py-0.5 border-t border-zinc-900 pt-1">
+                    <div className="flex items-center justify-between col-span-2 py-0.5 border-t border-[var(--neon-green-border)] pt-1">
                       <span className="text-[7.5px] text-zinc-400 uppercase font-mono">ADMIN JOIN APPROVAL REQ. (QUEUE):</span>
                       <button
                         type="button"
                         onClick={() => setNewGroupAdminApproval(!newGroupAdminApproval)}
                         className={`px-1.5 py-0.5 border text-[7px] font-mono leading-none ${
-                          newGroupAdminApproval ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-zinc-800 text-zinc-500'
+                          newGroupAdminApproval ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-[var(--neon-green-border)] text-zinc-500'
                         }`}
                       >
                         {newGroupAdminApproval ? 'ACTIVE' : 'INACTIVE'}
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between col-span-2 py-0.5 border-t border-zinc-900 pt-1">
+                    <div className="flex items-center justify-between col-span-2 py-0.5 border-t border-[var(--neon-green-border)] pt-1">
                       <span className="text-[7.5px] text-zinc-400 uppercase font-mono">ANONYMOUS RECRUIT MODE:</span>
                       <button
                         type="button"
                         onClick={() => setNewGroupAnonymous(!newGroupAnonymous)}
                         className={`px-1.5 py-0.5 border text-[7px] font-mono leading-none ${
-                          newGroupAnonymous ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-zinc-800 text-zinc-500'
+                          newGroupAnonymous ? 'bg-[var(--neon-green)]/10 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-[var(--neon-green-border)] text-zinc-500'
                         }`}
                       >
                         {newGroupAnonymous ? 'ENABLED' : 'DISABLED'}
@@ -3293,9 +3293,9 @@ export default function ChatSection({
                       placeholder="FILTER REGISTERED NODES..."
                       value={groupUserSearchQuery}
                       onChange={(e) => setGroupUserSearchQuery(e.target.value)}
-                      className="w-full text-[8.5px] bg-neutral-950 text-white p-1 mb-1 border border-zinc-900 focus:outline-none uppercase h-6 font-mono placeholder:text-zinc-700"
+                      className="w-full text-[8.5px] bg-neutral-950 text-[var(--color-text)] p-1 mb-1 border border-[var(--neon-green-border)] focus:outline-none uppercase h-6 font-mono placeholder:text-zinc-700"
                     />
-                    <div className="max-h-24 overflow-y-auto space-y-1 border border-zinc-900 bg-neutral-950 p-1">
+                    <div className="max-h-24 overflow-y-auto space-y-1 border border-[var(--neon-green-border)] bg-neutral-950 p-1">
                       {users
                         .filter(u => {
                           const q = groupUserSearchQuery.toLowerCase();
@@ -3318,7 +3318,7 @@ export default function ChatSection({
                               className={`w-full text-left p-1 text-[7.5px] uppercase border flex items-center justify-between ${
                                 isPicked 
                                   ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)] font-bold'
-                                  : 'bg-transparent border-zinc-900 text-zinc-400 hover:border-zinc-700'
+                                  : 'bg-transparent border-[var(--neon-green-border)] text-zinc-400 hover:border-zinc-700'
                               }`}
                             >
                               <div className="flex flex-col">
@@ -3339,7 +3339,7 @@ export default function ChatSection({
                     <button
                       type="button"
                       onClick={() => { playGlitchClickSound(); setCreateGroupStep(2); }}
-                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-mono text-[8.5px] uppercase border border-zinc-800 leading-none h-7"
+                      className="px-3 py-1.5 bg-[var(--color-surface)] hover:bg-zinc-800 text-zinc-400 font-mono text-[8.5px] uppercase border border-[var(--neon-green-border)] leading-none h-7"
                     >
                       &lt; BACK
                     </button>
@@ -3386,7 +3386,7 @@ export default function ChatSection({
                   className={`w-full flex items-center space-x-3 p-3.5 text-left transition duration-150 cursor-pointer ${
                     isSelected 
                       ? 'bg-[var(--neon-green)] text-black font-extrabold border-l-4 border-black' 
-                      : 'hover:bg-[var(--neon-green)]/10 text-zinc-100'
+                      : 'hover:bg-[var(--neon-green)]/10 text-[var(--color-text)]'
                   }`}
                 >
                   <div className="relative flex-shrink-0">
@@ -3398,11 +3398,11 @@ export default function ChatSection({
                           playGlitchClickSound();
                           triggerViewProfile(u.uid);
                         }}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center bg-black border overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${isSelected ? 'border-black shadow-[0_0_15px_rgba(0,0,0,0.6)]' : 'border-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.6)]'}`}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-surface)] border overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${isSelected ? 'border-black shadow-[0_0_15px_rgba(0,0,0,0.6)]' : 'border-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.6)]'}`}
                       >
                         <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
                         <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
-                        <div className="absolute inset-1.5 rounded-full bg-black flex items-center justify-center font-mono text-[10px] select-none">
+                        <div className="absolute inset-1.5 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-mono text-[10px] select-none">
                           🔮
                         </div>
                       </div>
@@ -3429,14 +3429,14 @@ export default function ChatSection({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                        <p className={`text-xs font-bold truncate ${isSelected ? 'text-black' : 'text-zinc-100'}`}>
+                        <p className={`text-xs font-bold truncate ${isSelected ? 'text-black' : 'text-[var(--color-text)]'}`}>
                           {renamedNicknames[u.uid] ? `${renamedNicknames[u.uid]} *` : u.displayName}
                         </p>
                         {unreadFromPeer > 0 && (
                           <span 
                             className={`animate-pulse px-1.5 py-0.5 text-[8px] font-black leading-none rounded-none border ${
                               isSelected 
-                                ? 'bg-black text-[var(--neon-green)] border-[var(--neon-green)]' 
+                                ? 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]' 
                                 : 'bg-[var(--neon-green)] text-black border-black'
                             }`}
                           >
@@ -3586,10 +3586,10 @@ export default function ChatSection({
                   <div
                     key={chat.id}
                     onClick={handleChatClick}
-                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer relative group/item ${
+                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-[var(--neon-green-border)]/30 cursor-pointer relative group/item ${
                       isSelected 
-                        ? 'bg-zinc-900/60 border-l-4 border-[var(--neon-green)]' 
-                        : 'hover:bg-zinc-900/30 text-zinc-100'
+                        ? 'bg-[var(--color-surface)]/60 border-l-4 border-[var(--neon-green)]' 
+                        : 'hover:bg-[var(--color-surface)]/30 text-[var(--color-text)]'
                     } ${isChatSelected ? 'bg-[var(--neon-green)]/10' : ''}`}
                   >
                     {/* Checkbox for selection mode */}
@@ -3599,7 +3599,7 @@ export default function ChatSection({
                           type="checkbox"
                           checked={isChatSelected}
                           onChange={() => {}}
-                          className="w-4 h-4 rounded border-zinc-800 text-[var(--neon-green)] focus:ring-[var(--neon-green)] bg-black accent-[var(--neon-green)] cursor-pointer"
+                          className="w-4 h-4 rounded border-[var(--neon-green-border)] text-[var(--neon-green)] focus:ring-[var(--neon-green)] bg-[var(--color-surface)] accent-[var(--neon-green)] cursor-pointer"
                         />
                       </div>
                     )}
@@ -3608,7 +3608,7 @@ export default function ChatSection({
                       <img
                         src={avatarUrl}
                         alt={chatName}
-                        className={`w-12 h-12 rounded-full border-2 object-cover transition-all ${unreadCount > 0 ? 'border-sky-450 scale-105' : 'border-zinc-800'}`}
+                        className={`w-12 h-12 rounded-full border-2 object-cover transition-all ${unreadCount > 0 ? 'border-sky-450 scale-105' : 'border-[var(--neon-green-border)]'}`}
                         referrerPolicy="no-referrer"
                       />
                       <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black bg-sky-400" title="Group Conduit" />
@@ -3617,7 +3617,7 @@ export default function ChatSection({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                          <p className="text-[13px] font-sans font-bold truncate text-zinc-100">
+                          <p className="text-[13px] font-sans font-bold truncate text-[var(--color-text)]">
                             👥 {chatName}
                           </p>
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
@@ -3727,7 +3727,7 @@ export default function ChatSection({
                             ) : (
                               <span className="w-3 h-3 border-2 border-sky-400 rounded-[3px] flex-shrink-0" title="Opened Group chat" />
                             )}
-                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadCount > 0 ? 'text-zinc-100 font-extrabold' : 'text-zinc-400'}`}>
+                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadCount > 0 ? 'text-[var(--color-text)] font-extrabold' : 'text-zinc-400'}`}>
                               {unreadCount > 0 ? 'New Chat' : (chat.lastMessage || 'Channel empty')}
                               {timeString && `  •  ${timeString}`}
                             </p>
@@ -3766,10 +3766,10 @@ export default function ChatSection({
                   <div
                     key={chat.id}
                     onClick={handleChatClick}
-                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-zinc-900/30 cursor-pointer relative group/item ${
+                    className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-[var(--neon-green-border)]/30 cursor-pointer relative group/item ${
                       isSelected 
-                        ? 'bg-zinc-900/60 border-l-4 border-[var(--neon-green)]' 
-                        : 'hover:bg-zinc-900/30 text-zinc-100'
+                        ? 'bg-[var(--color-surface)]/60 border-l-4 border-[var(--neon-green)]' 
+                        : 'hover:bg-[var(--color-surface)]/30 text-[var(--color-text)]'
                     } ${isChatSelected ? 'bg-[var(--neon-green)]/10' : ''}`}
                   >
                     {/* Checkbox for selection mode */}
@@ -3779,7 +3779,7 @@ export default function ChatSection({
                           type="checkbox"
                           checked={isChatSelected}
                           onChange={() => {}}
-                          className="w-4 h-4 rounded border-zinc-800 text-[var(--neon-green)] focus:ring-[var(--neon-green)] bg-black accent-[var(--neon-green)] cursor-pointer"
+                          className="w-4 h-4 rounded border-[var(--neon-green-border)] text-[var(--neon-green)] focus:ring-[var(--neon-green)] bg-[var(--color-surface)] accent-[var(--neon-green)] cursor-pointer"
                         />
                       </div>
                     )}
@@ -3793,11 +3793,11 @@ export default function ChatSection({
                             playGlitchClickSound();
                             triggerViewProfile(peer.uid);
                           }}
-                          className={`w-12 h-12 rounded-full flex items-center justify-center bg-black border-2 overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${unreadFromPeer > 0 ? 'border-rose-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]' : 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.6)]'}`}
+                          className={`w-12 h-12 rounded-full flex items-center justify-center bg-[var(--color-surface)] border-2 overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${unreadFromPeer > 0 ? 'border-rose-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]' : 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.6)]'}`}
                         >
                           <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
                           <div className="absolute inset-1.5 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
-                          <div className="absolute inset-2.5 rounded-full bg-black flex items-center justify-center font-mono text-xs select-none">
+                          <div className="absolute inset-2.5 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-mono text-xs select-none">
                             🔮
                           </div>
                           <div className="absolute inset-0 rounded-full border border-cyan-400/30 animate-ping opacity-25" style={{ animationDuration: '3s' }} />
@@ -3812,7 +3812,7 @@ export default function ChatSection({
                             playGlitchClickSound();
                             triggerViewProfile(peer.uid);
                           }}
-                          className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadFromPeer > 0 ? 'border-rose-500 scale-105' : 'border-zinc-800'}`}
+                          className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadFromPeer > 0 ? 'border-rose-500 scale-105' : 'border-[var(--neon-green-border)]'}`}
                           referrerPolicy="no-referrer"
                         />
                       )}
@@ -3826,7 +3826,7 @@ export default function ChatSection({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                          <p className="text-[13px] font-sans font-bold truncate text-zinc-100">
+                          <p className="text-[13px] font-sans font-bold truncate text-[var(--color-text)]">
                             {renamedNicknames[peer.uid] ? `${renamedNicknames[peer.uid]} *` : peer.displayName}
                           </p>
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
@@ -3940,7 +3940,7 @@ export default function ChatSection({
                             ) : (
                               <span className="w-3.5 h-3.5 border-2 border-rose-500 rounded-[3px] flex-shrink-0" title="Opened chat" />
                             )}
-                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadFromPeer > 0 ? 'text-zinc-100 font-extrabold' : 'text-zinc-400'}`}>
+                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadFromPeer > 0 ? 'text-[var(--color-text)] font-extrabold' : 'text-zinc-400'}`}>
                               {unreadFromPeer > 0 ? 'New Chat' : (chat.lastMessage || 'Tap to chat')}
                               {timeString && `  •  ${timeString}`}
                             </p>
@@ -3973,7 +3973,7 @@ export default function ChatSection({
 
         {/* E2EE Keys diagnostics indicators */}
         {profile && (
-          <div className={`p-4 border-t border-[var(--neon-green)]/15 bg-black flex-shrink-0 space-y-3 transition-all ${guideHighlight === 'highlight_keys' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse bg-violet-950/10' : ''}`}>
+          <div className={`p-4 border-t border-[var(--neon-green)]/15 bg-[var(--color-surface)] flex-shrink-0 space-y-3 transition-all ${guideHighlight === 'highlight_keys' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse bg-violet-950/10' : ''}`}>
             <div className="flex items-center justify-between text-[8px] uppercase tracking-wider font-extrabold opacity-70 text-zinc-400">
               <span className="flex items-center">
                 <Key className="w-3.5 h-3.5 mr-1 text-[var(--neon-green)]" /> RSA KEYRING STATUS
@@ -3984,7 +3984,7 @@ export default function ChatSection({
             </div>
             
             {!localPrivateKey ? (
-              <div className="space-y-2 bg-[#080808] border border-red-500/20 p-2.5">
+              <div className="space-y-2 bg-[var(--color-surface)] border border-red-500/20 p-2.5">
                 <p className="text-[8px] text-zinc-400 uppercase font-mono leading-normal">
                   ⚠️ CHATS ARE SECURELY ENCRYPTED. ENTER GLOBAL KEY PASS TO UNLOCK MESSAGES ON THIS DEVICE:
                 </p>
@@ -3993,7 +3993,7 @@ export default function ChatSection({
                     type="password"
                     id="chat-unlock-password-input"
                     placeholder="Enter Global Passkey..."
-                    className="flex-1 bg-black border border-red-500/30 px-2 py-1 text-[10px] text-white focus:outline-none focus:border-[var(--neon-green)] font-mono"
+                    className="flex-1 bg-[var(--color-surface)] border border-red-500/30 px-2 py-1 text-[10px] text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] font-mono"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         const target = e.currentTarget;
@@ -4016,12 +4016,12 @@ export default function ChatSection({
                         });
                       }
                     }}
-                    className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-mono text-[9px] font-bold uppercase transition cursor-pointer"
+                    className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-[var(--color-text)] font-mono text-[9px] font-bold uppercase transition cursor-pointer"
                   >
                     Unlock
                   </button>
                 </div>
-                <div className="flex items-center justify-between pt-1 border-t border-zinc-900">
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--neon-green-border)]">
                   <span className="text-[7.5px] text-zinc-500 uppercase font-mono">
                     New device or cleared cache?
                   </span>
@@ -4049,12 +4049,12 @@ export default function ChatSection({
       {/* Messages Console Box - spans 8 cols with custom micro-animations */}
       <div 
         style={customAccentStyles}
-        className={`md:col-span-8 flex flex-col bg-[#080808] h-full overflow-hidden ${!currentChat ? 'hidden md:flex' : 'flex'}`}
+        className={`md:col-span-8 flex flex-col bg-[var(--color-surface)] h-full overflow-hidden ${!currentChat ? 'hidden md:flex' : 'flex'}`}
       >
         {currentChat ? (
           <>
             {/* Conversation Header */}
-            <div className="p-4 bg-neutral-950 border-b border-zinc-900/45 flex items-center justify-between flex-shrink-0 font-sans">
+            <div className="p-4 bg-neutral-950 border-b border-[var(--neon-green-border)]/45 flex items-center justify-between flex-shrink-0 font-sans">
               <div className="flex items-center space-x-3 w-full min-w-0">
                 {/* Back Button for Mobile View responsive toggle */}
                 <button
@@ -4063,7 +4063,7 @@ export default function ChatSection({
                     setSelectedPeer(null);
                     setCurrentChat(null);
                   }}
-                  className="md:hidden p-1.5 rounded-full bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 transition shrink-0"
+                  className="md:hidden p-1.5 rounded-full bg-[var(--color-surface)] text-zinc-300 hover:text-[var(--color-text)] hover:bg-zinc-800 transition shrink-0"
                   title="Back to conversations"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -4076,11 +4076,11 @@ export default function ChatSection({
                       playGlitchClickSound();
                       if (selectedPeer) triggerViewProfile(selectedPeer.uid);
                     }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center bg-black border-2 border-violet-500 overflow-hidden shadow-[0_0_20px_rgba(139,92,246,0.6)] cursor-pointer hover:scale-105 transition-all relative shrink-0"
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--color-surface)] border-2 border-violet-500 overflow-hidden shadow-[0_0_20px_rgba(139,92,246,0.6)] cursor-pointer hover:scale-105 transition-all relative shrink-0"
                   >
                     <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
                     <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
-                    <div className="absolute inset-2 rounded-full bg-black flex items-center justify-center font-mono text-xs select-none">
+                    <div className="absolute inset-2 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-mono text-xs select-none">
                       🔮
                     </div>
                   </div>
@@ -4095,7 +4095,7 @@ export default function ChatSection({
                         triggerViewProfile(selectedPeer.uid);
                       }
                     }}
-                    className="w-10 h-10 rounded-full border border-zinc-800 object-cover shrink-0 cursor-pointer hover:scale-105 transition duration-150"
+                    className="w-10 h-10 rounded-full border border-[var(--neon-green-border)] object-cover shrink-0 cursor-pointer hover:scale-105 transition duration-150"
                     referrerPolicy="no-referrer"
                   />
                 )}
@@ -4108,7 +4108,7 @@ export default function ChatSection({
                         triggerViewProfile(selectedPeer.uid);
                       }
                     }}
-                    className={`text-sm font-sans font-bold text-white truncate ${!currentChat.isGroup && selectedPeer ? 'cursor-pointer hover:underline' : ''}`}
+                    className={`text-sm font-sans font-bold text-[var(--color-text)] truncate ${!currentChat.isGroup && selectedPeer ? 'cursor-pointer hover:underline' : ''}`}
                   >
                     {currentChat.isGroup ? currentChat.name : (selectedPeer ? (renamedNicknames[selectedPeer.uid] ? `${renamedNicknames[selectedPeer.uid]} [${selectedPeer.displayName}]` : selectedPeer.displayName) : '')}
                   </h3>
@@ -4213,7 +4213,7 @@ export default function ChatSection({
                   </button>
                 )}
 
-                <div className="relative flex items-center border border-[var(--neon-green)]/35 bg-black/80 px-2 py-1">
+                <div className="relative flex items-center border border-[var(--neon-green)]/35 bg-[var(--color-surface)]/80 px-2 py-1">
                   <Search className="w-3 h-3 text-[var(--neon-green)]/65 mr-1" />
                   <input
                     type="text"
@@ -4225,7 +4225,7 @@ export default function ChatSection({
                   {messageSearchQuery && (
                     <button
                       onClick={() => setMessageSearchQuery('')}
-                      className="text-zinc-500 hover:text-white font-mono text-[9px] pl-1 cursor-pointer select-none font-bold"
+                      className="text-zinc-500 hover:text-[var(--color-text)] font-mono text-[9px] pl-1 cursor-pointer select-none font-bold"
                     >
                       ✕
                     </button>
@@ -4264,7 +4264,7 @@ export default function ChatSection({
               const pinnedMessages = messages.filter(msg => msg.pinned === true);
               if (pinnedMessages.length === 0) return null;
               return (
-                <div className="bg-[#121212] border-b border-[var(--neon-green)]/20 p-3 flex flex-col font-mono text-[9px] text-[var(--neon-green)] shrink-0 select-none">
+                <div className="bg-[var(--color-surface)] border-b border-[var(--neon-green)]/20 p-3 flex flex-col font-mono text-[9px] text-[var(--neon-green)] shrink-0 select-none">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-[var(--neon-green)]">
                       <Pin className="w-3.5 h-3.5 text-[var(--neon-green)] shrink-0 animate-bounce" />
@@ -4276,7 +4276,7 @@ export default function ChatSection({
                         playGlitchClickSound();
                         setIsPinnedDrawerOpen(!isPinnedDrawerOpen);
                       }}
-                      className="px-2 py-0.5 border border-[var(--neon-green)]/35 text-[9px] uppercase font-bold text-zinc-300 hover:text-white hover:bg-[var(--neon-green)]/10 cursor-pointer"
+                      className="px-2 py-0.5 border border-[var(--neon-green)]/35 text-[9px] uppercase font-bold text-zinc-300 hover:text-[var(--color-text)] hover:bg-[var(--neon-green)]/10 cursor-pointer"
                     >
                       {isPinnedDrawerOpen ? '[ HIDE ]' : '[ SHOW ]'}
                     </button>
@@ -4296,7 +4296,7 @@ export default function ChatSection({
                           return (
                             <div key={pMsg.id} className="pt-2 flex items-center justify-between gap-3 text-[10px]">
                               <div className="flex-1 min-w-0">
-                                <span className="font-bold text-white uppercase block text-[8px] mb-0.5">@{senderName}:</span>
+                                <span className="font-bold text-[var(--color-text)] uppercase block text-[8px] mb-0.5">@{senderName}:</span>
                                 <p className="text-zinc-300 truncate font-sans text-[11px] italic">"{decText}"</p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
@@ -4341,13 +4341,13 @@ export default function ChatSection({
             {/* Messages Stream Wrapper with Info drawer sidebar layout */}
             <div className="flex-1 flex overflow-hidden relative">
               {/* Active chat messages history stream (AnimatePresence transitions) */}
-              <div className={`flex-1 ${isRecording || isV2TListening || isEmoStickerOpen || isPollCreatorOpen || isGroupSettingsOpen || isJoinGroupOpen || isCreateGroupOpen ? 'overflow-hidden' : 'overflow-y-auto'} p-4 bg-[#050505] relative scrollbar`}>
-                <div className="max-w-md mx-auto text-center border border-[var(--neon-green)]/15 bg-black/45 p-3 mb-6 font-mono text-[9px] uppercase text-zinc-500 tracking-wider">
+              <div className={`flex-1 ${isRecording || isV2TListening || isEmoStickerOpen || isPollCreatorOpen || isGroupSettingsOpen || isJoinGroupOpen || isCreateGroupOpen ? 'overflow-hidden' : 'overflow-y-auto'} p-4 bg-[var(--color-background)] relative scrollbar`}>
+                <div className="max-w-md mx-auto text-center border border-[var(--neon-green)]/15 bg-[var(--color-surface)]/45 p-3 mb-6 font-mono text-[9px] uppercase text-zinc-500 tracking-wider">
                   🔐 Encryption Verified. Communication streams on Fara Flick are secured with perfect forward secrecy. No storage is cached plain.
                 </div>
 
                 {selectedPeer?.uid === 'my-ai-bot-uid' && (
-                  <div className="mb-6 border-b border-zinc-900/40 pb-6">
+                  <div className="mb-6 border-b border-[var(--neon-green-border)]/40 pb-6">
                     <TheFatherOrb isThinking={!!typingUsers['my-ai-bot-uid']} />
                   </div>
                 )}
@@ -4424,8 +4424,8 @@ export default function ChatSection({
                           >
                           <div className={`p-3 max-w-sm border ${
                             isMe 
-                              ? 'bg-[#0a0a0a] text-zinc-100 border-[var(--neon-green)]/35 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)] theme-chat-bubble-me' 
-                              : 'bg-[#101010] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.05)] theme-chat-bubble-peer'
+                              ? 'bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--neon-green)]/35 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)] theme-chat-bubble-me' 
+                              : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.05)] theme-chat-bubble-peer'
                             } theme-chat-bubble space-y-1 relative`}
                           >
                             {/* Burning timer header (suppress if grouped to save space) */}
@@ -4499,7 +4499,7 @@ export default function ChatSection({
                     animate={{ width: 280, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 220, damping: 22 }}
-                    className="border-l border-[var(--neon-green)]/20 bg-[#090909] h-full flex flex-col flex-shrink-0 overflow-y-auto font-mono text-zinc-100 divide-y divide-[var(--neon-green)]/15 select-none z-10"
+                    className="border-l border-[var(--neon-green)]/20 bg-[var(--color-surface)] h-full flex flex-col flex-shrink-0 overflow-y-auto font-mono text-[var(--color-text)] divide-y divide-[var(--neon-green)]/15 select-none z-10"
                   >
                     {/* Tunnel Metadata Header */}
                     <div className="p-4 flex flex-col gap-1.5">
@@ -4513,7 +4513,7 @@ export default function ChatSection({
                             playGlitchClickSound();
                             setIsChatInfoOpen(false);
                           }}
-                          className="text-[9px] uppercase font-bold text-zinc-500 hover:text-white cursor-pointer"
+                          className="text-[9px] uppercase font-bold text-zinc-500 hover:text-[var(--color-text)] cursor-pointer"
                         >
                           [ CLOSE ]
                         </button>
@@ -4546,12 +4546,12 @@ export default function ChatSection({
                         <span className="text-[9px] uppercase tracking-widest font-black text-zinc-500 block border-l border-[var(--neon-green)] pl-1.5">
                           {currentChat.isGroup ? `GROUP CONDUIT // ${currentChat.groupType || 'FRIENDS'}` : 'PEER NODE'}
                         </span>
-                        <div className="flex items-center space-x-2.5 bg-black/70 p-2.5 border border-[var(--neon-green)]/15 backdrop-blur-md">
+                        <div className="flex items-center space-x-2.5 bg-[var(--color-surface)]/70 p-2.5 border border-[var(--neon-green)]/15 backdrop-blur-md">
                           {!currentChat.isGroup && selectedPeer?.uid === 'my-ai-bot-uid' ? (
-                            <div className="w-10 h-10 rounded-none flex items-center justify-center bg-black border border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative shrink-0">
+                            <div className="w-10 h-10 rounded-none flex items-center justify-center bg-[var(--color-surface)] border border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative shrink-0">
                               <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
                               <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
-                              <div className="absolute inset-2 rounded-full bg-black flex items-center justify-center font-mono text-xs select-none">
+                              <div className="absolute inset-2 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-mono text-xs select-none">
                                 🔮
                               </div>
                             </div>
@@ -4564,7 +4564,7 @@ export default function ChatSection({
                             />
                           )}
                           <div className="min-w-0">
-                            <p className="text-[10px] font-black text-white truncate uppercase font-mono tracking-wider">
+                            <p className="text-[10px] font-black text-[var(--color-text)] truncate uppercase font-mono tracking-wider">
                               {currentChat.isGroup ? currentChat.name : (selectedPeer ? selectedPeer.displayName : '')}
                             </p>
                             <p className="text-[8px] text-zinc-500 truncate font-mono">
@@ -4574,14 +4574,14 @@ export default function ChatSection({
                         </div>
 
                         {currentChat.isGroup && currentChat.description && (
-                          <p className="text-[8.5px] text-zinc-400 leading-relaxed font-sans bg-black/60 border border-zinc-900 p-2 mt-1 uppercase italic backdrop-blur-sm">
+                          <p className="text-[8.5px] text-zinc-400 leading-relaxed font-sans bg-[var(--color-surface)]/60 border border-[var(--neon-green-border)] p-2 mt-1 uppercase italic backdrop-blur-sm">
                             "{currentChat.description}"
                           </p>
                         )}
 
                         {/* Quick Group Permissions Overview (Visible to all members) */}
                         {currentChat.isGroup && (
-                          <div className="bg-black/40 border border-zinc-900 p-1.5 rounded text-[7px] text-zinc-500 font-mono grid grid-cols-2 gap-x-2 gap-y-0.5 backdrop-blur-sm">
+                          <div className="bg-[var(--color-surface)]/40 border border-[var(--neon-green-border)] p-1.5 rounded text-[7px] text-zinc-500 font-mono grid grid-cols-2 gap-x-2 gap-y-0.5 backdrop-blur-sm">
                             <div>TRANSMIT: <span className="text-zinc-300 font-bold">{currentChat.permSend === 'admins' ? 'ADMINS ONLY' : 'ALL NODES'}</span></div>
                             <div>RECRUIT: <span className="text-zinc-300 font-bold">{currentChat.permAdd === 'admins' ? 'ADMINS ONLY' : 'ALL NODES'}</span></div>
                             <div>PINNING: <span className="text-zinc-300 font-bold">{currentChat.permPin !== false ? 'ALLOWED' : 'FORBIDDEN'}</span></div>
@@ -4611,9 +4611,9 @@ export default function ChatSection({
                                 {currentChat.approvalQueue.map((uid: string) => {
                                   const userObj = users.find(u => u.uid === uid);
                                   return (
-                                    <div key={uid} className="p-2 border border-yellow-500/20 bg-black/60 flex flex-col gap-1.5">
+                                    <div key={uid} className="p-2 border border-yellow-500/20 bg-[var(--color-surface)]/60 flex flex-col gap-1.5">
                                       <div className="flex flex-col">
-                                        <span className="text-[8.5px] text-white font-bold uppercase">{userObj?.displayName || 'SECURE ID ' + uid.slice(0, 6)}</span>
+                                        <span className="text-[8.5px] text-[var(--color-text)] font-bold uppercase">{userObj?.displayName || 'SECURE ID ' + uid.slice(0, 6)}</span>
                                         <span className="text-[7px] text-zinc-500 font-mono truncate">{userObj?.email || 'N/A'}</span>
                                       </div>
                                       <div className="flex gap-1">
@@ -4656,7 +4656,7 @@ export default function ChatSection({
                                               setError(err.message);
                                             }
                                           }}
-                                          className="px-2 text-center py-1 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-[7.5px] uppercase hover:bg-black"
+                                          className="px-2 text-center py-1 bg-[var(--color-surface)] border border-[var(--neon-green-border)] text-zinc-500 font-mono text-[7.5px] uppercase hover:bg-[var(--color-surface)]"
                                         >
                                           [ REJECT ]
                                         </button>
@@ -4683,7 +4683,7 @@ export default function ChatSection({
                                   value={editGroupName}
                                   onChange={(e) => setEditGroupName(e.target.value)}
                                   disabled={!isAdmin}
-                                  className="w-full text-[10px] bg-black text-white p-1.5 border border-zinc-850 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono disabled:opacity-50"
+                                  className="w-full text-[10px] bg-[var(--color-surface)] text-[var(--color-text)] p-1.5 border border-zinc-850 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono disabled:opacity-50"
                                 />
                               </div>
                               <div>
@@ -4694,7 +4694,7 @@ export default function ChatSection({
                                   value={editGroupDescription}
                                   onChange={(e) => setEditGroupDescription(e.target.value)}
                                   disabled={!isAdmin}
-                                  className="w-full text-[10px] bg-black text-white p-1.5 border border-zinc-850 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono disabled:opacity-50"
+                                  className="w-full text-[10px] bg-[var(--color-surface)] text-[var(--color-text)] p-1.5 border border-zinc-850 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono disabled:opacity-50"
                                 />
                               </div>
 
@@ -4705,7 +4705,7 @@ export default function ChatSection({
                                     <select
                                       value={editGroupType}
                                       onChange={(e) => setEditGroupType(e.target.value as any)}
-                                      className="w-full text-[9px] bg-black text-white p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
+                                      className="w-full text-[9px] bg-[var(--color-surface)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
                                     >
                                       <option value="friends">FRIENDS</option>
                                       <option value="school">SCHOOL</option>
@@ -4720,7 +4720,7 @@ export default function ChatSection({
                                     <select
                                       value={editGroupPrivacy}
                                       onChange={(e) => setEditGroupPrivacy(e.target.value as any)}
-                                      className="w-full text-[9px] bg-black text-white p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
+                                      className="w-full text-[9px] bg-[var(--color-surface)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
                                     >
                                       <option value="private">PRIVATE</option>
                                       <option value="public">PUBLIC</option>
@@ -4736,7 +4736,7 @@ export default function ChatSection({
                                     <select
                                       value={editGroupPermSend}
                                       onChange={(e) => setEditGroupPermSend(e.target.value as any)}
-                                      className="w-full text-[9px] bg-black text-white p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
+                                      className="w-full text-[9px] bg-[var(--color-surface)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
                                     >
                                       <option value="all">ALL NODES</option>
                                       <option value="admins">ADMINS ONLY</option>
@@ -4747,7 +4747,7 @@ export default function ChatSection({
                                     <select
                                       value={editGroupPermAdd}
                                       onChange={(e) => setEditGroupPermAdd(e.target.value as any)}
-                                      className="w-full text-[9px] bg-black text-white p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
+                                      className="w-full text-[9px] bg-[var(--color-surface)] text-[var(--color-text)] p-1 border border-zinc-850 focus:outline-none uppercase font-mono"
                                     >
                                       <option value="all">ALL NODES</option>
                                       <option value="admins">ADMINS ONLY</option>
@@ -4757,13 +4757,13 @@ export default function ChatSection({
                               )}
 
                               {isAdmin && (
-                                <div className="space-y-1.5 border-t border-zinc-900 pt-2 text-[7.5px] text-zinc-400 font-mono">
+                                <div className="space-y-1.5 border-t border-[var(--neon-green-border)] pt-2 text-[7.5px] text-zinc-400 font-mono">
                                   <div className="flex items-center justify-between">
                                     <span>MEMBERS CAN PIN MESSAGES:</span>
                                     <button
                                       type="button"
                                       onClick={() => setEditGroupPermPin(!editGroupPermPin)}
-                                      className={`px-1.5 py-0.5 border text-[7px] ${editGroupPermPin ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-zinc-800 text-zinc-600'}`}
+                                      className={`px-1.5 py-0.5 border text-[7px] ${editGroupPermPin ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-[var(--neon-green-border)] text-zinc-600'}`}
                                     >
                                       {editGroupPermPin ? 'ALLOWED' : 'FORBIDDEN'}
                                     </button>
@@ -4774,7 +4774,7 @@ export default function ChatSection({
                                     <button
                                       type="button"
                                       onClick={() => setEditGroupAdminApproval(!editGroupAdminApproval)}
-                                      className={`px-1.5 py-0.5 border text-[7px] ${editGroupAdminApproval ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-zinc-800 text-zinc-600'}`}
+                                      className={`px-1.5 py-0.5 border text-[7px] ${editGroupAdminApproval ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-[var(--neon-green-border)] text-zinc-600'}`}
                                     >
                                       {editGroupAdminApproval ? 'ACTIVE' : 'INACTIVE'}
                                     </button>
@@ -4785,7 +4785,7 @@ export default function ChatSection({
                                     <button
                                       type="button"
                                       onClick={() => setEditGroupAnonymous(!editGroupAnonymous)}
-                                      className={`px-1.5 py-0.5 border text-[7px] ${editGroupAnonymous ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-zinc-800 text-zinc-600'}`}
+                                      className={`px-1.5 py-0.5 border text-[7px] ${editGroupAnonymous ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)]' : 'border-[var(--neon-green-border)] text-zinc-600'}`}
                                     >
                                       {editGroupAnonymous ? 'ENABLED' : 'DISABLED'}
                                     </button>
@@ -4816,7 +4816,7 @@ export default function ChatSection({
                                   />
                                   <label
                                     htmlFor="edit-group-avatar-upload"
-                                    className="flex-1 text-center py-1.5 border border-dashed border-[var(--neon-green)]/40 hover:border-[var(--neon-green)] bg-black text-[9px] uppercase tracking-wider text-zinc-400 hover:text-white cursor-pointer select-none transition h-7 flex items-center justify-center font-mono disabled:opacity-50"
+                                    className="flex-1 text-center py-1.5 border border-dashed border-[var(--neon-green)]/40 hover:border-[var(--neon-green)] bg-[var(--color-surface)] text-[9px] uppercase tracking-wider text-zinc-400 hover:text-[var(--color-text)] cursor-pointer select-none transition h-7 flex items-center justify-center font-mono disabled:opacity-50"
                                   >
                                     {editGroupAvatarUrl ? "IMAGE READY (TAP TO RE-UPLOAD)" : "UPLOAD GROUP IMAGE"}
                                   </label>
@@ -4853,7 +4853,7 @@ export default function ChatSection({
                                     />
                                     <label
                                       htmlFor="edit-group-banner-upload"
-                                      className="flex-1 text-center py-1.5 border border-dashed border-zinc-800 hover:border-zinc-600 bg-black text-[9px] uppercase tracking-wider text-zinc-400 hover:text-white cursor-pointer select-none transition h-7 flex items-center justify-center font-mono"
+                                      className="flex-1 text-center py-1.5 border border-dashed border-[var(--neon-green-border)] hover:border-zinc-600 bg-[var(--color-surface)] text-[9px] uppercase tracking-wider text-zinc-400 hover:text-[var(--color-text)] cursor-pointer select-none transition h-7 flex items-center justify-center font-mono"
                                     >
                                       {editGroupBannerUrl ? "BANNER READY (TAP TO UPDATE)" : "UPLOAD GROUP BANNER"}
                                     </label>
@@ -4878,7 +4878,7 @@ export default function ChatSection({
                                       value={editGroupInviteCode}
                                       onChange={(e) => setEditGroupInviteCode(e.target.value)}
                                       disabled={!isAdmin}
-                                      className="w-full text-[10px] bg-black text-white p-1.5 border border-zinc-850 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono disabled:opacity-50"
+                                      className="w-full text-[10px] bg-[var(--color-surface)] text-[var(--color-text)] p-1.5 border border-zinc-850 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono disabled:opacity-50"
                                     />
                                   </div>
                                 )}
@@ -4934,9 +4934,9 @@ export default function ChatSection({
                                 const isSelf = pid === profile?.uid;
 
                                 return (
-                                  <div key={pid} className="p-2 border border-zinc-900 bg-black/30 flex flex-col gap-1 select-none">
+                                  <div key={pid} className="p-2 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/30 flex flex-col gap-1 select-none">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-[9px] text-white font-bold truncate max-w-[120px]">
+                                      <span className="text-[9px] text-[var(--color-text)] font-bold truncate max-w-[120px]">
                                         {isSelf ? 'YOU (SECURE NODE)' : (pUser?.displayName || 'UNKNOWN NODE')}
                                       </span>
                                       <span className={`text-[6.5px] uppercase font-black px-1.5 py-0.5 border ${
@@ -4952,7 +4952,7 @@ export default function ChatSection({
 
                                     {/* Action Buttons for Admins & Owners */}
                                     {isAdmin && !isSelf && (
-                                      <div className="flex flex-wrap gap-1 mt-1 border-t border-zinc-900/40 pt-1">
+                                      <div className="flex flex-wrap gap-1 mt-1 border-t border-[var(--neon-green-border)]/40 pt-1">
                                         {isOwner && pRole !== 'owner' && (
                                           <button
                                             type="button"
@@ -4962,7 +4962,7 @@ export default function ChatSection({
                                               newRoles[pid] = pRole === 'admin' ? 'member' : 'admin';
                                               await updateGroupSettings(currentChat.id, { roles: newRoles });
                                             }}
-                                            className="text-[7px] border border-zinc-800 text-zinc-400 px-1 py-0.5 hover:border-[var(--neon-green)] hover:text-[var(--neon-green)] uppercase"
+                                            className="text-[7px] border border-[var(--neon-green-border)] text-zinc-400 px-1 py-0.5 hover:border-[var(--neon-green)] hover:text-[var(--neon-green)] uppercase"
                                           >
                                             {pRole === 'admin' ? '[ DEMOTE ]' : '[ MAKE ADMIN ]'}
                                           </button>
@@ -4977,7 +4977,7 @@ export default function ChatSection({
                                               newRoles[pid] = pRole === 'muted' ? 'member' : 'muted';
                                               await updateGroupSettings(currentChat.id, { roles: newRoles });
                                             }}
-                                            className="text-[7px] border border-zinc-800 text-zinc-400 px-1 py-0.5 hover:border-yellow-500 hover:text-yellow-500 uppercase"
+                                            className="text-[7px] border border-[var(--neon-green-border)] text-zinc-400 px-1 py-0.5 hover:border-yellow-500 hover:text-yellow-500 uppercase"
                                           >
                                             {pRole === 'muted' ? '[ UNMUTE ]' : '[ MUTE ]'}
                                           </button>
@@ -5014,14 +5014,14 @@ export default function ChatSection({
                             const nonParticipants = users.filter(u => u.uid !== profile?.uid && !currentChat.participantIds?.includes(u.uid));
                             if (nonParticipants.length === 0) return null;
                             return (
-                              <div className="p-4 border-b border-[var(--neon-green)]/10 bg-black/20 space-y-2">
+                              <div className="p-4 border-b border-[var(--neon-green)]/10 bg-[var(--color-surface)]/20 space-y-2">
                                 <span className="text-[9px] uppercase tracking-widest font-black text-[var(--neon-green)] block">
                                   ADD PATHWAYS / MEMBERS
                                 </span>
                                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
                                   {nonParticipants.map(u => (
-                                    <div key={u.uid} className="flex items-center justify-between p-1.5 border border-zinc-900 bg-black/40 text-[9px]">
-                                      <span className="truncate max-w-[150px] font-bold text-white uppercase">{u.displayName}</span>
+                                    <div key={u.uid} className="flex items-center justify-between p-1.5 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-[9px]">
+                                      <span className="truncate max-w-[150px] font-bold text-[var(--color-text)] uppercase">{u.displayName}</span>
                                       <button
                                         type="button"
                                         onClick={async () => {
@@ -5073,7 +5073,7 @@ export default function ChatSection({
                                     }
                                   }
                                 }}
-                                className="flex-1 py-1.5 border border-zinc-850 text-zinc-400 hover:text-white hover:bg-zinc-950 text-[8.5px] font-black uppercase text-center"
+                                className="flex-1 py-1.5 border border-zinc-850 text-zinc-400 hover:text-[var(--color-text)] hover:bg-[var(--color-background)] text-[8.5px] font-black uppercase text-center"
                               >
                                 DISCONNECT PATH
                               </button>
@@ -5157,7 +5157,7 @@ export default function ChatSection({
                           placeholder="Define local alias nickname..."
                           value={renamedNicknames[selectedPeer.uid] || ''}
                           onChange={(e) => renameUserLocal(selectedPeer.uid, e.target.value)}
-                          className="w-full text-xs bg-black text-white p-2 border border-[var(--neon-green)]/35 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono h-9"
+                          className="w-full text-xs bg-[var(--color-surface)] text-[var(--color-text)] p-2 border border-[var(--neon-green)]/35 focus:outline-none focus:border-[var(--neon-green)] uppercase font-mono h-9"
                         />
                         <p className="text-[7px] uppercase text-zinc-500 font-sans leading-normal">
                           Only you will see this custom alias representing the peer node.
@@ -5245,7 +5245,7 @@ export default function ChatSection({
                               className={`p-1.5 border text-center text-[8px] uppercase tracking-wider font-bold cursor-pointer transition ${
                                 isActive
                                   ? 'bg-[var(--neon-green)] text-black border-transparent font-extrabold shadow-sm'
-                                  : 'border-[var(--neon-green)]/25 text-zinc-400 hover:text-white hover:bg-neutral-900'
+                                  : 'border-[var(--neon-green)]/25 text-zinc-400 hover:text-[var(--color-text)] hover:bg-neutral-900'
                               }`}
                             >
                               {wall.name}
@@ -5296,7 +5296,7 @@ export default function ChatSection({
                       <span className="text-[9px] uppercase tracking-widest font-black text-zinc-500 block border-l border-[var(--neon-green)] pl-1.5">
                         ENCRYPTION CORRIDOR
                       </span>
-                      <div className="text-[8.5px] space-y-1 bg-black/40 p-2.5 border border-[var(--neon-green)]/15 font-mono text-zinc-300">
+                      <div className="text-[8.5px] space-y-1 bg-[var(--color-surface)]/40 p-2.5 border border-[var(--neon-green)]/15 font-mono text-zinc-300">
                         <div className="flex justify-between">
                           <span>CIPHER:</span>
                           <span className="font-bold text-[var(--neon-green)]">RSA-4096 / AES-GCM</span>
@@ -5319,7 +5319,7 @@ export default function ChatSection({
             {/* Float Quote Message reply anchor selection bar if present (WhatsApp layout) */}
             <AnimatePresence>
               {replyQuote && (
-                <div className="p-3 bg-black border-t border-[var(--neon-green)]/30 flex items-center justify-between font-mono text-[10px] uppercase shrink-0">
+                <div className="p-3 bg-[var(--color-surface)] border-t border-[var(--neon-green)]/30 flex items-center justify-between font-mono text-[10px] uppercase shrink-0">
                   <div className="flex items-center gap-2 text-zinc-300">
                     <CornerUpLeft className="w-3.5 h-3.5 text-[var(--neon-green)]" />
                     <span>
@@ -5342,14 +5342,14 @@ export default function ChatSection({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`p-3.5 bg-[#090909] border-t transition-all duration-200 ${
+              className={`p-3.5 bg-[var(--color-surface)] border-t transition-all duration-200 ${
                 isDragging 
-                  ? 'border-[var(--neon-green)] bg-zinc-950 ring-2 ring-[var(--neon-green)]/30 scale-[1.01]' 
+                  ? 'border-[var(--neon-green)] bg-[var(--color-background)] ring-2 ring-[var(--neon-green)]/30 scale-[1.01]' 
                   : 'border-[var(--neon-green)]/15'
               } space-y-3 flex-shrink-0 font-mono relative`}
             >
               {isDragging && (
-                <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-[10px] text-[var(--neon-green)] font-bold uppercase tracking-widest border-2 border-dashed border-[var(--neon-green)] z-30 space-y-1">
+                <div className="absolute inset-0 bg-[var(--color-surface)]/90 flex flex-col items-center justify-center text-[10px] text-[var(--neon-green)] font-bold uppercase tracking-widest border-2 border-dashed border-[var(--neon-green)] z-30 space-y-1">
                   <span>⚡ DROP FILE TO SECURELY ATTACH ⚡</span>
                   <span className="text-zinc-500 text-[8px] font-mono font-normal">Supports Images, Audio and Video</span>
                 </div>
@@ -5357,7 +5357,7 @@ export default function ChatSection({
               
               {/* Voice Attachment preview list if chosen */}
               {selectedAttachment && (
-                <div className="p-2.5 bg-black border border-[var(--neon-green)]/30 flex items-center justify-between text-[10px] uppercase">
+                <div className="p-2.5 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 flex items-center justify-between text-[10px] uppercase">
                   <span className="text-[var(--neon-green)] flex items-center gap-1.5 font-bold">
                     📎 Attachment Ready: {selectedAttachment.name} ({selectedAttachment.type})
                   </span>
@@ -5391,7 +5391,7 @@ export default function ChatSection({
                         className={`text-[8.5px] px-2 py-0.5 border cursor-pointer uppercase font-bold leading-none ${
                           selfDestructSeconds === sec 
                             ? 'bg-red-500 text-black border-black font-extrabold shadow-[1.5px_1.5px_0_0_#ffffff]' 
-                            : 'bg-black text-zinc-400 border-[var(--neon-green)]/20 hover:text-white'
+                            : 'bg-[var(--color-surface)] text-zinc-400 border-[var(--neon-green)]/20 hover:text-[var(--color-text)]'
                         }`}
                       >
                         {sec === 0 ? 'PERSISTENT' : `${sec}s Burn`}
@@ -5406,7 +5406,7 @@ export default function ChatSection({
                     type="button"
                     id="button-file-upload"
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-1.5 bg-black border border-[var(--neon-green)]/30 text-zinc-300 hover:text-[var(--neon-green)] hover:border-[var(--neon-green)] transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold"
+                    className="p-1.5 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 text-zinc-300 hover:text-[var(--neon-green)] hover:border-[var(--neon-green)] transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold"
                   >
                     <Paperclip className="w-3 h-3 text-[var(--neon-green)]" />
                     <span>FILE</span>
@@ -5423,7 +5423,7 @@ export default function ChatSection({
                     className={`p-1.5 border transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold ${
                       isEmoStickerOpen
                         ? 'bg-[var(--neon-green)] text-black border-transparent font-extrabold shadow-[1.5px_1.5px_0_0_rgba(255,255,255,0.8)]'
-                        : 'bg-black border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
+                        : 'bg-[var(--color-surface)] border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
                     }`}
                   >
                     <Smile className="w-3 h-3 text-[var(--neon-green)]" />
@@ -5441,7 +5441,7 @@ export default function ChatSection({
                     className={`p-1.5 border transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold ${
                       isPollCreatorOpen
                         ? 'bg-[var(--neon-green)] text-black border-transparent font-extrabold shadow-[1.5px_1.5px_0_0_rgba(255,255,255,0.8)]'
-                        : 'bg-black border-[var(--neon-green)]/35 text-zinc-400 hover:text-[var(--neon-green)]'
+                        : 'bg-[var(--color-surface)] border-[var(--neon-green)]/35 text-zinc-400 hover:text-[var(--neon-green)]'
                     } ${guideHighlight === 'highlight_polls' ? 'ring-2 ring-violet-500 ring-offset-2 ring-offset-black rounded z-[95] animate-pulse scale-110' : ''}`}
                   >
                     <BarChart2 className="w-3 h-3 text-[var(--neon-green)]" />
@@ -5477,7 +5477,7 @@ export default function ChatSection({
                         setText(prev => (prev ? prev + ' ' + cyberCoords : cyberCoords));
                       }
                     }}
-                    className="p-1.5 bg-black border border-[var(--neon-green)]/35 text-zinc-400 hover:text-[var(--neon-green)] hover:border-[var(--neon-green)] transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold"
+                    className="p-1.5 bg-[var(--color-surface)] border border-[var(--neon-green)]/35 text-zinc-400 hover:text-[var(--neon-green)] hover:border-[var(--neon-green)] transition cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold"
                     title="Transmit high-precision tactical coordinate node location"
                   >
                     <MapPin className="w-3 h-3 text-[var(--neon-green)]" />
@@ -5489,7 +5489,7 @@ export default function ChatSection({
                     type="button"
                     id="button-v2t-listen"
                     onClick={toggleVoiceToTextListening}
-                    className={`p-1.5 border bg-black transition-all flex items-center gap-1 text-[9px] uppercase font-bold select-none cursor-pointer ${
+                    className={`p-1.5 border bg-[var(--color-surface)] transition-all flex items-center gap-1 text-[9px] uppercase font-bold select-none cursor-pointer ${
                       isV2TListening 
                         ? 'border-red-500 text-red-500 animate-pulse font-extrabold shadow-[2px_2px_0_0_#ff3c00]' 
                         : 'border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
@@ -5508,7 +5508,7 @@ export default function ChatSection({
                     onMouseUp={stopVoiceRecording}
                     onTouchStart={startVoiceRecording}
                     onTouchEnd={stopVoiceRecording}
-                    className={`p-1.5 border bg-black transition-all flex items-center gap-1 text-[9px] uppercase font-bold select-none cursor-grab ${
+                    className={`p-1.5 border bg-[var(--color-surface)] transition-all flex items-center gap-1 text-[9px] uppercase font-bold select-none cursor-grab ${
                       isRecording 
                         ? 'border-red-500 text-red-500 pulse-green' 
                         : 'border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
@@ -5532,7 +5532,7 @@ export default function ChatSection({
 
               {/* EmoStickerBoard inline section overlay */}
               {isEmoStickerOpen && (
-                <div className="border border-[var(--neon-green)]/35 bg-black p-1">
+                <div className="border border-[var(--neon-green)]/35 bg-[var(--color-surface)] p-1">
                   <EmoStickerBoard
                     onSelectEmoji={(emoji) => {
                       setText(prev => prev + emoji);
@@ -5552,7 +5552,7 @@ export default function ChatSection({
                     <button
                       type="button"
                       onClick={() => setIsEmoStickerOpen(false)}
-                      className="text-[8px] uppercase tracking-wider text-zinc-650 hover:text-white border border-zinc-800 px-2 py-0.5 cursor-pointer"
+                      className="text-[8px] uppercase tracking-wider text-zinc-650 hover:text-[var(--color-text)] border border-[var(--neon-green-border)] px-2 py-0.5 cursor-pointer"
                     >
                       [ CLOSE ]
                     </button>
@@ -5562,13 +5562,13 @@ export default function ChatSection({
 
               {/* Poll Builder inline section overlay */}
               {isPollCreatorOpen && (
-                <div className="border border-[var(--neon-green)]/35 bg-black p-3 space-y-2 text-zinc-300 text-[10px]">
+                <div className="border border-[var(--neon-green)]/35 bg-[var(--color-surface)] p-3 space-y-2 text-zinc-300 text-[10px]">
                   <div className="flex justify-between items-center border-b border-[var(--neon-green)]/15 pb-1">
                     <span className="text-[9px] uppercase tracking-widest font-black text-[var(--neon-green)]">📊 POLL CREATOR STATION</span>
                     <button
                       type="button"
                       onClick={() => setIsPollCreatorOpen(false)}
-                      className="text-[8px] uppercase tracking-wider text-zinc-500 hover:text-white cursor-pointer"
+                      className="text-[8px] uppercase tracking-wider text-zinc-500 hover:text-[var(--color-text)] cursor-pointer"
                     >
                       [ CANCEL ]
                     </button>
@@ -5580,7 +5580,7 @@ export default function ChatSection({
                       placeholder="e.g. WHATS THE BEST CODENAME FOR THIS CONVERSATION?"
                       value={pollQuestion}
                       onChange={(e) => setPollQuestion(e.target.value)}
-                      className="w-full text-xs bg-zinc-950 text-[var(--neon-green)] p-1.5 border border-[var(--neon-green)]/25 focus:outline-none uppercase font-mono"
+                      className="w-full text-xs bg-[var(--color-background)] text-[var(--neon-green)] p-1.5 border border-[var(--neon-green)]/25 focus:outline-none uppercase font-mono"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -5596,7 +5596,7 @@ export default function ChatSection({
                           nextOpts[oIdx] = e.target.value;
                           setPollOptions(nextOpts);
                         }}
-                        className="w-full text-xs bg-zinc-950 text-white p-1 border border-zinc-805 focus:outline-none uppercase font-mono"
+                        className="w-full text-xs bg-[var(--color-background)] text-[var(--color-text)] p-1 border border-zinc-805 focus:outline-none uppercase font-mono"
                       />
                     ))}
                     <div className="flex gap-1.5 pt-1 font-mono">
@@ -5670,7 +5670,7 @@ export default function ChatSection({
                     }
                   }}
                   disabled={sending}
-                  className="flex-1 bg-black border border-[var(--neon-green)]/30 p-3 leading-none text-xs text-[var(--neon-green)] focus:outline-none focus:border-[var(--neon-green)] placeholder:opacity-50 select-text font-serif"
+                  className="flex-1 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 p-3 leading-none text-xs text-[var(--neon-green)] focus:outline-none focus:border-[var(--neon-green)] placeholder:opacity-50 select-text font-serif"
                 />
                 
                 <button
@@ -5686,7 +5686,7 @@ export default function ChatSection({
             </form>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#070707]">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[var(--color-surface)]">
             <Lock className="w-9 h-9 text-[var(--neon-green)]/40 mb-3 animate-pulse" />
             <h3 className="font-serif italic text-lg font-black text-zinc-400">
               Vault Standby Coordinates
@@ -5701,17 +5701,17 @@ export default function ChatSection({
       {/* 1. Share QR Dialog overlay */}
       <AnimatePresence>
         {showQrShareModal && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[var(--color-surface)]/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-[#0c0c0c] border-2 border-[var(--neon-green)] p-5 font-mono shadow-[6px_6px_0px_0px_#000000] text-center"
+              className="w-full max-w-sm bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-5 font-mono shadow-[6px_6px_0px_0px_#000000] text-center"
             >
-              <div className="w-10 h-10 border border-[var(--neon-green)] flex items-center justify-center text-[var(--neon-green)] mx-auto mb-3.5 bg-black">
+              <div className="w-10 h-10 border border-[var(--neon-green)] flex items-center justify-center text-[var(--neon-green)] mx-auto mb-3.5 bg-[var(--color-surface)]">
                 <QrCode className="w-5 h-5" />
               </div>
-              <h3 className="font-serif italic font-extrabold uppercase text-white text-md mb-1">
+              <h3 className="font-serif italic font-extrabold uppercase text-[var(--color-text)] text-md mb-1">
                 Your Secure Node Address
               </h3>
               <p className="text-[9px] text-zinc-500 uppercase tracking-wider mb-4 leading-normal">
@@ -5719,8 +5719,8 @@ export default function ChatSection({
               </p>
 
               {myQrCodeUrl ? (
-                <div className="p-3 bg-black border border-[var(--neon-green)]/20 inline-block mb-4">
-                  <img src={myQrCodeUrl} className="w-48 h-48 mx-auto bg-black" alt="Encryption Coordinates QR" />
+                <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green)]/20 inline-block mb-4">
+                  <img src={myQrCodeUrl} className="w-48 h-48 mx-auto bg-[var(--color-surface)]" alt="Encryption Coordinates QR" />
                 </div>
               ) : (
                 <div className="w-48 h-48 mx-auto flex items-center justify-center border border-dashed border-[var(--neon-green)]/12 mb-4 text-xs text-zinc-500 uppercase animate-pulse">
@@ -5728,7 +5728,7 @@ export default function ChatSection({
                 </div>
               )}
 
-              <div className="p-2 border border-[var(--neon-green)]/15 bg-[#050505] text-[8px] text-[var(--neon-green)] text-center uppercase tracking-widest break-all mb-4 select-all">
+              <div className="p-2 border border-[var(--neon-green)]/15 bg-[var(--color-background)] text-[8px] text-[var(--neon-green)] text-center uppercase tracking-widest break-all mb-4 select-all">
                 UID: {profile?.uid}
               </div>
 
@@ -5763,7 +5763,7 @@ export default function ChatSection({
                     playGlitchClickSound();
                     setShowQrShareModal(false);
                   }}
-                  className="flex-1 py-1.5 bg-[#0d0d0d] text-zinc-400 hover:text-white border border-zinc-800 uppercase font-bold text-[9px] transition cursor-pointer"
+                  className="flex-1 py-1.5 bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] border border-[var(--neon-green-border)] uppercase font-bold text-[9px] transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -5776,12 +5776,12 @@ export default function ChatSection({
       {/* 2. Scan QR Scanner Camera & File Overlay */}
       <AnimatePresence>
         {showQrScanModal && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[var(--color-surface)]/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#0c0c0c] border-2 border-[var(--neon-green)] p-5 font-mono shadow-[6px_6px_0px_0px_#000000]"
+              className="w-full max-w-md bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-5 font-mono shadow-[6px_6px_0px_0px_#000000]"
             >
               <div className="flex items-center justify-between mb-4 border-b border-[var(--neon-green)]/15 pb-2">
                 <span className="flex items-center text-[10px] uppercase font-black tracking-widest text-[var(--neon-green)]">
@@ -5801,7 +5801,7 @@ export default function ChatSection({
               </div>
 
               {/* Video Camera Box */}
-              <div className="relative aspect-video w-full bg-black border border-[var(--neon-green)]/20 flex flex-col items-center justify-center overflow-hidden mb-4 rounded-none">
+              <div className="relative aspect-video w-full bg-[var(--color-surface)] border border-[var(--neon-green)]/20 flex flex-col items-center justify-center overflow-hidden mb-4 rounded-none">
                 {cameraError ? (
                   <div className="p-4 text-center text-[10px] text-zinc-500 uppercase leading-relaxed font-bold">
                     <Camera className="w-6 h-6 mx-auto mb-2 opacity-30 text-red-500" />
@@ -5830,11 +5830,11 @@ export default function ChatSection({
               )}
 
               {/* File Upload Fallback option */}
-              <div className="p-4 border border-[var(--neon-green)]/15 bg-[#050505] space-y-2.5 text-center">
+              <div className="p-4 border border-[var(--neon-green)]/15 bg-[var(--color-background)] space-y-2.5 text-center">
                 <span className="text-[10px] text-zinc-400 font-sans block leading-normal">
                   No Camera? Take a screenshot or grab a peer's QR image containing their cryptographic coordinate file structure:
                 </span>
-                <label className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#111111] hover:bg-black text-[var(--neon-green)] border border-[var(--neon-green)]/30 hover:border-[var(--neon-green)] text-[10px] font-mono font-bold uppercase transition cursor-pointer select-none">
+                <label className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[var(--color-surface)] hover:bg-[var(--color-surface)] text-[var(--neon-green)] border border-[var(--neon-green)]/30 hover:border-[var(--neon-green)] text-[10px] font-mono font-bold uppercase transition cursor-pointer select-none">
                   <Upload className="w-3.5 h-3.5" /> Upload/Drop QR Screenshot
                   <input
                     type="file"
@@ -5852,12 +5852,12 @@ export default function ChatSection({
       {/* 3. Forward Message Recipient Selection Modal */}
       <AnimatePresence>
         {isForwardModalOpen && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
-              className="w-full max-w-md bg-[#0c0c0c] border-[3px] border-[var(--neon-green)] p-5 font-mono shadow-[8px_8px_0px_0px_#000000] space-y-4"
+              className="w-full max-w-md bg-[var(--color-surface)] border-[3px] border-[var(--neon-green)] p-5 font-mono shadow-[8px_8px_0px_0px_#000000] space-y-4"
             >
               <div className="flex items-center justify-between border-b border-[var(--neon-green)]/15 pb-2">
                 <span className="flex items-center text-[10px] uppercase font-black tracking-widest text-[var(--neon-green)]">
@@ -5877,7 +5877,7 @@ export default function ChatSection({
               </div>
 
               {/* Message preview details panel */}
-              <div className="text-[9px] p-3 border border-dashed border-[var(--neon-green)]/20 bg-black/70 rounded-none relative">
+              <div className="text-[9px] p-3 border border-dashed border-[var(--neon-green)]/20 bg-[var(--color-surface)]/70 rounded-none relative">
                 <span className="absolute right-2 top-1.5 text-[7px] text-zinc-500 font-bold">CIPHERTEXT OUTBOUND</span>
                 <p className="text-zinc-500 uppercase tracking-wider font-bold mb-1">Payload excerpt:</p>
                 <p className="italic text-zinc-300 line-clamp-2">"{forwardMessageText}"</p>
@@ -5888,7 +5888,7 @@ export default function ChatSection({
                 <label className="text-[9px] text-zinc-500 uppercase tracking-widest font-black block border-l border-[var(--neon-green)] pl-1.5 mb-2">
                   Select target coordinate path node:
                 </label>
-                <div className="max-h-56 overflow-y-auto divide-y divide-[var(--neon-green)]/10 border border-[var(--neon-green)]/20 bg-black scrollbar">
+                <div className="max-h-56 overflow-y-auto divide-y divide-[var(--neon-green)]/10 border border-[var(--neon-green)]/20 bg-[var(--color-surface)] scrollbar">
                   {users.length === 0 ? (
                     <div className="p-4 text-center text-[9px] uppercase text-zinc-500 italic">
                       No online coordinate records detected.
@@ -5910,7 +5910,7 @@ export default function ChatSection({
                               referrerPolicy="no-referrer"
                             />
                             <div className="min-w-0">
-                              <p className="text-[10px] font-black text-white group-hover:text-[var(--neon-green)] truncate">
+                              <p className="text-[10px] font-black text-[var(--color-text)] group-hover:text-[var(--neon-green)] truncate">
                                 {u.displayName}
                               </p>
                               <p className="text-[8px] text-zinc-500 truncate">{u.email}</p>
@@ -5933,12 +5933,12 @@ export default function ChatSection({
       {/* 4. Keyboard Shortcuts Overlay Modal */}
       <AnimatePresence>
         {isShortcutModalOpen && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#0c0c0c] border-[3px] border-[var(--neon-green)] p-5 font-mono shadow-[8px_8px_0px_0px_#000000] space-y-4"
+              className="w-full max-w-md bg-[var(--color-surface)] border-[3px] border-[var(--neon-green)] p-5 font-mono shadow-[8px_8px_0px_0px_#000000] space-y-4"
             >
               <div className="flex items-center justify-between border-b border-[var(--neon-green)]/15 pb-2">
                 <span className="flex items-center text-[10px] uppercase font-black tracking-widest text-[var(--neon-green)]">
@@ -5961,26 +5961,26 @@ export default function ChatSection({
                 <p className="text-zinc-500 leading-normal mb-2 text-center text-[8px]">
                   Fara Flick terminals respond instantaneously to the following hardware-level key binds. Enjoy keyboard-driven secure messaging.
                 </p>
-                <div className="divide-y divide-[var(--neon-green)]/10 border border-[var(--neon-green)]/15 bg-black/60 font-mono">
+                <div className="divide-y divide-[var(--neon-green)]/10 border border-[var(--neon-green)]/15 bg-[var(--color-surface)]/60 font-mono">
                   <div className="p-2.5 flex justify-between items-center bg-[var(--neon-green)]/5">
                     <span className="text-zinc-400">Toggle Keyboard Shortcuts Helper</span>
-                    <kbd className="px-1.5 py-0.5 bg-black text-[var(--neon-green)] border border-[var(--neon-green)]/35 font-bold">Alt + /</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-[var(--color-surface)] text-[var(--neon-green)] border border-[var(--neon-green)]/35 font-bold">Alt + /</kbd>
                   </div>
                   <div className="p-2.5 flex justify-between items-center">
                     <span className="text-zinc-400">Scan QR Code (Peer Discovery)</span>
-                    <kbd className="px-1.5 py-0.5 bg-black text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Alt + S</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-[var(--color-surface)] text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Alt + S</kbd>
                   </div>
                   <div className="p-2.5 flex justify-between items-center">
                     <span className="text-zinc-400">Direct Chat Share Coordinates</span>
-                    <kbd className="px-1.5 py-0.5 bg-black text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Alt + Q</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-[var(--color-surface)] text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Alt + Q</kbd>
                   </div>
                   <div className="p-2.5 flex justify-between items-center bg-[var(--neon-green)]/5">
                     <span className="text-zinc-400">Toggle Speech-to-Text Recording</span>
-                    <kbd className="px-1.5 py-0.5 bg-black text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Alt + T</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-[var(--color-surface)] text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Alt + T</kbd>
                   </div>
                   <div className="p-2.5 flex justify-between items-center">
                     <span className="text-zinc-400">Clear Search/Focus Chat Area Input</span>
-                    <kbd className="px-1.5 py-0.5 bg-black text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Esc</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-[var(--color-surface)] text-[var(--neon-green)] border border(--neon-green)/35 font-bold">Esc</kbd>
                   </div>
                 </div>
               </div>
@@ -5996,12 +5996,12 @@ export default function ChatSection({
       {/* 5. THE FATHER'S Guided Revelation Overlay HUD */}
       <AnimatePresence>
         {guideHighlight && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-[3px] z-[90] flex items-end justify-center p-6 md:pb-12 pointer-events-none">
+          <div className="fixed inset-0 bg-[var(--color-surface)]/80 backdrop-blur-[3px] z-[90] flex items-end justify-center p-6 md:pb-12 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, y: 30, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 30, scale: 0.95 }}
-              className="w-full max-w-md bg-[#080808] border-[3px] border-violet-500 p-5 font-mono shadow-[0_0_30px_rgba(139,92,246,0.6)] space-y-4 text-left pointer-events-auto"
+              className="w-full max-w-md bg-[var(--color-surface)] border-[3px] border-violet-500 p-5 font-mono shadow-[0_0_30px_rgba(139,92,246,0.6)] space-y-4 text-left pointer-events-auto"
             >
               <div className="flex items-center justify-between border-b border-violet-500/25 pb-2">
                 <span className="flex items-center text-[10px] uppercase font-black tracking-widest text-violet-400 gap-1.5">
@@ -6020,14 +6020,14 @@ export default function ChatSection({
               </div>
 
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-black border-2 border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative animate-pulse">
+                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--color-surface)] border-2 border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative animate-pulse">
                   <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[1px]" />
                   <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '4s' }} />
-                  <span className="absolute inset-2 bg-black rounded-full flex items-center justify-center text-xs">🔮</span>
+                  <span className="absolute inset-2 bg-[var(--color-surface)] rounded-full flex items-center justify-center text-xs">🔮</span>
                 </div>
 
                 <div className="space-y-2 text-center">
-                  <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                  <h4 className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">
                     {guideHighlight === 'highlight_tunnels' && "Secure Chat Tunnels"}
                     {guideHighlight === 'highlight_burn_timer' && "Ephemeral Burn Protocols"}
                     {guideHighlight === 'highlight_keys' && "Cryptographic E2EE Handshake"}
@@ -6069,7 +6069,7 @@ export default function ChatSection({
                     triggerVibration('medium');
                     setGuideHighlight(null);
                   }}
-                  className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-mono text-[9px] font-black uppercase transition cursor-pointer select-none tracking-widest text-center shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+                  className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-[var(--color-text)] font-mono text-[9px] font-black uppercase transition cursor-pointer select-none tracking-widest text-center shadow-[0_0_10px_rgba(139,92,246,0.3)]"
                 >
                   [ CONTINUE DIRECTIVE ]
                 </button>

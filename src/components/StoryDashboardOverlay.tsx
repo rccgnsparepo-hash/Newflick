@@ -68,7 +68,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
 
   return (
     <AnimatePresence>
-      <div data-overlay="true" className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div data-overlay="true" className="fixed inset-0 bg-[var(--color-surface)]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
         {/* Backdrop close */}
         <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
 
@@ -77,15 +77,15 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
           animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20, rotateX: -5 }}
           transition={{ type: 'spring', damping: 20, stiffness: 120 }}
-          className="bg-white dark:bg-zinc-950 border border-black/15 dark:border-zinc-800 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 rounded-none p-6 sm:p-8"
+          className="bg-white dark:bg-[var(--color-background)] border border-black/15 dark:border-[var(--neon-green-border)] w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 rounded-none p-6 sm:p-8"
           style={{ perspective: 1200 }}
         >
           {/* Upper Action Bar */}
-          <div className="flex items-center justify-between border-b border-black/10 dark:border-zinc-900 pb-4 mb-6">
+          <div className="flex items-center justify-between border-b border-black/10 dark:border-[var(--neon-green-border)] pb-4 mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-amber-500 animate-pulse" />
-                <h2 className="font-serif text-2xl italic font-black uppercase text-neutral-900 dark:text-white">
+                <h2 className="font-serif text-2xl italic font-black uppercase text-neutral-900 dark:text-[var(--color-text)]">
                   Story Dynamics Dashboard
                 </h2>
               </div>
@@ -96,7 +96,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
             
             <button
               onClick={onClose}
-              className="p-1 px-3 border border-neutral-300 dark:border-zinc-800 text-neutral-500 hover:text-black dark:hover:text-white dark:hover:border-white transition font-mono text-[10px] uppercase cursor-pointer flex items-center gap-1.5"
+              className="p-1 px-3 border border-neutral-300 dark:border-[var(--neon-green-border)] text-neutral-500 hover:text-black dark:hover:text-[var(--color-text)] dark:hover:border-white transition font-mono text-[10px] uppercase cursor-pointer flex items-center gap-1.5"
             >
               <X className="w-3 h-3" />
               <span>Dismiss</span>
@@ -110,21 +110,21 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
             <motion.div
               whileHover={{ scale: 1.02, rotateY: 2, rotateX: -1 }}
               transition={{ duration: 0.15 }}
-              className="bg-zinc-50 dark:bg-zinc-900/40 border border-black/5 dark:border-zinc-800 p-5 relative overflow-hidden flex flex-col justify-between h-40"
+              className="bg-zinc-50 dark:bg-[var(--color-surface)]/40 border border-black/5 dark:border-[var(--neon-green-border)] p-5 relative overflow-hidden flex flex-col justify-between h-40"
             >
               <div className="flex items-center justify-between">
                 <Users className="w-5 h-5 text-blue-500" />
                 <span className="text-[8px] font-mono uppercase tracking-wider text-neutral-400">Nodes Visualized</span>
               </div>
               <div className="my-2">
-                <p className="text-4xl font-serif italic font-black text-neutral-900 dark:text-white leading-none">
+                <p className="text-4xl font-serif italic font-black text-neutral-900 dark:text-[var(--color-text)] leading-none">
                   {totalMyViews}
                 </p>
                 <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-tight mt-1">
                   Cumulative Story Views
                 </p>
               </div>
-              <div className="border-t border-black/5 dark:border-zinc-800/80 pt-2 flex items-center justify-between text-[9px] text-neutral-400 uppercase font-mono">
+              <div className="border-t border-black/5 dark:border-[var(--neon-green-border)]/80 pt-2 flex items-center justify-between text-[9px] text-neutral-400 uppercase font-mono">
                 <span>Own stories count:</span>
                 <span className="font-bold text-neutral-600 dark:text-zinc-300">{totalMyStories} blocks</span>
               </div>
@@ -134,21 +134,21 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
             <motion.div
               whileHover={{ scale: 1.02, rotateY: -1, rotateX: 2 }}
               transition={{ duration: 0.15 }}
-              className="bg-zinc-50 dark:bg-zinc-900/40 border border-black/5 dark:border-zinc-800 p-5 relative overflow-hidden flex flex-col justify-between h-40"
+              className="bg-zinc-50 dark:bg-[var(--color-surface)]/40 border border-black/5 dark:border-[var(--neon-green-border)] p-5 relative overflow-hidden flex flex-col justify-between h-40"
             >
               <div className="flex items-center justify-between">
                 <Clock className="w-5 h-5 text-amber-500" />
                 <span className="text-[8px] font-mono uppercase tracking-wider text-neutral-400">Duration Node</span>
               </div>
               <div className="my-2">
-                <p className="text-4xl font-serif italic font-black text-neutral-900 dark:text-white leading-none">
+                <p className="text-4xl font-serif italic font-black text-neutral-900 dark:text-[var(--color-text)] leading-none">
                   {avgEngagementTime}<span className="text-sm font-sans tracking-tight font-medium ml-1">secs</span>
                 </p>
                 <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-tight mt-1">
                   Average Engagement Time
                 </p>
               </div>
-              <div className="border-t border-black/5 dark:border-zinc-800/80 pt-2 flex items-center justify-between text-[9px] text-neutral-400 uppercase font-mono">
+              <div className="border-t border-black/5 dark:border-[var(--neon-green-border)]/80 pt-2 flex items-center justify-between text-[9px] text-neutral-400 uppercase font-mono">
                 <span>Aggregate Focus:</span>
                 <span className="font-bold text-neutral-600 dark:text-zinc-300">{totalEngagementSecs}s collective</span>
               </div>
@@ -158,21 +158,21 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
             <motion.div
               whileHover={{ scale: 1.02, rotateY: 1, rotateX: -2 }}
               transition={{ duration: 0.15 }}
-              className="bg-zinc-50 dark:bg-zinc-900/40 border border-black/5 dark:border-zinc-800 p-5 relative overflow-hidden flex flex-col justify-between h-40"
+              className="bg-zinc-50 dark:bg-[var(--color-surface)]/40 border border-black/5 dark:border-[var(--neon-green-border)] p-5 relative overflow-hidden flex flex-col justify-between h-40"
             >
               <div className="flex items-center justify-between">
                 <Activity className="w-5 h-5 text-emerald-500" />
                 <span className="text-[8px] font-mono uppercase tracking-wider text-neutral-400 font-bold">Network Velocity</span>
               </div>
               <div className="my-2">
-                <p className="text-4xl font-serif italic font-black text-neutral-900 dark:text-white leading-none">
+                <p className="text-4xl font-serif italic font-black text-neutral-900 dark:text-[var(--color-text)] leading-none">
                   {totalGlobalViews}
                 </p>
                 <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-tight mt-1">
                   Total Network Story Views
                 </p>
               </div>
-              <div className="border-t border-black/5 dark:border-zinc-800/80 pt-2 flex items-center justify-between text-[9px] text-neutral-400 uppercase font-mono">
+              <div className="border-t border-black/5 dark:border-[var(--neon-green-border)]/80 pt-2 flex items-center justify-between text-[9px] text-neutral-400 uppercase font-mono">
                 <span>Active Network Stories:</span>
                 <span className="font-bold text-neutral-600 dark:text-zinc-300">{totalGlobalStories} blocks</span>
               </div>
@@ -184,8 +184,8 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             
             {/* Demographic Breakdown */}
-            <div className="border border-black/10 dark:border-zinc-800 p-5 bg-white dark:bg-zinc-950">
-              <h3 className="font-serif italic font-bold text-base text-neutral-900 dark:text-white mb-4 flex items-center gap-1.5 uppercase tracking-wide">
+            <div className="border border-black/10 dark:border-[var(--neon-green-border)] p-5 bg-white dark:bg-[var(--color-background)]">
+              <h3 className="font-serif italic font-bold text-base text-neutral-900 dark:text-[var(--color-text)] mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                 <Globe className="w-4 h-4 text-neutral-400" />
                 Peer Geolocation / Gateway Traffic
               </h3>
@@ -198,7 +198,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
                       <span className="text-neutral-500 dark:text-zinc-400 ml-2 font-black">{loc.percentage}%</span>
                     </div>
                     {/* Elegant custom bar */}
-                    <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-2 overflow-hidden rounded-none border border-black/5 dark:border-transparent">
+                    <div className="w-full bg-zinc-100 dark:bg-[var(--color-surface)] h-2 overflow-hidden rounded-none border border-black/5 dark:border-transparent">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${loc.percentage}%` }}
@@ -211,7 +211,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
               </div>
 
               {/* Secure Node Note */}
-              <div className="mt-6 p-3 bg-zinc-50 dark:bg-zinc-900/50 border border-dashed border-neutral-300 dark:border-zinc-800 text-[10px] font-mono leading-relaxed text-neutral-500 dark:text-zinc-400 uppercase">
+              <div className="mt-6 p-3 bg-zinc-50 dark:bg-[var(--color-surface)]/50 border border-dashed border-neutral-300 dark:border-[var(--neon-green-border)] text-[10px] font-mono leading-relaxed text-neutral-500 dark:text-zinc-400 uppercase">
                 <p className="font-bold flex items-center gap-1 text-neutral-700 dark:text-zinc-300 mb-1">
                   <Zap className="w-3 h-3 text-amber-500" /> SYSTEM DIAGNOSTIC ADVISORY
                 </p>
@@ -220,9 +220,9 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
             </div>
 
             {/* Platform & Cryptographic Verification Breakdown */}
-            <div className="border border-black/10 dark:border-zinc-800 p-5 bg-white dark:bg-zinc-950 flex flex-col justify-between">
+            <div className="border border-black/10 dark:border-[var(--neon-green-border)] p-5 bg-white dark:bg-[var(--color-background)] flex flex-col justify-between">
               <div>
-                <h3 className="font-serif italic font-bold text-base text-neutral-900 dark:text-white mb-4 flex items-center gap-1.5 uppercase tracking-wide">
+                <h3 className="font-serif italic font-bold text-base text-neutral-900 dark:text-[var(--color-text)] mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                   <Monitor className="w-4 h-4 text-neutral-400" />
                   Terminal Architecture & Cipher Status
                 </h3>
@@ -240,7 +240,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
                           </span>
                           <span className="text-neutral-500 dark:text-zinc-400 ml-2 font-black">{dev.percentage}%</span>
                         </div>
-                        <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-2 overflow-hidden rounded-none border border-black/5 dark:border-transparent">
+                        <div className="w-full bg-zinc-100 dark:bg-[var(--color-surface)] h-2 overflow-hidden rounded-none border border-black/5 dark:border-transparent">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${dev.percentage}%` }}
@@ -253,7 +253,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
                   })}
                 </div>
 
-                <hr className="border-black/5 dark:border-zinc-900 my-2" />
+                <hr className="border-black/5 dark:border-[var(--neon-green-border)] my-2" />
 
                 {/* Verification Level */}
                 <div className="space-y-4 pt-2">
@@ -268,7 +268,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
                           </span>
                           <span className="text-emerald-500 ml-2 font-black">{status.percentage}%</span>
                         </div>
-                        <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-2 overflow-hidden rounded-none border border-black/5 dark:border-transparent">
+                        <div className="w-full bg-zinc-100 dark:bg-[var(--color-surface)] h-2 overflow-hidden rounded-none border border-black/5 dark:border-transparent">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${status.percentage}%` }}
@@ -290,8 +290,8 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
           </div>
 
           {/* Active Story Blocks Quick list */}
-          <div className="border border-black/10 dark:border-zinc-800 p-5 bg-[#FAF9F6] dark:bg-zinc-900/20">
-            <h3 className="font-serif italic font-bold text-base text-neutral-900 dark:text-white mb-3 uppercase tracking-wide">
+          <div className="border border-black/10 dark:border-[var(--neon-green-border)] p-5 bg-[#FAF9F6] dark:bg-[var(--color-surface)]/20">
+            <h3 className="font-serif italic font-bold text-base text-neutral-900 dark:text-[var(--color-text)] mb-3 uppercase tracking-wide">
               Your Current circulating Broadcast Blocks
             </h3>
             
@@ -326,7 +326,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
 
                       {/* Viewers list for this story - ONLY visible to the author */}
                       {story.authorId === currentUserId && (
-                        <div className="bg-black/5 dark:bg-white/5 p-2 rounded-sm mt-1">
+                        <div className="bg-[var(--color-surface)]/5 dark:bg-white/5 p-2 rounded-sm mt-1">
                           <p className="text-[9px] font-mono uppercase text-neutral-400 dark:text-zinc-500 tracking-wider mb-1 flex items-center gap-1">
                             <Users className="w-3 h-3" /> 
                             <span>Viewer Node Logs ({viewers.length})</span>
@@ -336,7 +336,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
                           ) : (
                             <div className="flex flex-wrap gap-1.5">
                               {viewers.map((v) => (
-                                <div key={v.uid} className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 px-2 py-1 rounded-sm text-[10.5px]">
+                                <div key={v.uid} className="flex items-center gap-1.5 bg-white dark:bg-[var(--color-surface)] border border-neutral-200 dark:border-[var(--neon-green-border)] px-2 py-1 rounded-sm text-[10.5px]">
                                   {v.photoURL ? (
                                     <img src={v.photoURL} referrerPolicy="no-referrer" alt={v.displayName} className="w-3.5 h-3.5 rounded-full object-cover" />
                                   ) : (
@@ -344,7 +344,7 @@ export default function StoryDashboardOverlay({ isOpen, onClose, stories, curren
                                       {v.displayName?.slice(0, 1).toUpperCase() || '?'}
                                     </div>
                                   )}
-                                  <span className="font-semibold text-neutral-800 dark:text-zinc-200">{v.displayName || v.email}</span>
+                                  <span className="font-semibold text-neutral-800 dark:text-[var(--color-text)]">{v.displayName || v.email}</span>
                                 </div>
                               ))}
                             </div>

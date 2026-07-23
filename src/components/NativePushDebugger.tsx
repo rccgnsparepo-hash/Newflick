@@ -79,7 +79,7 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
   const currentPermission = checkNotificationPermission();
 
   return (
-    <div id="native-push-debugger-root" className="border border-[var(--neon-green)]/20 bg-black/90 p-4 font-mono select-text w-full">
+    <div id="native-push-debugger-root" className="border border-[var(--neon-green)]/20 bg-[var(--color-surface)]/90 p-4 font-mono select-text w-full">
       {/* Title Header */}
       <div className="flex items-center justify-between border-b border-[var(--neon-green)]/20 pb-3 mb-4">
         <div className="flex items-center space-x-2">
@@ -97,7 +97,7 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
 
       {/* Grid of details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px] mb-4">
-        <div className="border border-zinc-900 p-2.5 bg-black/50 space-y-2">
+        <div className="border border-[var(--neon-green-border)] p-2.5 bg-[var(--color-surface)]/50 space-y-2">
           <div className="text-[var(--neon-green)] uppercase text-[9px] tracking-wide font-extrabold flex items-center mb-1">
             <Layers className="w-3.5 h-3.5 mr-1" /> Core Service Specs
           </div>
@@ -122,7 +122,7 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
           </div>
         </div>
 
-        <div className="border border-zinc-900 p-2.5 bg-black/50 space-y-2 flex flex-col justify-between">
+        <div className="border border-[var(--neon-green-border)] p-2.5 bg-[var(--color-surface)]/50 space-y-2 flex flex-col justify-between">
           <div className="text-[var(--neon-green)] uppercase text-[9px] tracking-wide font-extrabold flex items-center mb-1">
             <Bug className="w-3.5 h-3.5 mr-1" /> Payload Schema Validator
           </div>
@@ -135,14 +135,14 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
                   value={testPayload.senderId}
                   placeholder="senderId"
                   onChange={e => setTestPayload(p => ({ ...p, senderId: e.target.value }))}
-                  className="bg-zinc-950 border border-zinc-900 px-1 py-0.5 text-white max-w-full focus:outline-none focus:border-[var(--neon-green)]/50"
+                  className="bg-[var(--color-background)] border border-[var(--neon-green-border)] px-1 py-0.5 text-[var(--color-text)] max-w-full focus:outline-none focus:border-[var(--neon-green)]/50"
                 />
                 <input 
                   type="text" 
                   value={testPayload.content}
                   placeholder="content"
                   onChange={e => setTestPayload(p => ({ ...p, content: e.target.value }))}
-                  className="bg-zinc-950 border border-zinc-900 px-1 py-0.5 text-white col-span-2 focus:outline-none focus:border-[var(--neon-green)]/50"
+                  className="bg-[var(--color-background)] border border-[var(--neon-green-border)] px-1 py-0.5 text-[var(--color-text)] col-span-2 focus:outline-none focus:border-[var(--neon-green)]/50"
                 />
               </div>
             </div>
@@ -170,7 +170,7 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
           <button
             type="button"
             onClick={handleTestValidator}
-            className="w-full text-center py-1 bg-black border border-[var(--neon-green)]/30 hover:border-[var(--neon-green)] text-white hover:bg-[var(--neon-green)]/15 text-[9px] uppercase tracking-wider transition cursor-pointer"
+            className="w-full text-center py-1 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 hover:border-[var(--neon-green)] text-[var(--color-text)] hover:bg-[var(--neon-green)]/15 text-[9px] uppercase tracking-wider transition cursor-pointer"
           >
             Validate Payload Schema
           </button>
@@ -196,11 +196,11 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
         </div>
 
         {logs.length === 0 ? (
-          <div className="border border-zinc-950 bg-black/40 p-4 text-center text-zinc-650 text-[10px] uppercase">
+          <div className="border border-zinc-950 bg-[var(--color-surface)]/40 p-4 text-center text-zinc-650 text-[10px] uppercase">
             No pipeline events observed. Run diagnostic sync to populate telemetry traces.
           </div>
         ) : (
-          <div className="bg-zinc-950/90 border border-zinc-900 rounded-none max-h-52 overflow-y-auto divide-y divide-zinc-950 scrollbar-thin">
+          <div className="bg-[var(--color-background)]/90 border border-[var(--neon-green-border)] rounded-none max-h-52 overflow-y-auto divide-y divide-zinc-950 scrollbar-thin">
             {logs.map((log, idx) => {
               const LogIcon = log.type === 'error' ? AlertTriangle :
                               log.type === 'success' ? CheckCircle2 :
@@ -213,15 +213,15 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
               const isExpanded = expandedLogIdx === idx;
 
               return (
-                <div key={idx} className="bg-black/20 text-[9px] font-mono leading-normal">
+                <div key={idx} className="bg-[var(--color-surface)]/20 text-[9px] font-mono leading-normal">
                   <div 
                     onClick={() => setExpandedLogIdx(isExpanded ? null : idx)}
-                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-zinc-900/40 select-none transition"
+                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-[var(--color-surface)]/40 select-none transition"
                   >
                     <div className="flex items-center space-x-2 min-w-0">
                       <LogIcon className={`w-3.5 h-3.5 shrink-0 ${typeColor}`} />
                       <span className="text-zinc-600 shrink-0 font-light	">[{log.timestamp}]</span>
-                      <span className="text-white truncate font-medium">{log.message}</span>
+                      <span className="text-[var(--color-text)] truncate font-medium">{log.message}</span>
                     </div>
                     <div>
                       {log.data && (
@@ -231,7 +231,7 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
                   </div>
 
                   {isExpanded && log.data && (
-                    <div className="bg-zinc-950 border-t border-zinc-900/60 p-2.5 mx-2 mb-2 text-[8.5px] leading-relaxed text-zinc-400 overflow-x-auto select-all max-w-full">
+                    <div className="bg-[var(--color-background)] border-t border-[var(--neon-green-border)]/60 p-2.5 mx-2 mb-2 text-[8.5px] leading-relaxed text-zinc-400 overflow-x-auto select-all max-w-full">
                       <pre className="whitespace-pre-wrap word-break">
                         {JSON.stringify(log.data, null, 2)}
                       </pre>

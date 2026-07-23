@@ -97,7 +97,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#f4f4f5] font-mono flex items-center justify-center p-4 selection:bg-[var(--neon-green)] selection:text-black">
+    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] font-mono flex items-center justify-center p-4 selection:bg-[var(--neon-green)] selection:text-black">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,102,0.03)_0%,transparent_70%)] pointer-events-none" />
       
       <motion.div 
@@ -114,7 +114,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
 
         {/* Header */}
         <div className="flex items-center space-x-4 pb-6 border-b-2 border-white/10 mb-6">
-          <div className="w-12 h-12 border-2 border-[#ff0055] bg-black flex items-center justify-center text-[#ff0055] shadow-[3px_3px_0px_#ff0055]">
+          <div className="w-12 h-12 border-2 border-[#ff0055] bg-[var(--color-surface)] flex items-center justify-center text-[#ff0055] shadow-[3px_3px_0px_#ff0055]">
             <ShieldAlert className="w-6 h-6 animate-pulse" />
           </div>
           <div>
@@ -128,7 +128,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
         </div>
 
         {/* Error Details */}
-        <div className="bg-black/80 border border-red-500/30 p-4 mb-6 rounded-none">
+        <div className="bg-[var(--color-surface)]/80 border border-red-500/30 p-4 mb-6 rounded-none">
           <div className="flex items-center space-x-2 text-[#ff0055] text-xs font-bold uppercase mb-2">
             <Terminal className="w-4 h-4" />
             <span>Diagnostics Message</span>
@@ -139,7 +139,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
         </div>
 
         {/* Standalone Desktop & Native Client Connection Bridge */}
-        <div className="bg-black/60 border border-[var(--neon-green)]/30 p-4 mb-6 rounded-none">
+        <div className="bg-[var(--color-surface)]/60 border border-[var(--neon-green)]/30 p-4 mb-6 rounded-none">
           <div className="flex items-center space-x-2 text-[var(--neon-green)] text-xs font-bold uppercase mb-2.5">
             <Terminal className="w-4 h-4 animate-pulse" />
             <span>Standalone Client Gateway Configuration</span>
@@ -153,11 +153,11 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               placeholder="e.g. https://flick-backend-url.run.app"
               value={backendInput}
               onChange={(e) => setBackendInput(e.target.value)}
-              className="flex-1 bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 text-zinc-200 focus:outline-none focus:border-[var(--neon-green)] font-mono"
+              className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] text-xs px-3 py-2 text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] font-mono"
             />
             <button
               onClick={handleSaveBackend}
-              className="px-4 py-2 bg-black border border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer shadow-[3px_3px_0px_rgba(0,255,102,0.15)] hover:shadow-none"
+              className="px-4 py-2 bg-[var(--color-surface)] border border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer shadow-[3px_3px_0px_rgba(0,255,102,0.15)] hover:shadow-none"
             >
               Connect Gateway
             </button>
@@ -178,7 +178,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               placeholder='Paste your Firebase config object or JSON here, e.g.&#10;{&#10;  "apiKey": "...",&#10;  "projectId": "...",&#10;  "appId": "..."&#10;}'
               value={configJsonInput}
               onChange={(e) => setConfigJsonInput(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-850 text-[11px] p-2.5 text-zinc-200 focus:outline-none focus:border-[var(--neon-green)] font-mono resize-y min-h-[90px]"
+              className="w-full bg-[var(--color-background)] border border-zinc-850 text-[11px] p-2.5 text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)] font-mono resize-y min-h-[90px]"
             />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <p className="text-[9px] text-zinc-500 uppercase font-sans">
@@ -186,7 +186,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               </p>
               <button
                 onClick={handleSaveConfigJson}
-                className="w-full sm:w-auto px-4 py-2 bg-black border border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer shadow-[3px_3px_0px_rgba(0,255,102,0.15)] hover:shadow-none text-center"
+                className="w-full sm:w-auto px-4 py-2 bg-[var(--color-surface)] border border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase hover:bg-[var(--neon-green)] hover:text-black transition-all cursor-pointer shadow-[3px_3px_0px_rgba(0,255,102,0.15)] hover:shadow-none text-center"
               >
                 Apply Direct Config
               </button>
@@ -221,10 +221,10 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               and select this project.
             </li>
             <li>
-              Navigate to <strong className="text-zinc-200">Settings &gt; Environment Variables</strong>.
+              Navigate to <strong className="text-[var(--color-text)]">Settings &gt; Environment Variables</strong>.
             </li>
             <li>
-              Add the following environment variables. The server will securely bootstrap the client without exposing credentials in the client build. <strong>If you are deploying a static frontend on Vercel, you MUST include the variables prefixed with <code className="text-zinc-200 font-mono text-[10px] bg-white/5 px-1 py-0.5 rounded">VITE_</code>.</strong>
+              Add the following environment variables. The server will securely bootstrap the client without exposing credentials in the client build. <strong>If you are deploying a static frontend on Vercel, you MUST include the variables prefixed with <code className="text-[var(--color-text)] font-mono text-[10px] bg-white/5 px-1 py-0.5 rounded">VITE_</code>.</strong>
             </li>
           </ol>
         </div>
@@ -248,11 +248,11 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
               )}
             </button>
           </div>
-          <div className="divide-y divide-white/5 bg-black/40">
+          <div className="divide-y divide-white/5 bg-[var(--color-surface)]/40">
             {envVariables.map((v) => (
               <div key={v.name} className="p-3.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <span className="text-xs font-black text-zinc-100 font-mono block tracking-wide select-all">
+                  <span className="text-xs font-black text-[var(--color-text)] font-mono block tracking-wide select-all">
                     {v.name}
                   </span>
                   <span className="text-[9px] text-zinc-400 font-sans block mt-0.5 uppercase font-semibold">
@@ -261,7 +261,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
                 </div>
                 <button
                   onClick={() => handleCopy(v.name)}
-                  className="self-start sm:self-center text-[10px] text-zinc-400 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="self-start sm:self-center text-[10px] text-zinc-400 hover:text-[var(--color-text)] border border-white/10 hover:border-white/30 px-2 py-1 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   {copied === v.name ? (
                     <>
@@ -286,7 +286,7 @@ export default function FirebaseSetupGuide({ error }: FirebaseSetupGuideProps) {
           </p>
           <button 
             onClick={() => window.location.reload()} 
-            className="w-full sm:w-auto px-5 py-2.5 bg-black border-2 border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--neon-green)] hover:text-black shadow-[4px_4px_0px_#00ff66] hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all cursor-pointer text-center"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[var(--color-surface)] border-2 border-[var(--neon-green)] text-[var(--neon-green)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--neon-green)] hover:text-black shadow-[4px_4px_0px_#00ff66] hover:shadow-none active:translate-x-1 active:translate-y-1 transition-all cursor-pointer text-center"
           >
             Retry Connection
           </button>

@@ -764,10 +764,10 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] text-[#f4f4f5] flex flex-col items-center justify-center font-mono relative p-4 selection:bg-[var(--neon-green)] selection:text-black">
+      <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] flex flex-col items-center justify-center font-mono relative p-4 selection:bg-[var(--neon-green)] selection:text-black">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,102,0.03)_0%,transparent_70%)] pointer-events-none" />
         <div className="relative flex flex-col items-center max-w-xs text-center space-y-6 animate-pulse">
-          <div className="w-12 h-12 border-3 border-[var(--neon-green)] flex items-center justify-center font-serif text-2xl font-black bg-black text-[var(--neon-green)] shadow-[4px_4px_0px_var(--neon-green)]">
+          <div className="w-12 h-12 border-3 border-[var(--neon-green)] flex items-center justify-center font-serif text-2xl font-black bg-[var(--color-surface)] text-[var(--neon-green)] shadow-[4px_4px_0px_var(--neon-green)]">
             F
           </div>
           <div className="space-y-2">
@@ -790,20 +790,20 @@ function Dashboard() {
   const unreadE2EECount = notifications.filter(n => n.type === 'message').length;
 
   return (
-    <div className={`bg-[#050505] text-[#f4f4f5] dark:text-zinc-100 flex flex-col font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 ${activeTab === 'chat' ? 'h-screen overflow-hidden' : 'min-h-screen pb-12'}`}>
+    <div className={`bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] flex flex-col font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 ${activeTab === 'chat' ? 'h-screen overflow-hidden' : 'min-h-screen pb-12'}`}>
       
       {/* Premium Brutalist Liquid Glass Header */}
-      <header className="border-b-2 border-[var(--neon-green)]/30 sticky top-0 z-50 bg-[#050505]/85 backdrop-blur-md">
+      <header className="border-b-2 border-[var(--neon-green)]/30 sticky top-0 z-50 bg-[var(--color-background)]/85 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
           
           {/* Logo and navigation links */}
           <div className="flex items-center space-x-6 select-none group/logo cursor-pointer">
             <div className="flex items-center space-x-3.5">
-              <div className="w-10 h-10 border-2 border-[var(--neon-green)] flex items-center justify-center font-serif text-2xl font-black bg-black text-[var(--neon-green)] shadow-[3px_3px_0px_var(--neon-green)] transition-all duration-100 container-glitch-hover">
+              <div className="w-10 h-10 border-2 border-[var(--neon-green)] flex items-center justify-center font-serif text-2xl font-black bg-[var(--color-surface)] text-[var(--neon-green)] shadow-[3px_3px_0px_var(--neon-green)] transition-all duration-100 container-glitch-hover">
                 F
               </div>
               <div>
-                <h1 className="font-serif font-black text-xs sm:text-sm text-white tracking-tight leading-none uppercase glitch-hover">
+                <h1 className="font-serif font-black text-xs sm:text-sm text-[var(--color-text)] tracking-tight leading-none uppercase glitch-hover">
                   FARA FLICK
                 </h1>
                 <p className="hidden xs:block text-[7px] uppercase tracking-widest font-mono font-bold text-[var(--neon-green)] mt-1 opacity-90 group-hover/logo:text-red-500 transition-colors">
@@ -823,7 +823,7 @@ function Dashboard() {
                   ? 'border-red-500 bg-red-955/20 text-red-500 animate-pulse'
                   : isSlow
                     ? 'border-amber-500 bg-amber-955/20 text-amber-500'
-                    : 'border-[var(--neon-green)]/20 bg-[#0c0c0c] text-[var(--neon-green)]'
+                    : 'border-[var(--neon-green)]/20 bg-[var(--color-surface)] text-[var(--neon-green)]'
               }`}
               title={
                 !isOnline 
@@ -851,7 +851,7 @@ function Dashboard() {
               className={`flex items-center space-x-1.5 px-2 py-1 border font-mono text-[9px] uppercase tracking-wider font-bold transition-all select-none ${
                 (batteryLevel !== null && batteryLevel <= 0.20)
                   ? 'border-red-500 bg-red-955/20 text-red-500 animate-pulse' 
-                  : 'border-[var(--neon-green)]/20 bg-[#0c0c0c] text-[var(--neon-green)]'
+                  : 'border-[var(--neon-green)]/20 bg-[var(--color-surface)] text-[var(--neon-green)]'
               }`}
               title={batteryLevel !== null ? (isCharging ? "Battery is Charging" : `Battery level: ${Math.round(batteryLevel * 100)}%`) : "Connected to Grid Power"}
             >
@@ -871,7 +871,7 @@ function Dashboard() {
                   playGlitchClickSound();
                   setShowNotifDropdown(!showNotifDropdown);
                 }}
-                className="p-2 border border-[var(--neon-green)]/20 hover:border-[var(--neon-green)] text-[var(--neon-green)] bg-[#0c0c0c] cursor-pointer"
+                className="p-2 border border-[var(--neon-green)]/20 hover:border-[var(--neon-green)] text-[var(--neon-green)] bg-[var(--color-surface)] cursor-pointer"
                 title="System Notifications"
               >
                 <Bell className="w-4 h-4" />
@@ -881,10 +881,10 @@ function Dashboard() {
               </button>
 
               {showNotifDropdown && (
-                <div className="absolute right-0 mt-3.5 w-80 bg-[#0c0c0c] border-2 border-[var(--neon-green)] shadow-xl overflow-hidden z-50 text-left rounded-none">
-                  <div className="p-4 border-b border-[var(--neon-green)]/20 bg-black flex items-center justify-between">
+                <div className="absolute right-0 mt-3.5 w-80 bg-[var(--color-surface)] border-2 border-[var(--neon-green)] shadow-xl overflow-hidden z-50 text-left rounded-none">
+                  <div className="p-4 border-b border-[var(--neon-green)]/20 bg-[var(--color-surface)] flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-widest font-black text-[var(--neon-green)]">NODE BROADCASTS</span>
-                    <span className="text-[8px] bg-red-600 border border-black px-1.5 py-0.5 font-mono text-white">
+                    <span className="text-[8px] bg-red-600 border border-black px-1.5 py-0.5 font-mono text-[var(--color-text)]">
                       {notifications.length} DISPATCHED
                     </span>
                   </div>
@@ -897,11 +897,11 @@ function Dashboard() {
                       notifications.map((n) => (
                         <div 
                           key={n.id} 
-                          className="p-4 hover:bg-[var(--neon-green)]/10 flex items-start justify-between gap-2 bg-[#050505] cursor-pointer group transition-all"
+                          className="p-4 hover:bg-[var(--neon-green)]/10 flex items-start justify-between gap-2 bg-[var(--color-background)] cursor-pointer group transition-all"
                           onClick={() => handleNotificationClick(n)}
                         >
                           <div className="space-y-1 flex-1">
-                            <p className="font-bold tracking-tight text-white group-hover:text-[var(--neon-green)] transition-colors">{n.title}</p>
+                            <p className="font-bold tracking-tight text-[var(--color-text)] group-hover:text-[var(--neon-green)] transition-colors">{n.title}</p>
                             <p className="text-[10px] text-zinc-400">{n.body}</p>
                           </div>
                           <button
@@ -928,7 +928,7 @@ function Dashboard() {
                 playGlitchClickSound();
                 setIsShortcutsOpen(true);
               }}
-              className="p-2 border border-[var(--neon-green)]/25 hover:border-[var(--neon-green)] text-[var(--neon-green)] bg-[#0c0c0c] cursor-pointer hover:bg-black/45 transition"
+              className="p-2 border border-[var(--neon-green)]/25 hover:border-[var(--neon-green)] text-[var(--neon-green)] bg-[var(--color-surface)] cursor-pointer hover:bg-[var(--color-surface)]/45 transition"
               title="Keyboard Shortcuts Menu [Shift + K]"
             >
               <Keyboard className="w-4 h-4" />
@@ -951,7 +951,7 @@ function Dashboard() {
                 referrerPolicy="no-referrer"
               />
               <div className="hidden sm:block">
-                <p className="text-xs font-black leading-none text-white uppercase">{profile.displayName}</p>
+                <p className="text-xs font-black leading-none text-[var(--color-text)] uppercase">{profile.displayName}</p>
                 <div className="flex items-center gap-1 mt-1 font-mono text-[8px] text-[var(--neon-green)]">
                   <span className="w-1.5 h-1.5 bg-[var(--neon-green)] rounded-full"></span>
                   <span>TUNNEL ON</span>
@@ -972,7 +972,7 @@ function Dashboard() {
           {/* Mobile Specific Indicator & Hamburger Trigger */}
           <div className="flex md:hidden items-center space-x-2.5">
             {unreadE2EECount > 0 && (
-              <span className="bg-red-600 text-white px-2 py-1 leading-none text-[8.5px] font-black border border-red-500 animate-pulse tracking-tight font-mono">
+              <span className="bg-red-600 text-[var(--color-text)] px-2 py-1 leading-none text-[8.5px] font-black border border-red-500 animate-pulse tracking-tight font-mono">
                 {unreadE2EECount} SECURE
               </span>
             )}
@@ -982,7 +982,7 @@ function Dashboard() {
                 triggerVibration('light');
                 setIsMobileMenuOpen(!isMobileMenuOpen);
               }}
-              className="px-3 py-2 border border-[var(--neon-green)] text-[var(--neon-green)] bg-black font-mono font-bold tracking-wider text-[9px] uppercase flex items-center gap-1 cursor-pointer transition-all hover:bg-[var(--neon-green)] hover:text-black"
+              className="px-3 py-2 border border-[var(--neon-green)] text-[var(--neon-green)] bg-[var(--color-surface)] font-mono font-bold tracking-wider text-[9px] uppercase flex items-center gap-1 cursor-pointer transition-all hover:bg-[var(--neon-green)] hover:text-black"
               aria-label="Toggle Navigation Terminal"
             >
               {isMobileMenuOpen ? (
@@ -1009,7 +1009,7 @@ function Dashboard() {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="md:hidden w-full bg-black border-t border-[var(--neon-green)]/30 text-[var(--neon-green)] overflow-hidden font-mono text-[10px]"
+              className="md:hidden w-full bg-[var(--color-surface)] border-t border-[var(--neon-green)]/30 text-[var(--neon-green)] overflow-hidden font-mono text-[10px]"
             >
               <div className="p-4 sm:p-6 space-y-4 divide-y divide-[var(--neon-green)]/15">
                 
@@ -1022,7 +1022,7 @@ function Dashboard() {
                     referrerPolicy="no-referrer"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-black text-white uppercase truncate mb-0.5">
+                    <p className="text-xs font-black text-[var(--color-text)] uppercase truncate mb-0.5">
                       {profile.displayName}
                     </p>
                     <p className="text-[8px] text-zinc-400 lowercase truncate leading-none mb-1">
@@ -1049,7 +1049,7 @@ function Dashboard() {
                       className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
                         activeTab === 'feed'
                           ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
-                          : 'border-[var(--neon-green)]/20 text-zinc-400 bg-zinc-950/40 hover:text-white'
+                          : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
                       }`}
                     >
                       <Sparkle className="w-3.5 h-3.5" />
@@ -1066,7 +1066,7 @@ function Dashboard() {
                       className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
                         activeTab === 'news'
                           ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
-                          : 'border-[var(--neon-green)]/20 text-zinc-400 bg-zinc-950/40 hover:text-white'
+                          : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
                       }`}
                     >
                       <Radio className="w-3.5 h-3.5 text-zinc-400" />
@@ -1083,13 +1083,13 @@ function Dashboard() {
                       className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
                         activeTab === 'chat'
                           ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
-                          : 'border-[var(--neon-green)]/20 text-zinc-400 bg-zinc-950/40 hover:text-white'
+                          : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
                       }`}
                     >
                       <div className="relative">
                         <MessageSquare className="w-3.5 h-3.5" />
                         {unreadE2EECount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 bg-red-650 text-white px-0.5 font-mono text-[7px] font-black rounded-sm border border-red-500">
+                          <span className="absolute -top-1.5 -right-1.5 bg-red-650 text-[var(--color-text)] px-0.5 font-mono text-[7px] font-black rounded-sm border border-red-500">
                             {unreadE2EECount}
                           </span>
                         )}
@@ -1108,7 +1108,7 @@ function Dashboard() {
                         ? 'border-red-500/40 text-red-500 bg-red-955/20 animate-pulse'
                         : isSlow
                           ? 'border-amber-500/40 text-amber-500'
-                          : 'border-[var(--neon-green)]/20 bg-zinc-950/40 text-[var(--neon-green)]'
+                          : 'border-[var(--neon-green)]/20 bg-[var(--color-background)]/40 text-[var(--neon-green)]'
                     }`}>
                       {!isOnline ? <WifiOff className="w-3.5 h-3.5 shrink-0" /> : <Wifi className="w-3.5 h-3.5 shrink-0" />}
                       <span className="truncate">{!isOnline ? "BLOCKED" : isSlow ? "SLOW CONNECTION" : "LIVE"}</span>
@@ -1117,7 +1117,7 @@ function Dashboard() {
 
                   <div className="flex flex-col space-y-1">
                     <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black">Power Reserves</span>
-                    <div className="p-2 border border-[var(--neon-green)]/20 bg-zinc-950/40 text-[var(--neon-green)] text-center font-bold flex items-center justify-center space-x-1 text-[8.5px]">
+                    <div className="p-2 border border-[var(--neon-green)]/20 bg-[var(--color-background)]/40 text-[var(--neon-green)] text-center font-bold flex items-center justify-center space-x-1 text-[8.5px]">
                       {isCharging ? <BatteryCharging className="w-3.5 h-3.5 text-[var(--neon-green)]" /> : <Battery className="w-3.5 h-3.5" />}
                       <span>{batteryLevel !== null ? `${Math.round(batteryLevel * 100)}%` : 'GRID'}</span>
                     </div>
@@ -1134,7 +1134,7 @@ function Dashboard() {
                         playGlitchClickSound();
                         setShowNotifDropdown(!showNotifDropdown);
                       }}
-                      className="p-2.5 border border-[var(--neon-green)]/35 bg-zinc-950/30 text-[var(--neon-green)] font-extrabold flex items-center justify-center gap-1.5 uppercase hover:bg-[var(--neon-green)]/15 transition text-[9px]"
+                      className="p-2.5 border border-[var(--neon-green)]/35 bg-[var(--color-background)]/30 text-[var(--neon-green)] font-extrabold flex items-center justify-center gap-1.5 uppercase hover:bg-[var(--neon-green)]/15 transition text-[9px]"
                     >
                       <Bell className="w-3.5 h-3.5" />
                       <span>Alerts ({notifications.length})</span>
@@ -1146,7 +1146,7 @@ function Dashboard() {
                         setIsSettingsOpen(true);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="p-2.5 border border-[var(--neon-green)]/35 bg-zinc-950/30 text-[var(--neon-green)] font-extrabold flex items-center justify-center gap-1.5 uppercase hover:bg-[var(--neon-green)]/15 transition text-[9px]"
+                      className="p-2.5 border border-[var(--neon-green)]/35 bg-[var(--color-background)]/30 text-[var(--neon-green)] font-extrabold flex items-center justify-center gap-1.5 uppercase hover:bg-[var(--neon-green)]/15 transition text-[9px]"
                     >
                       <Sliders className="w-3.5 h-3.5" />
                       <span>Config</span>
@@ -1160,7 +1160,7 @@ function Dashboard() {
                         setIsShortcutsOpen(true);
                         setIsMobileMenuOpen(false);
                       }}
-                      className="p-2.5 border border-[var(--neon-green)]/35 bg-zinc-950/30 text-[var(--neon-green)] font-extrabold flex items-center justify-center gap-1.5 uppercase hover:bg-[var(--neon-green)]/15 transition text-[9px]"
+                      className="p-2.5 border border-[var(--neon-green)]/35 bg-[var(--color-background)]/30 text-[var(--neon-green)] font-extrabold flex items-center justify-center gap-1.5 uppercase hover:bg-[var(--neon-green)]/15 transition text-[9px]"
                     >
                       <Keyboard className="w-3.5 h-3.5" />
                       <span>Shortcuts</span>
@@ -1292,7 +1292,7 @@ function Dashboard() {
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className={`w-10 h-10 bg-black flex items-center justify-center font-serif text-xl font-black border-2 ${borderColor} flex-shrink-0 ${textColor} ${isLoading ? 'animate-spin' : ''}`}>
+                <div className={`w-10 h-10 bg-[var(--color-surface)] flex items-center justify-center font-serif text-xl font-black border-2 ${borderColor} flex-shrink-0 ${textColor} ${isLoading ? 'animate-spin' : ''}`}>
                   {iconChar}
                 </div>
               )}
@@ -1301,12 +1301,12 @@ function Dashboard() {
                   <span>{toast.title}</span>
                   <button
                     onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-                    className="text-white hover:text-rose-500 text-[10px] font-sans cursor-pointer pl-2.5 opacity-60 hover:opacity-100 transition-opacity"
+                    className="text-[var(--color-text)] hover:text-rose-500 text-[10px] font-sans cursor-pointer pl-2.5 opacity-60 hover:opacity-100 transition-opacity"
                   >
                     ✕
                   </button>
                 </p>
-                <p className="text-[11px] text-zinc-100 leading-normal font-sans uppercase font-bold">
+                <p className="text-[11px] text-[var(--color-text)] leading-normal font-sans uppercase font-bold">
                   {toast.body}
                 </p>
               </div>

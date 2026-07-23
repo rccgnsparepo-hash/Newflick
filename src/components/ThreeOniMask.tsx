@@ -305,7 +305,7 @@ export default function ThreeOniMask() {
     <div className="w-full h-full relative flex items-center justify-center">
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
       {/* 3D label badge */}
-      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur border border-red-500/35 px-2 py-0.5 rounded-full text-[7px] text-red-400 font-mono tracking-widest uppercase select-none pointer-events-none">
+      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-[var(--color-surface)]/60 backdrop-blur border border-red-500/35 px-2 py-0.5 rounded-full text-[7px] text-red-400 font-mono tracking-widest uppercase select-none pointer-events-none">
         THREE.JS 3D MASK // DRAG ROTATE
       </div>
     </div>

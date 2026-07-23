@@ -176,7 +176,7 @@ export default function BentoProfile({
       {/* ==========================================
           1. TOP MINI NAV BAR & HEADER STATUS
           ========================================== */}
-      <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between bg-[#111113]/80 backdrop-blur-md border border-zinc-900 p-3.5 rounded-3xl gap-4 font-mono text-[10px]">
+      <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between bg-[var(--color-surface)]/80 backdrop-blur-md border border-[var(--neon-green-border)] p-3.5 rounded-3xl gap-4 font-mono text-[10px]">
         <div className="flex items-center gap-2.5">
           <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_#ef4444]" />
           <span className="text-zinc-400 font-extrabold uppercase tracking-widest text-[8.5px]">
@@ -209,14 +209,14 @@ export default function BentoProfile({
           </button>
 
           {/* Miniature Avatar with Plus Icon */}
-          <div className="relative pl-2 border-l border-zinc-800">
+          <div className="relative pl-2 border-l border-[var(--neon-green-border)]">
             <img 
               src={profile?.photoURL} 
               alt="" 
               className="w-6 h-6 rounded-full object-cover border border-zinc-750"
               referrerPolicy="no-referrer"
             />
-            <span className="absolute -bottom-1 -right-1 bg-red-600 text-white rounded-full w-3 h-3 flex items-center justify-center text-[7px] font-black border border-black animate-bounce">
+            <span className="absolute -bottom-1 -right-1 bg-red-600 text-[var(--color-text)] rounded-full w-3 h-3 flex items-center justify-center text-[7px] font-black border border-black animate-bounce">
               +
             </span>
           </div>
@@ -226,7 +226,7 @@ export default function BentoProfile({
       {/* ==========================================
           2. COVER SELECTION CONTAINER
           ========================================== */}
-      <div className="relative z-10 border border-zinc-900 bg-black overflow-hidden rounded-[32px] shadow-2xl">
+      <div className="relative z-10 border border-[var(--neon-green-border)] bg-[var(--color-surface)] overflow-hidden rounded-[32px] shadow-2xl">
         <div className="h-44 w-full relative group">
           <img 
             src={currentCover} 
@@ -242,7 +242,7 @@ export default function BentoProfile({
               triggerVibration('light');
               setShowCoverSelector(!showCoverSelector);
             }}
-            className="absolute top-4 right-4 bg-black/85 hover:bg-red-600 text-white border border-zinc-850 px-3.5 py-2.5 rounded-2xl transition duration-300 flex items-center gap-1.5 text-[8.5px] font-mono uppercase tracking-widest font-black cursor-pointer shadow-lg hover:shadow-[0_0_12px_rgba(239,68,68,0.3)]"
+            className="absolute top-4 right-4 bg-[var(--color-surface)]/85 hover:bg-red-600 text-[var(--color-text)] border border-zinc-850 px-3.5 py-2.5 rounded-2xl transition duration-300 flex items-center gap-1.5 text-[8.5px] font-mono uppercase tracking-widest font-black cursor-pointer shadow-lg hover:shadow-[0_0_12px_rgba(239,68,68,0.3)]"
           >
             <ImageIcon className="w-3.5 h-3.5 text-red-500" />
             <span>Select Banner</span>
@@ -256,7 +256,7 @@ export default function BentoProfile({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="p-3.5 bg-[#111113]/95 border-b border-zinc-900 grid grid-cols-2 sm:grid-cols-4 gap-2.5 overflow-hidden"
+              className="p-3.5 bg-[var(--color-surface)]/95 border-b border-[var(--neon-green-border)] grid grid-cols-2 sm:grid-cols-4 gap-2.5 overflow-hidden"
             >
               {coverPresets.map((preset) => (
                 <button
@@ -270,11 +270,11 @@ export default function BentoProfile({
                     setShowCoverSelector(false);
                     showBrutalistToast('COVER UPDATE', `Symmetric banner successfully updated.`, 'success');
                   }}
-                  className={`group relative h-14 overflow-hidden rounded-xl border-2 ${currentCover === preset.url ? preset.color : 'border-zinc-900'} hover:scale-[1.02] transition`}
+                  className={`group relative h-14 overflow-hidden rounded-xl border-2 ${currentCover === preset.url ? preset.color : 'border-[var(--neon-green-border)]'} hover:scale-[1.02] transition`}
                 >
                   <img src={preset.url} alt={preset.name} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" />
-                  <div className="absolute inset-0 bg-black/65 flex items-center justify-center p-1">
-                    <span className="text-[7.5px] font-mono uppercase tracking-wider text-white text-center leading-none font-bold block">{preset.name}</span>
+                  <div className="absolute inset-0 bg-[var(--color-surface)]/65 flex items-center justify-center p-1">
+                    <span className="text-[7.5px] font-mono uppercase tracking-wider text-[var(--color-text)] text-center leading-none font-bold block">{preset.name}</span>
                   </div>
                 </button>
               ))}
@@ -298,7 +298,7 @@ export default function BentoProfile({
                 <span className="text-[7px] text-red-400 font-mono font-black uppercase tracking-widest block">
                   DAILY MODULATION
                 </span>
-                <h4 className="text-xs font-black text-white font-mono tracking-tight">
+                <h4 className="text-xs font-black text-[var(--color-text)] font-mono tracking-tight">
                   9 / 365 STREAK
                 </h4>
               </div>
@@ -333,7 +333,7 @@ export default function BentoProfile({
           {/* Card C: Active Project Node wrapped in 3D tilt */}
           <div className="bento-card-stagger flex-1">
             <ThreeDCardTilt maxTilt={12} scale={1.03} className="h-full">
-              <div className="bg-[#111113]/90 backdrop-blur-lg border border-zinc-900 p-4.5 rounded-[32px] shadow-lg space-y-4 flex flex-col justify-between h-full">
+              <div className="bg-[var(--color-surface)]/90 backdrop-blur-lg border border-[var(--neon-green-border)] p-4.5 rounded-[32px] shadow-lg space-y-4 flex flex-col justify-between h-full">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[7px] text-zinc-500 font-mono font-black uppercase tracking-widest">
@@ -348,7 +348,7 @@ export default function BentoProfile({
                         <Shield className="w-4 h-4 text-red-500" />
                       </div>
                       <div>
-                        <h5 className="text-[9.5px] font-black text-white uppercase font-mono leading-none">ONIMUSHA WARRIORS</h5>
+                        <h5 className="text-[9.5px] font-black text-[var(--color-text)] uppercase font-mono leading-none">ONIMUSHA WARRIORS</h5>
                         <span className="text-[6px] text-zinc-550 uppercase font-mono tracking-wider">E2EE Tunnel Subsystem</span>
                       </div>
                     </div>
@@ -359,7 +359,7 @@ export default function BentoProfile({
                 </div>
 
                 {/* Engagement indicators */}
-                <div className="flex items-center justify-between pt-3 border-t border-zinc-900 text-[8px] font-mono text-zinc-500">
+                <div className="flex items-center justify-between pt-3 border-t border-[var(--neon-green-border)] text-[8px] font-mono text-zinc-500">
                   <span className="flex items-center gap-1 hover:text-red-400 transition-colors cursor-pointer"><Heart className="w-2.5 h-2.5 text-red-500" /> 182 LIKES</span>
                   <span className="flex items-center gap-1 hover:text-cyan-400 transition-colors cursor-pointer"><MessageSquare className="w-2.5 h-2.5 text-cyan-400" /> 49 SHARES</span>
                 </div>
@@ -384,7 +384,7 @@ export default function BentoProfile({
                 <span className="text-[8px] font-mono font-black text-red-400 uppercase tracking-widest block">
                   AUTHENTICATED NODE OVERVIEW
                 </span>
-                <span className="px-2.5 py-0.5 text-[7px] font-mono bg-red-600 text-white font-extrabold uppercase rounded-full shadow-[0_0_10px_rgba(239,68,68,0.4)]">
+                <span className="px-2.5 py-0.5 text-[7px] font-mono bg-red-600 text-[var(--color-text)] font-extrabold uppercase rounded-full shadow-[0_0_10px_rgba(239,68,68,0.4)]">
                   ONLINE // PORT 3000
                 </span>
               </div>
@@ -393,7 +393,7 @@ export default function BentoProfile({
                 {/* 3D typography name title with custom letters reveal */}
                 <h2 
                   ref={nameRef}
-                  className="text-3xl font-serif font-black tracking-tight text-white uppercase leading-none select-none"
+                  className="text-3xl font-serif font-black tracking-tight text-[var(--color-text)] uppercase leading-none select-none"
                   style={{ textShadow: '0 4px 12px rgba(0,0,0,0.5)' }}
                 >
                   THE GREAT {profile?.displayName || 'OPERATOR'}
@@ -412,7 +412,7 @@ export default function BentoProfile({
             </div>
 
             {/* Speech bubble details */}
-            <div className="p-6 pt-0 relative z-10 flex flex-wrap justify-between items-end gap-4 border-t border-zinc-900/40">
+            <div className="p-6 pt-0 relative z-10 flex flex-wrap justify-between items-end gap-4 border-t border-[var(--neon-green-border)]/40">
               
               <div className="space-y-1">
                 <div className="bg-[#1a0e10]/90 backdrop-blur-md border border-red-900/30 px-3 py-1.5 rounded-2xl max-w-[210px] shadow-lg">
@@ -436,13 +436,13 @@ export default function BentoProfile({
           </div>
 
           {/* COVERFLOW CAROUSEL: SPECTRUM PERSONA ARCHIVES */}
-          <div className="bento-card-stagger bg-[#111113]/85 backdrop-blur-lg border border-zinc-900 p-5 rounded-[36px] shadow-lg space-y-3">
+          <div className="bento-card-stagger bg-[var(--color-surface)]/85 backdrop-blur-lg border border-[var(--neon-green-border)] p-5 rounded-[36px] shadow-lg space-y-3">
             <div className="flex justify-between items-center px-2">
               <div className="space-y-0.5">
                 <span className="text-[7.5px] text-zinc-500 font-mono font-black uppercase tracking-widest block">
                   SPECTRUM PERSONA ARCHIVES
                 </span>
-                <h4 className="text-[11px] font-black text-white uppercase font-mono tracking-tight">
+                <h4 className="text-[11px] font-black text-[var(--color-text)] uppercase font-mono tracking-tight">
                   Rotating Coverflow Deck
                 </h4>
               </div>
@@ -464,7 +464,7 @@ export default function BentoProfile({
         <div className="md:col-span-3 space-y-5 flex flex-col">
           
           {/* Card D: Scholastic Index */}
-          <div className="bento-card-stagger bg-[#111113]/85 backdrop-blur-lg border border-zinc-900 p-4.5 rounded-[32px] shadow-lg flex flex-col justify-between h-44">
+          <div className="bento-card-stagger bg-[var(--color-surface)]/85 backdrop-blur-lg border border-[var(--neon-green-border)] p-4.5 rounded-[32px] shadow-lg flex flex-col justify-between h-44">
             <div className="flex justify-between items-center">
               <span className="text-[7.5px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
                 SCHOLASTIC RECORD INDEX
@@ -474,7 +474,7 @@ export default function BentoProfile({
 
             <div className="space-y-1">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl font-serif font-black text-white">4.88</span>
+                <span className="text-3xl font-serif font-black text-[var(--color-text)]">4.88</span>
                 <span className="text-[8.5px] text-zinc-500 font-mono font-bold">/ 5.0 CGPA</span>
               </div>
               <p className="text-[8.5px] text-zinc-400 font-mono">
@@ -488,7 +488,7 @@ export default function BentoProfile({
                 <span>ALGORITHMS PACKET</span>
                 <span className="text-red-400 font-black">97% SECURED</span>
               </div>
-              <div className="w-full bg-black h-1 rounded-full overflow-hidden border border-zinc-950">
+              <div className="w-full bg-[var(--color-surface)] h-1 rounded-full overflow-hidden border border-zinc-950">
                 <div className="bg-gradient-to-r from-red-600 to-amber-500 h-full w-[97%]" />
               </div>
             </div>
@@ -497,7 +497,7 @@ export default function BentoProfile({
           {/* Card E: TRUST INDEX & REPUTATION METER */}
           <div className="bento-card-stagger flex-1">
             <ThreeDCardTilt maxTilt={10} scale={1.03} className="h-full">
-              <div className="bg-[#131115]/85 backdrop-blur-lg border border-zinc-900 p-4.5 rounded-[32px] shadow-lg flex flex-col justify-between h-full space-y-4">
+              <div className="bg-[#131115]/85 backdrop-blur-lg border border-[var(--neon-green-border)] p-4.5 rounded-[32px] shadow-lg flex flex-col justify-between h-full space-y-4">
                 <div className="space-y-4.5">
                   <div className="flex justify-between items-center">
                     <span className="text-[7.5px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
@@ -507,7 +507,7 @@ export default function BentoProfile({
                   </div>
 
                   <div className="space-y-1.5">
-                    <h4 className="text-2xl font-serif font-black text-white leading-none">99.4%</h4>
+                    <h4 className="text-2xl font-serif font-black text-[var(--color-text)] leading-none">99.4%</h4>
                     <span className="text-[7px] text-zinc-500 font-mono uppercase tracking-wider block">INTEGRITY ALGORITHM MATRIX</span>
                   </div>
 
@@ -517,17 +517,17 @@ export default function BentoProfile({
                 </div>
 
                 {/* Progress Circle Visual */}
-                <div className="pt-2 flex items-center gap-3 border-t border-zinc-900">
+                <div className="pt-2 flex items-center gap-3 border-t border-[var(--neon-green-border)]">
                   <div className="relative w-8 h-8 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle cx="16" cy="16" r="13" stroke="rgba(255,255,255,0.03)" strokeWidth="3" fill="transparent" />
                       <circle cx="16" cy="16" r="13" stroke="#ef4444" strokeWidth="3" fill="transparent" 
                         strokeDasharray="81" strokeDashoffset="1" />
                     </svg>
-                    <span className="absolute text-[6.5px] font-mono font-black text-white">99%</span>
+                    <span className="absolute text-[6.5px] font-mono font-black text-[var(--color-text)]">99%</span>
                   </div>
                   <div className="font-mono text-[7px] text-zinc-500 leading-normal uppercase">
-                    <span className="text-white font-black block">RELIABLE NODE</span>
+                    <span className="text-[var(--color-text)] font-black block">RELIABLE NODE</span>
                     <span>CSC-COGNIZANCE ENFORCED</span>
                   </div>
                 </div>
@@ -590,24 +590,24 @@ export default function BentoProfile({
       {/* ==========================================
           5. DIALOGUE TRANSMISSIONS LIST
           ========================================== */}
-      <div className="relative z-10 bg-[#111113]/80 backdrop-blur-xl border border-zinc-900 p-6 rounded-[36px] shadow-xl space-y-5">
+      <div className="relative z-10 bg-[var(--color-surface)]/80 backdrop-blur-xl border border-[var(--neon-green-border)] p-6 rounded-[36px] shadow-xl space-y-5">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-900 pb-4 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--neon-green-border)] pb-4 gap-3">
           <div className="flex items-center gap-2">
             <CornerDownRight className="w-4 h-4 text-red-500" />
             <span className="text-[9px] uppercase tracking-widest font-mono text-zinc-300 font-black">
               YOUR DIALOGUE TRANSMISSIONS ({userContributions.length})
             </span>
           </div>
-          <span className="text-[8px] text-zinc-500 font-mono uppercase font-extrabold flex items-center gap-1.5 bg-black/40 border border-zinc-900 px-2.5 py-1 rounded-full">
+          <span className="text-[8px] text-zinc-500 font-mono uppercase font-extrabold flex items-center gap-1.5 bg-[var(--color-surface)]/40 border border-[var(--neon-green-border)] px-2.5 py-1 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Live Database Sync Active
           </span>
         </div>
 
         {userContributions.length === 0 ? (
-          <div className="p-10 text-center bg-zinc-950/40 border-2 border-dashed border-zinc-900 rounded-3xl">
+          <div className="p-10 text-center bg-[var(--color-background)]/40 border-2 border-dashed border-[var(--neon-green-border)] rounded-3xl">
             <p className="text-[11px] font-serif italic text-zinc-500">You haven't transmitted any custom database packets yet. Post from the chronicles feed!</p>
           </div>
         ) : (
@@ -615,7 +615,7 @@ export default function BentoProfile({
             {userContributions.map((post, pi) => (
               <div 
                 key={pi} 
-                className="p-4 bg-zinc-950/70 backdrop-blur-md border border-zinc-900/80 hover:border-red-500/20 hover:bg-black/60 rounded-2xl flex justify-between items-start gap-4 transition-all duration-300 group"
+                className="p-4 bg-[var(--color-background)]/70 backdrop-blur-md border border-[var(--neon-green-border)]/80 hover:border-red-500/20 hover:bg-[var(--color-surface)]/60 rounded-2xl flex justify-between items-start gap-4 transition-all duration-300 group"
               >
                 <div className="space-y-2 min-w-0 flex-1">
                   <p className="text-[11px] font-sans text-zinc-300 font-medium leading-relaxed break-words">{post.content}</p>
@@ -638,7 +638,7 @@ export default function BentoProfile({
                       }
                     }
                   }}
-                  className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer shrink-0 rounded-lg bg-zinc-900"
+                  className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer shrink-0 rounded-lg bg-[var(--color-surface)]"
                   title="Remove Transmission"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -652,10 +652,10 @@ export default function BentoProfile({
       {/* ==========================================
           6. SECURE CRITICAL DISK KEY FOOTER
           ========================================== */}
-      <div className="relative z-10 bg-zinc-950/80 backdrop-blur-md p-4.5 border border-zinc-900 rounded-[28px] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-[9px] text-zinc-400 shadow-lg">
+      <div className="relative z-10 bg-[var(--color-background)]/80 backdrop-blur-md p-4.5 border border-[var(--neon-green-border)] rounded-[28px] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-[9px] text-zinc-400 shadow-lg">
         <div className="truncate max-w-full">
           <span className="text-zinc-550 block text-[7.5px] uppercase tracking-wider font-extrabold mb-1">LOCAL CRITICAL ECDH KEY REVOLUTION STATUS</span>
-          <p className="truncate font-mono text-zinc-400 text-[8px] tracking-wide bg-black/60 p-2 border border-zinc-900 rounded-xl max-w-lg">
+          <p className="truncate font-mono text-zinc-400 text-[8px] tracking-wide bg-[var(--color-surface)]/60 p-2 border border-[var(--neon-green-border)] rounded-xl max-w-lg">
             {localStorage.getItem(`faraflick_profile_backup_${profile?.uid}`) || "SECURE_TUNNEL_ECDH_CURVE25519_ROTATED_ACTIVE"}
           </p>
         </div>
@@ -671,7 +671,7 @@ export default function BentoProfile({
             navigator.clipboard.writeText(localStorage.getItem(`faraflick_profile_backup_${profile?.uid}`) || "SECURE_TUNNEL_ECDH_CURVE25519_ROTATED_ACTIVE");
             showBrutalistToast('COPIED', 'Backup signature copied to secure clip channel.', 'success');
           }}
-          className="px-4 py-2.5 bg-black hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-700 text-zinc-300 hover:text-white uppercase font-mono font-black text-[8.5px] shrink-0 cursor-pointer rounded-xl transition duration-300 flex items-center gap-1.5 shadow-md"
+          className="px-4 py-2.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface)] border border-zinc-850 hover:border-zinc-700 text-zinc-300 hover:text-[var(--color-text)] uppercase font-mono font-black text-[8.5px] shrink-0 cursor-pointer rounded-xl transition duration-300 flex items-center gap-1.5 shadow-md"
         >
           <Copy className="w-3 h-3 text-red-500" />
           <span>Backup Encryption Key</span>
@@ -681,7 +681,7 @@ export default function BentoProfile({
       {/* ==========================================
           7. PINTEREST & SIMALOON DESIGN CREDITS
           ========================================== */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between text-[7.5px] text-zinc-600 font-mono uppercase tracking-widest border-t border-zinc-900 pt-4.5 px-1 gap-2">
+      <div className="relative z-10 flex flex-wrap items-center justify-between text-[7.5px] text-zinc-600 font-mono uppercase tracking-widest border-t border-[var(--neon-green-border)] pt-4.5 px-1 gap-2">
         <span>SCROLL FOR MORE SECURE PARAMETERS // v3.09 LIVE</span>
         <div className="flex gap-4">
           <span className="flex items-center gap-1">INSPIRED BY <ExternalLink className="w-2.5 h-2.5" /> THREE.JS & PINTEREST</span>

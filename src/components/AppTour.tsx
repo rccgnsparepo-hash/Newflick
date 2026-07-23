@@ -229,7 +229,7 @@ export default function AppTour({
           className="rounded border border-[var(--neon-green)] animate-pulse pointer-events-none"
         />
       ) : (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-90 transition-all duration-300" />
+        <div className="fixed inset-0 bg-[var(--color-surface)]/80 backdrop-blur-xs z-90 transition-all duration-300" />
       )}
 
       {/* 2. Interactive Floating Tooltip Box */}
@@ -241,7 +241,7 @@ export default function AppTour({
           key={currentStepIndex}
           initial={{ scale: 0.95, opacity: 0, y: coords ? 5 : 0 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          className="bg-zinc-950 border-2 border-[var(--neon-green)] text-white shadow-[4px_4px_0px_#000000] p-4 font-mono text-left block"
+          className="bg-[var(--color-background)] border-2 border-[var(--neon-green)] text-[var(--color-text)] shadow-[4px_4px_0px_#000000] p-4 font-mono text-left block"
         >
           {/* Header indicator */}
           <div className="flex items-center justify-between border-b border-[var(--neon-green)]/20 pb-2 mb-3">
@@ -260,7 +260,7 @@ export default function AppTour({
 
           {/* Step content */}
           <p className="text-[8px] tracking-widest font-black text-amber-500 uppercase">{step.subtitle}</p>
-          <h4 className="text-sm font-black text-white mt-1 uppercase tracking-tight font-serif">
+          <h4 className="text-sm font-black text-[var(--color-text)] mt-1 uppercase tracking-tight font-serif">
             {step.title}
           </h4>
           <p className="text-[11px] text-zinc-300 mt-2.5 leading-relaxed font-sans font-normal border-l-2 border-[var(--neon-green)]/35 pl-3">
@@ -288,7 +288,7 @@ export default function AppTour({
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="flex items-center space-x-1 border border-zinc-800 hover:border-zinc-500 px-2 py-1 text-[9px] font-black uppercase text-zinc-400 hover:text-white transition cursor-pointer font-mono"
+                  className="flex items-center space-x-1 border border-[var(--neon-green-border)] hover:border-zinc-500 px-2 py-1 text-[9px] font-black uppercase text-zinc-400 hover:text-[var(--color-text)] transition cursor-pointer font-mono"
                 >
                   <ArrowLeft className="w-3 h-3" />
                   <span>Back</span>

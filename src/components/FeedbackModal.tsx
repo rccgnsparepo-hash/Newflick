@@ -48,14 +48,14 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[150] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[var(--color-surface)]/60 backdrop-blur-xs z-[150] flex items-center justify-center p-4">
           <div className="absolute inset-0" onClick={onClose} />
           
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 15 }}
-            className="relative bg-[#FAF9F6] dark:bg-zinc-950 border border-black/20 dark:border-zinc-800 p-6 sm:p-8 rounded-none max-w-md w-full shadow-2xl overflow-hidden z-10"
+            className="relative bg-[#FAF9F6] dark:bg-[var(--color-background)] border border-black/20 dark:border-[var(--neon-green-border)] p-6 sm:p-8 rounded-none max-w-md w-full shadow-2xl overflow-hidden z-10"
           >
             {/* Close */}
             <button
@@ -63,7 +63,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                 playGlitchClickSound();
                 onClose();
               }}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-black dark:hover:text-white transition cursor-pointer text-xs uppercase font-mono tracking-wider"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-black dark:hover:text-[var(--color-text)] transition cursor-pointer text-xs uppercase font-mono tracking-wider"
             >
               [Close]
             </button>
@@ -81,7 +81,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex items-center space-x-2.5 mb-2">
-                  <MessageSquare className="w-5 h-5 text-zinc-900 dark:text-white" />
+                  <MessageSquare className="w-5 h-5 text-zinc-900 dark:text-[var(--color-text)]" />
                   <h3 className="font-serif italic text-xl font-semibold">Decentralized Feedback Portal</h3>
                 </div>
 
@@ -110,8 +110,8 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                         }}
                         className={`text-[10px] uppercase tracking-widest font-black py-2.5 border text-center transition cursor-pointer rounded-none ${
                           category === cat
-                            ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
-                            : 'bg-white dark:bg-zinc-900 border-black/10 dark:border-zinc-800 text-zinc-500 hover:text-black dark:hover:text-white'
+                            ? 'bg-[var(--color-surface)] text-[var(--color-text)] dark:bg-white dark:text-black border-black dark:border-white'
+                            : 'bg-white dark:bg-[var(--color-surface)] border-black/10 dark:border-[var(--neon-green-border)] text-zinc-500 hover:text-black dark:hover:text-[var(--color-text)]'
                         }`}
                       >
                         {cat}
@@ -130,28 +130,28 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                     rows={4}
                     maxLength={1000}
                     placeholder="Provide details about mismatching layouts, error messages, or requested tools..."
-                    className="w-full text-xs p-3 bg-white dark:bg-zinc-900 border border-black/15 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white rounded-none"
+                    className="w-full text-xs p-3 bg-white dark:bg-[var(--color-surface)] border border-black/15 dark:border-[var(--neon-green-border)] focus:outline-none focus:border-black dark:focus:border-white rounded-none"
                   />
                   <div className="text-right text-[9px] font-mono text-neutral-400 mt-1 uppercase tracking-wider">
                     {content.length}/1000 MAX CHARS
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-zinc-900">
+                <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-[var(--neon-green-border)]">
                   <button
                     type="button"
                     onClick={() => {
                       playGlitchClickSound();
                       onClose();
                     }}
-                    className="border border-black/15 dark:border-zinc-800 px-4 py-2 hover:bg-black/5 dark:hover:bg-zinc-900 text-xs transition uppercase font-bold tracking-wider rounded-none cursor-pointer"
+                    className="border border-black/15 dark:border-[var(--neon-green-border)] px-4 py-2 hover:bg-[var(--color-surface)]/5 dark:hover:bg-[var(--color-surface)] text-xs transition uppercase font-bold tracking-wider rounded-none cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="border border-black dark:border-white bg-black dark:bg-white text-white dark:text-black px-6 py-2 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 text-xs transition uppercase font-bold tracking-wider rounded-none cursor-pointer"
+                    className="border border-black dark:border-white bg-[var(--color-surface)] dark:bg-white text-[var(--color-text)] dark:text-black px-6 py-2 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 text-xs transition uppercase font-bold tracking-wider rounded-none cursor-pointer"
                   >
                     {isSubmitting ? 'Transmitting...' : 'Dispatch Logs'}
                   </button>

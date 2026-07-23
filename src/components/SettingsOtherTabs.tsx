@@ -68,14 +68,14 @@ export function SettingsOtherTabs({
             Send an encryption channel handshake invitation to another registered node user on Flick by entering their tag or displayName alias.
           </p>
 
-          <div className="flex gap-2 border border-zinc-900 bg-zinc-950 p-2">
+          <div className="flex gap-2 border border-[var(--neon-green-border)] bg-[var(--color-background)] p-2">
             <Search className="w-4 h-4 text-zinc-500 mt-1.5 ml-1" />
             <input
               type="text"
               placeholder="Enter username handle keyword..."
               value={friendsUserSearchQuery}
               onChange={(e) => setFriendsUserSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent border-none text-xs text-white focus:ring-0 outline-none font-mono"
+              className="flex-1 bg-transparent border-none text-xs text-[var(--color-text)] focus:ring-0 outline-none font-mono"
             />
           </div>
 
@@ -83,9 +83,9 @@ export function SettingsOtherTabs({
             {systemUsers
               .filter(u => u.displayName?.toLowerCase().includes(friendsUserSearchQuery.toLowerCase()))
               .map((user) => (
-                <div key={user.uid} className="p-3 bg-zinc-950 border border-zinc-900 flex items-center justify-between">
+                <div key={user.uid} className="p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)] flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
-                    <img src={user.photoURL || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.uid}`} className="w-7 h-7 border border-zinc-800" alt="Avatar" referrerPolicy="no-referrer" />
+                    <img src={user.photoURL || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.uid}`} className="w-7 h-7 border border-[var(--neon-green-border)]" alt="Avatar" referrerPolicy="no-referrer" />
                     <div>
                       <span className="text-xs font-serif font-black tracking-tight block">@{user.displayName || 'Anonymous'}</span>
                       <span className="text-[8px] font-mono text-zinc-500 block font-bold">KEY: {user.publicKey?.slice(0, 16)}...</span>
@@ -98,7 +98,7 @@ export function SettingsOtherTabs({
                       triggerVibration('medium');
                       showBrutalistToast('INVITE TRANSMITTED', `Cryptographic invite package sent to @${user.displayName || 'Anonymous'}. Keys dispatched securely.`, 'success');
                     }}
-                    className="px-2.5 py-1 text-[8.5px] font-mono uppercase bg-black hover:bg-[var(--neon-green)] text-zinc-400 hover:text-black hover:font-bold border border-zinc-800 transition cursor-pointer"
+                    className="px-2.5 py-1 text-[8.5px] font-mono uppercase bg-[var(--color-surface)] hover:bg-[var(--neon-green)] text-zinc-400 hover:text-black hover:font-bold border border-[var(--neon-green-border)] transition cursor-pointer"
                   >
                     Invite Key
                   </button>
@@ -131,7 +131,7 @@ export function SettingsOtherTabs({
                   setHelpTicketCategory(e.target.value as any);
                   playGlitchClickSound();
                 }}
-                className="w-full bg-black border border-zinc-800 px-2 py-1.5 text-xs font-mono text-[var(--neon-green)] focus:outline-none"
+                className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] px-2 py-1.5 text-xs font-mono text-[var(--neon-green)] focus:outline-none"
               >
                 <option value="technical">Technical Support / Crash logs</option>
                 <option value="privacy">Privacy & Account Security</option>
@@ -146,7 +146,7 @@ export function SettingsOtherTabs({
                 placeholder="Describe your request or bug..."
                 value={helpTicketContent}
                 onChange={(e) => setHelpTicketContent(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white placeholder-zinc-700 outline-none font-sans"
+                className="w-full bg-[var(--color-background)] border border-[var(--neon-green-border)] p-2 text-xs text-[var(--color-text)] placeholder-zinc-700 outline-none font-sans"
               />
             </div>
 
@@ -162,7 +162,7 @@ export function SettingsOtherTabs({
                 showBrutalistToast('TICKET DISPATCHED', 'Support Ticket encrypted and dispatched with high-entropy package signature.', 'success');
                 setHelpTicketContent('');
               }}
-              className="w-full py-2 bg-black border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black font-mono text-[9px] uppercase font-bold cursor-pointer"
+              className="w-full py-2 bg-[var(--color-surface)] border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black font-mono text-[9px] uppercase font-bold cursor-pointer"
             >
               🔒 Dispatch Encrypted Payload
             </button>
@@ -185,7 +185,7 @@ export function SettingsOtherTabs({
             <button
               type="button"
               onClick={handleLocalPushSimulation}
-              className="bg-black border border-red-500/40 text-red-400 hover:bg-red-500/10 px-3 py-2 text-[10px] font-mono uppercase tracking-wider font-extrabold cursor-pointer text-center rounded-lg"
+              className="bg-[var(--color-surface)] border border-red-500/40 text-red-400 hover:bg-red-500/10 px-3 py-2 text-[10px] font-mono uppercase tracking-wider font-extrabold cursor-pointer text-center rounded-lg"
             >
               ⚡ ROTATE ENTROPY MATRIX
             </button>
@@ -194,7 +194,7 @@ export function SettingsOtherTabs({
               type="button"
               disabled={isSendingCloudTest}
               onClick={handleCloudTestCall}
-              className="bg-red-600 border border-red-500 text-white hover:bg-red-500 px-3 py-2 text-[10px] font-mono uppercase tracking-wider font-extrabold cursor-pointer text-center disabled:opacity-40 rounded-lg"
+              className="bg-red-600 border border-red-500 text-[var(--color-text)] hover:bg-red-500 px-3 py-2 text-[10px] font-mono uppercase tracking-wider font-extrabold cursor-pointer text-center disabled:opacity-40 rounded-lg"
             >
               {isSendingCloudTest ? 'Aligning...' : '🌀 SECURE HANDSHAKE'}
             </button>
@@ -215,7 +215,7 @@ export function SettingsOtherTabs({
               </button>
             </div>
             
-            <div className="bg-black/95 border border-zinc-900 p-2 h-24 overflow-y-auto text-[8px] font-mono leading-normal text-red-400 space-y-1 scrollbar-thin select-text rounded-lg">
+            <div className="bg-[var(--color-surface)]/95 border border-[var(--neon-green-border)] p-2 h-24 overflow-y-auto text-[8px] font-mono leading-normal text-red-400 space-y-1 scrollbar-thin select-text rounded-lg">
               {diagnosticLogs.map((log, idx) => {
                 // Obfuscate standard push notification lines to sound cryptic and cool
                 let secureLog = log;

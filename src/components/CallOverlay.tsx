@@ -180,7 +180,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
     <div className="fixed inset-0 bg-[#060606] z-[99999] flex flex-col items-center justify-between p-6 sm:p-12 font-mono text-[var(--neon-green)] selection:bg-[var(--neon-green)] selection:text-black">
       
       {/* Encryption Banner Header */}
-      <div className="w-full max-w-4xl flex items-center justify-between border-2 border-[var(--neon-green)] bg-black px-4 py-3 shadow-[4px_4px_0_0_#000000] shrink-0">
+      <div className="w-full max-w-4xl flex items-center justify-between border-2 border-[var(--neon-green)] bg-[var(--color-surface)] px-4 py-3 shadow-[4px_4px_0_0_#000000] shrink-0">
         <span className="flex items-center gap-2 text-xs font-black tracking-widest text-[var(--neon-green)]">
           <ShieldCheck className="w-4 h-4 text-[var(--neon-green)] animate-pulse shrink-0" />
           CRYPTOGRAPHIC TUNNEL SECURED_
@@ -194,7 +194,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
       <div className="w-full max-w-4xl flex-1 my-6 flex flex-col lg:flex-row items-center gap-6 justify-center min-h-0">
         
         {/* Remote Peer Stage */}
-        <div className="flex-1 w-full h-full min-h-[300px] border-4 border-black dark:border-zinc-800 bg-[#0d0d0d] shadow-[8px_8px_0_0_#000000] flex flex-col relative items-center justify-center overflow-hidden">
+        <div className="flex-1 w-full h-full min-h-[300px] border-4 border-black dark:border-[var(--neon-green-border)] bg-[var(--color-surface)] shadow-[8px_8px_0_0_#000000] flex flex-col relative items-center justify-center overflow-hidden">
           
           {/* Animated Matrix Background */}
           {status === 'active' && call.type === 'video' ? (
@@ -221,7 +221,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
               </div>
 
               <div className="text-center space-y-2">
-                <h2 className="font-serif text-2xl font-bold italic text-white uppercase tracking-tight">
+                <h2 className="font-serif text-2xl font-bold italic text-[var(--color-text)] uppercase tracking-tight">
                   {call.peerName}
                 </h2>
                 <p className="text-[10px] text-[var(--neon-green)] tracking-widest uppercase animate-pulse">
@@ -235,7 +235,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
 
           {/* Real-time active status banner info */}
           {status === 'active' && (
-            <div className="absolute top-4 left-4 z-10 bg-black/85 border border-[var(--neon-green)]/40 p-2.5 text-[9px] font-mono flex flex-col space-y-0.5">
+            <div className="absolute top-4 left-4 z-10 bg-[var(--color-surface)]/85 border border-[var(--neon-green)]/40 p-2.5 text-[9px] font-mono flex flex-col space-y-0.5">
               <div className="flex items-center gap-1.5 text-[var(--neon-green)] font-extrabold">
                 <Radio className="w-3.5 h-3.5 animate-pulse shrink-0" />
                 <span>FREQUENCY LINK CONVERTED</span>
@@ -247,9 +247,9 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
 
           {/* Picture-in-Picture Local video stream loopback */}
           {status === 'active' && call.type === 'video' && isVideoOn && (
-            <div className="absolute bottom-4 right-4 z-20 w-36 h-48 border-2 border-[var(--neon-green)] bg-black shadow-lg flex flex-col font-mono text-[8px] overflow-hidden">
+            <div className="absolute bottom-4 right-4 z-20 w-36 h-48 border-2 border-[var(--neon-green)] bg-[var(--color-surface)] shadow-lg flex flex-col font-mono text-[8px] overflow-hidden">
               <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
-              <div className="absolute bottom-1 left-1.5 bg-black/75 p-1 border border-[var(--neon-green)]/20 text-[var(--neon-green)] uppercase font-bold tracking-wider">
+              <div className="absolute bottom-1 left-1.5 bg-[var(--color-surface)]/75 p-1 border border-[var(--neon-green)]/20 text-[var(--neon-green)] uppercase font-bold tracking-wider">
                 NODE_A (YOU)
               </div>
             </div>
@@ -260,7 +260,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
       {/* SECURE CALLING TIME STOPWATCH */}
       {status === 'active' && (
         <div className="text-center my-4 shrink-0 font-mono">
-          <div className="text-3xl font-black text-white px-6 py-2 border-2 border-[var(--neon-green)] bg-black inline-block shadow-[3px_3px_0_0_#000000] tracking-widest">
+          <div className="text-3xl font-black text-[var(--color-text)] px-6 py-2 border-2 border-[var(--neon-green)] bg-[var(--color-surface)] inline-block shadow-[3px_3px_0_0_#000000] tracking-widest">
             {formatTime(seconds)}
           </div>
           <div className="text-[9px] uppercase tracking-widest mt-2 text-zinc-400">
@@ -290,7 +290,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
       )}
 
       {/* Styled Call Control Rail Operations */}
-      <div className="w-full max-w-xl bg-black border-2 border-[var(--neon-green)] p-5 flex items-center justify-around shadow-[4px_4px_0_0_#000000] shrink-0">
+      <div className="w-full max-w-xl bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-5 flex items-center justify-around shadow-[4px_4px_0_0_#000000] shrink-0">
         {call.isIncoming && (status === 'dialing' || status === 'ringing') ? (
           <div className="flex gap-4 w-full">
             <button
@@ -327,7 +327,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
               className={`w-14 h-14 rounded-none flex items-center justify-center transition border cursor-pointer ${
                 isMuted 
                   ? 'bg-rose-950/40 text-rose-500 border-rose-500 hover:bg-rose-900/60' 
-                  : 'bg-black text-[var(--neon-green)] border-[var(--neon-green)]/55 hover:bg-[var(--neon-green)]/15'
+                  : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/55 hover:bg-[var(--neon-green)]/15'
               }`}
               title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
             >
@@ -352,7 +352,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
               className={`w-14 h-14 rounded-none flex items-center justify-center transition border cursor-pointer ${
                 !isVideoOn 
                   ? 'bg-[#1a1a1a] text-zinc-500 border-zinc-700 hover:bg-neutral-800' 
-                  : 'bg-black text-[var(--neon-green)] border-[var(--neon-green)]/55 hover:bg-[var(--neon-green)]/15'
+                  : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/55 hover:bg-[var(--neon-green)]/15'
               }`}
               title={isVideoOn ? "Turn off video camera feedback" : "Activate video channel feedback"}
             >

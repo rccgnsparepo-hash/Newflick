@@ -72,7 +72,7 @@ export default function HorizontalTicker({ initialVisible = true }: HorizontalTi
   return (
     <div className="w-full space-y-2 mb-4">
       {/* Simulation status bar (keeps system state transparent and actionable) */}
-      <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-[#FAF9F6] dark:bg-zinc-900 border border-black/10 dark:border-zinc-800 text-[10px] uppercase font-mono tracking-wider">
+      <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-[#FAF9F6] dark:bg-[var(--color-surface)] border border-black/10 dark:border-[var(--neon-green-border)] text-[10px] uppercase font-mono tracking-wider">
         <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
           <span>Next Ticker Broadcast: {minutesPart}:{secondsPart < 10 ? `0${secondsPart}` : secondsPart}</span>
@@ -80,7 +80,7 @@ export default function HorizontalTicker({ initialVisible = true }: HorizontalTi
         <div className="flex items-center gap-3">
           <button
             onClick={forceTrigger}
-            className="flex items-center gap-1 text-neutral-800 dark:text-zinc-200 hover:text-amber-500 transition cursor-pointer font-bold leading-none"
+            className="flex items-center gap-1 text-neutral-800 dark:text-[var(--color-text)] hover:text-amber-500 transition cursor-pointer font-bold leading-none"
           >
             <Play className="w-2.5 h-2.5 text-amber-500 uppercase fill-amber-500" />
             Trigger Broadcast

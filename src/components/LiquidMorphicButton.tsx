@@ -38,7 +38,7 @@ export default function LiquidMorphicButton({
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`relative overflow-hidden px-5 py-2.5 rounded-full font-mono text-[9px] uppercase tracking-wider font-extrabold transition-all duration-300 border border-zinc-800 bg-[#121214] text-white hover:text-white hover:border-red-500/50 cursor-pointer ${className}`}
+        className={`relative overflow-hidden px-5 py-2.5 rounded-full font-mono text-[9px] uppercase tracking-wider font-extrabold transition-all duration-300 border border-[var(--neon-green-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:text-[var(--color-text)] hover:border-red-500/50 cursor-pointer ${className}`}
         style={{
           boxShadow: isHovered ? `0 0 15px ${glowColor}` : 'none'
         }}

@@ -423,7 +423,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-[80] flex items-center justify-center p-4">
           <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
 
           <motion.div
@@ -431,12 +431,12 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 12 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="bg-[#050505] border-2 border-[var(--neon-green)]/70 w-full max-w-4xl relative z-10 shadow-[6px_6px_0px_#000000] p-6 sm:p-8 rounded-none overflow-y-auto max-h-[92vh] text-white"
+            className="bg-[var(--color-background)] border-2 border-[var(--neon-green)]/70 w-full max-w-4xl relative z-10 shadow-[6px_6px_0px_#000000] p-6 sm:p-8 rounded-none overflow-y-auto max-h-[92vh] text-[var(--color-text)]"
           >
             {/* Headline block */}
             <div className="flex items-center justify-between border-b border-[var(--neon-green)]/35 pb-4 mb-6">
               <div>
-                <h2 className="font-serif text-xl font-black uppercase text-white flex items-center gap-2">
+                <h2 className="font-serif text-xl font-black uppercase text-[var(--color-text)] flex items-center gap-2">
                   <User className="w-5 h-5 text-[var(--neon-green)]" />
                   FLICK SYSTEM COORDINATES
                 </h2>
@@ -482,7 +482,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                         className={`flex items-center gap-3 px-3 py-2.5 text-xs font-mono uppercase tracking-wide text-left border transition-all cursor-pointer ${
                           isSelected
                             ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)] font-extrabold'
-                            : 'border-zinc-90 w-black text-zinc-400 hover:border-zinc-805 hover:text-white'
+                            : 'border-zinc-90 w-black text-zinc-400 hover:border-zinc-805 hover:text-[var(--color-text)]'
                         }`}
                       >
                         <TabIcon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
@@ -493,7 +493,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                 </div>
 
                 {/* Right Panel - Active Tab Layout workspace */}
-                <div className="md:col-span-8 min-h-[365px] bg-black/45 border border-zinc-900 p-4 sm:p-5 text-white">
+                <div className="md:col-span-8 min-h-[365px] bg-[var(--color-surface)]/45 border border-[var(--neon-green-border)] p-4 sm:p-5 text-[var(--color-text)]">
                   <AnimatePresence mode="wait">
                     {activeTab === 'account' && (
                       <motion.div

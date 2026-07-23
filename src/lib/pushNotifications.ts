@@ -327,17 +327,17 @@ export function showPushNotification(titleOrPayload: string | any, body?: string
         if (reg) {
           reg.showNotification(finalTitle, options).catch((err) => {
             console.warn("ServiceWorker showNotification failed, trying fallback:", err);
-            new Notification(finalTitle, options);
+            try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
           });
         } else {
-          new Notification(finalTitle, options);
+          try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
         }
       }).catch((err) => {
         console.warn("Error checking ServiceWorker, trying standard fallback:", err);
-        new Notification(finalTitle, options);
+        try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
       });
     } else {
-      new Notification(finalTitle, options);
+      try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
     }
   } catch (err) {
     console.warn("Failed to generate system push notification safely:", err);

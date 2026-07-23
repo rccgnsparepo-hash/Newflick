@@ -349,7 +349,7 @@ export default function ThreeSlidesPhysics({ slides }: ThreeSlidesPhysicsProps) 
   }, [slides, activeIndex, hoveredIndex]);
 
   return (
-    <div className="relative w-full h-80 bg-zinc-950/40 rounded-2xl border border-zinc-850/50 overflow-hidden flex flex-col items-center justify-center">
+    <div className="relative w-full h-80 bg-[var(--color-background)]/40 rounded-2xl border border-zinc-850/50 overflow-hidden flex flex-col items-center justify-center">
       {/* 3D Canvas element parent */}
       <div ref={containerRef} className="w-full h-72 cursor-grab active:cursor-grabbing" id="three-physics-stage" />
 
