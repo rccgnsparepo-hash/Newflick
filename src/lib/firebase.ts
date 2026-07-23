@@ -6,7 +6,7 @@ import { getBootstrapConfig } from './bootstrap';
 
 // Suppress Firestore verbose/warning logs (such as offline connection warnings)
 try {
-  setLogLevel('error');
+  setLogLevel('silent');
 } catch (e) {
   console.warn("Failed to set Firestore log level:", e);
 }
