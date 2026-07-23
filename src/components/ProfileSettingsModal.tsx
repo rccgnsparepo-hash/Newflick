@@ -545,7 +545,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.15 }}
                       >
-                        <SettingsStoragePurgeTab />
+                        <SettingsStoragePurgeTab profile={profile} />
                       </motion.div>
                     )}
 

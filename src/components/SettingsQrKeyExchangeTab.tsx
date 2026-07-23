@@ -146,7 +146,7 @@ export function SettingsQrKeyExchangeTab({ profile, onCloseModal, onOpenChatWith
     scanAnimFrameRef.current = requestAnimationFrame(scanCameraLoop);
   };
 
-  const processScannedPayload = (rawData: string) => {
+  const processScannedPayload = async (rawData: string) => {
     try {
       let parsed: any = null;
       if (rawData.startsWith('{')) {
@@ -162,23 +162,42 @@ export function SettingsQrKeyExchangeTab({ profile, onCloseModal, onOpenChatWith
       }
 
       if (parsed && parsed.publicKey && (parsed.uid || parsed.type === 'flick_key_exchange')) {
+        const peerUid = parsed.uid || `peer_${Math.random().toString(36).substr(2, 6)}`;
+        const peerName = parsed.displayName || 'Cryptographic Peer';
+
         setScannedPeer({
-          uid: parsed.uid || `peer_${Math.random().toString(36).substr(2, 6)}`,
-          displayName: parsed.displayName || 'Cryptographic Peer',
+          uid: peerUid,
+          displayName: peerName,
           publicKey: parsed.publicKey,
           email: parsed.email
         });
 
-        // Save imported key to localStorage cache for instant access
+        // Save imported key to localStorage cache for instant E2EE access
         try {
-          localStorage.setItem(`flick_imported_key_${parsed.uid}`, parsed.publicKey);
+          localStorage.setItem(`flick_imported_key_${peerUid}`, parsed.publicKey);
+          localStorage.setItem(`flick_handshake_status_${peerUid}`, 'established');
         } catch {
           // ignore cache error
         }
 
+        // Trigger secure handshake request event & dispatch to system
+        try {
+          window.dispatchEvent(new CustomEvent('faraflick-secure-handshake-request', {
+            detail: {
+              peerId: peerUid,
+              peerName: peerName,
+              publicKey: parsed.publicKey,
+              initiatorUid: profile.uid,
+              timestamp: new Date().toISOString()
+            }
+          }));
+        } catch (e) {
+          console.warn('Handshake event trigger error:', e);
+        }
+
         playLikeSound();
         triggerVibration('double');
-        showBrutalistToast('KEY EXCHANGED ✓', `Cryptographic public key imported for @${parsed.displayName || 'Peer'}`, 'success');
+        showBrutalistToast('HANDSHAKE INITIATED ✓', `E2EE pairing handshake sent to @${peerName} with public key fingerprint.`, 'success');
       } else {
         showBrutalistToast('INVALID QR', 'Unrecognized Flick QR payload structure.', 'warning');
       }
