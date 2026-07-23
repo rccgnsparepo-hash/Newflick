@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { HardDrive, Trash2, Clock, RefreshCw, Database, Zap, PieChart as PieIcon } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
@@ -10,6 +9,80 @@ import { UserProfile } from '../types';
 
 interface StoragePurgeTabProps {
   profile?: UserProfile;
+}
+
+// Custom pure SVG Donut / Pie Chart Component (React 19 compatible)
+function SvgDonutChart({ data }: { data: Array<{ name: string; value: number; color: string }> }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const total = data.reduce((acc, d) => acc + (d.value || 0), 0) || 1;
+  const cx = 80;
+  const cy = 80;
+  const outerR = 64;
+  const innerR = 36;
+
+  let cumulativeAngle = -Math.PI / 2;
+
+  const slices = data.map((item, index) => {
+    const fraction = (item.value || 0) / total;
+    const angleLength = fraction * 2 * Math.PI;
+    const startAngle = cumulativeAngle;
+    const endAngle = cumulativeAngle + angleLength;
+    cumulativeAngle = endAngle;
+
+    if (fraction >= 0.99) {
+      return {
+        ...item,
+        path: `M ${cx - outerR} ${cy} A ${outerR} ${outerR} 0 1 1 ${cx + outerR} ${cy} A ${outerR} ${outerR} 0 1 1 ${cx - outerR} ${cy} M ${cx - innerR} ${cy} A ${innerR} ${innerR} 0 1 0 ${cx + innerR} ${cy} A ${innerR} ${innerR} 0 1 0 ${cx - innerR} ${cy} Z`,
+        index,
+        fraction
+      };
+    }
+
+    const x1 = cx + outerR * Math.cos(startAngle);
+    const y1 = cy + outerR * Math.sin(startAngle);
+    const x2 = cx + outerR * Math.cos(endAngle);
+    const y2 = cy + outerR * Math.sin(endAngle);
+
+    const x3 = cx + innerR * Math.cos(endAngle);
+    const y3 = cy + innerR * Math.sin(endAngle);
+    const x4 = cx + innerR * Math.cos(startAngle);
+    const y4 = cy + innerR * Math.sin(startAngle);
+
+    const largeArc = angleLength > Math.PI ? 1 : 0;
+
+    const path = `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+
+    return { ...item, path, index, fraction };
+  });
+
+  return (
+    <div className="relative flex flex-col items-center justify-center">
+      <svg width="160" height="160" viewBox="0 0 160 160" className="overflow-visible">
+        {slices.map((slice) => (
+          <path
+            key={slice.index}
+            d={slice.path}
+            fill={slice.color}
+            stroke="#0a0a0c"
+            strokeWidth="2"
+            className="transition-all duration-200 cursor-pointer"
+            style={{
+              transform: hoveredIndex === slice.index ? 'scale(1.05)' : 'scale(1)',
+              transformOrigin: '80px 80px',
+              filter: hoveredIndex === slice.index ? 'brightness(1.2)' : 'none'
+            }}
+            onMouseEnter={() => setHoveredIndex(slice.index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          />
+        ))}
+      </svg>
+      {hoveredIndex !== null && (
+        <div className="absolute -bottom-2 bg-black border border-[var(--neon-green)] px-2 py-1 text-[8.5px] font-mono text-[var(--neon-green)] shadow-lg z-20 whitespace-nowrap font-bold">
+          {slices[hoveredIndex].name}: {(slices[hoveredIndex].fraction * 100).toFixed(1)}%
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
@@ -277,44 +350,10 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
           </button>
         </div>
 
-        {/* Visual Recharts Pie Chart & Progress */}
+        {/* Visual Pure SVG Donut Chart & Progress */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-[var(--color-surface)] p-3 border border-[var(--neon-green-border)]/50">
           <div className="h-44 w-full flex items-center justify-center relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={35}
-                  outerRadius={65}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#000000" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0];
-                      return (
-                        <div className="bg-black border border-[var(--neon-green)] p-2 shadow-lg font-mono text-[9px]">
-                          <p className="text-[var(--neon-green)] font-bold uppercase">{data.name}</p>
-                          <p className="text-white">{formatSize(Number(data.value))}</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <PieIcon className="w-4 h-4 text-[var(--neon-green)] opacity-80" />
-              <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase">CACHE</span>
-            </div>
+            <SvgDonutChart data={chartData} />
           </div>
 
           <div className="space-y-2">
