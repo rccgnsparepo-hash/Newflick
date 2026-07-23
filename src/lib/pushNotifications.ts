@@ -322,22 +322,32 @@ export function showPushNotification(titleOrPayload: string | any, body?: string
       silent: !isSoundEnabled(),
     };
     
+    const tryConstructNotification = (t: string, opts: NotificationOptions) => {
+      try {
+        if (typeof Notification !== 'undefined') {
+          new Notification(t, opts);
+        }
+      } catch (e) {
+        console.warn('[Push] Direct Notification constructor unavailable on this device/environment:', e);
+      }
+    };
+
     if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistration().then((reg) => {
-        if (reg) {
+        if (reg && typeof reg.showNotification === 'function') {
           reg.showNotification(finalTitle, options).catch((err) => {
             console.warn("ServiceWorker showNotification failed, trying fallback:", err);
-            try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
+            tryConstructNotification(finalTitle, options);
           });
         } else {
-          try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
+          tryConstructNotification(finalTitle, options);
         }
       }).catch((err) => {
         console.warn("Error checking ServiceWorker, trying standard fallback:", err);
-        try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
+        tryConstructNotification(finalTitle, options);
       });
     } else {
-      try { new Notification(finalTitle, options); } catch(e) { console.warn('Fallback Notification constructor failed:', e); }
+      tryConstructNotification(finalTitle, options);
     }
   } catch (err) {
     console.warn("Failed to generate system push notification safely:", err);

@@ -83,7 +83,9 @@ async function startServer() {
 
   // Intercept API routes if database is not initialized yet
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api/") && req.path !== "/api/bootstrap" && req.path !== "/api/firebase-config" && req.path !== "/api/health" && !db) {
+    const publicApiPaths = ['/api/bootstrap', '/api/firebase-config', '/api/health', '/api/push/send', '/api/myai'];
+    const isPublic = publicApiPaths.includes(req.path) || req.path.startsWith('/api/sports/');
+    if (req.path.startsWith("/api/") && !isPublic && !db) {
       return res.status(503).json({
         error: "Firebase database is not configured. Please set your FIREBASE_PROJECT_ID, FIREBASE_API_KEY, and other environment variables in Vercel / your hosting platform."
       });
