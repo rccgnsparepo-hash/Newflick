@@ -4,6 +4,7 @@
  */
 
 import { isSoundEnabled } from './sounds';
+import { triggerMessageTypeVibration, triggerPatternVibration, MessageType } from './haptics';
 import { doc, setDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { deepLinkManager } from './deepLinkManager';
@@ -11,6 +12,101 @@ import { PushPayloadSchema } from './schemas';
 import { Capacitor } from '@capacitor/core';
 import OneSignalPlugin from 'onesignal-cordova-plugin';
 import { getBackendUrl } from './bootstrap';
+
+/**
+ * Quiet Hours & Priority Senders Configuration Interface
+ */
+export interface QuietHoursConfig {
+  enabled: boolean;
+  startTime: string; // e.g. "22:00"
+  endTime: string;   // e.g. "07:00"
+  allowPrioritySenders: boolean;
+}
+
+export function getQuietHoursConfig(): QuietHoursConfig {
+  if (typeof window === 'undefined') {
+    return { enabled: false, startTime: '22:00', endTime: '07:00', allowPrioritySenders: true };
+  }
+  return {
+    enabled: localStorage.getItem('flick_quiet_hours_enabled') === 'true',
+    startTime: localStorage.getItem('flick_quiet_hours_start') || '22:00',
+    endTime: localStorage.getItem('flick_quiet_hours_end') || '07:00',
+    allowPrioritySenders: localStorage.getItem('flick_quiet_hours_allow_priority') !== 'false'
+  };
+}
+
+export function setQuietHoursConfig(config: Partial<QuietHoursConfig>): void {
+  if (typeof window === 'undefined') return;
+  if (config.enabled !== undefined) localStorage.setItem('flick_quiet_hours_enabled', config.enabled ? 'true' : 'false');
+  if (config.startTime !== undefined) localStorage.setItem('flick_quiet_hours_start', config.startTime);
+  if (config.endTime !== undefined) localStorage.setItem('flick_quiet_hours_end', config.endTime);
+  if (config.allowPrioritySenders !== undefined) localStorage.setItem('flick_quiet_hours_allow_priority', config.allowPrioritySenders ? 'true' : 'false');
+  window.dispatchEvent(new Event('flick_notifications_updated'));
+}
+
+export function isCurrentlyInQuietHours(): boolean {
+  const config = getQuietHoursConfig();
+  if (!config.enabled) return false;
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const [startH, startM] = (config.startTime || '22:00').split(':').map(Number);
+  const [endH, endM] = (config.endTime || '07:00').split(':').map(Number);
+
+  const startMinutes = (startH || 0) * 60 + (startM || 0);
+  const endMinutes = (endH || 0) * 60 + (endM || 0);
+
+  if (startMinutes === endMinutes) return false;
+
+  if (startMinutes < endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  } else {
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  }
+}
+
+export function isPrioritySender(senderUidOrName?: string): boolean {
+  if (!senderUidOrName || typeof window === 'undefined') return false;
+  try {
+    const listRaw = localStorage.getItem('flick_notif_messages_from') || '[]';
+    const allowedList: string[] = JSON.parse(listRaw);
+    const target = senderUidOrName.toLowerCase();
+    return allowedList.some(id => id.toLowerCase() === target);
+  } catch {
+    return false;
+  }
+}
+
+export function shouldSuppressNotification(senderId?: string, isUrgentOrPriority?: boolean): { suppress: boolean; reason?: string } {
+  if (typeof window === 'undefined') return { suppress: false };
+
+  // Check Silent mode / Do Not Disturb
+  const silentMode = localStorage.getItem('flick_notif_silent_mode') === 'true';
+  if (silentMode) {
+    return { suppress: true, reason: 'Silent Mode (Do Not Disturb) active' };
+  }
+
+  const isSenderPriority = !!(isUrgentOrPriority || isPrioritySender(senderId));
+
+  // Check VIP Priority Senders only toggle
+  const priorityOnly = localStorage.getItem('flick_notif_priority_chats_only') === 'true';
+  if (priorityOnly && !isSenderPriority) {
+    return { suppress: true, reason: 'Priority Senders Only setting active (non-priority sender filtered)' };
+  }
+
+  // Check Quiet Hours window
+  if (isCurrentlyInQuietHours()) {
+    const config = getQuietHoursConfig();
+    if (config.allowPrioritySenders && isSenderPriority) {
+      addPushDebugLog('info', `Quiet Hours active, but notification passed for Priority Sender: ${senderId || 'VIP'}`);
+      return { suppress: false };
+    }
+    return { suppress: true, reason: `Quiet Hours active (${config.startTime} - ${config.endTime})` };
+  }
+
+  return { suppress: false };
+}
 
 /**
  * Shared log storage interface for the NativePushDebugger / WebPushDebugger utility
@@ -298,14 +394,30 @@ export function showPushNotification(titleOrPayload: string | any, body?: string
     addPushDebugLog('warning', 'Push warning: Payload fails strict Zod schema, displaying with fallback logic.', payloadToValidate);
   }
 
+  // Check Quiet Hours & Priority Sender suppression
+  const senderId = payloadToValidate?.senderId;
+  const isPriority = payloadToValidate?.isPriority || isPrioritySender(senderId);
+  const check = shouldSuppressNotification(senderId, isPriority);
+  if (check.suppress) {
+    addPushDebugLog('warning', `Notification suppressed for "${finalTitle}": ${check.reason}`);
+    console.log(`[PWA Notification Suppressed] ${check.reason}`);
+    return;
+  }
+
   const fallbackIcon = finalIcon || 'https://api.dicebear.com/7.x/shapes/png?seed=dialogues';
   console.log(`[PWA Local Alert] "${finalTitle}" - "${finalBody}"`);
 
-  // Device physical haptic vibe
+  // Determine message type for haptic vibration signature
+  let msgType: MessageType = 'direct';
+  if (finalTag?.includes('group') || finalTitle?.toLowerCase().includes('group')) {
+    msgType = 'group';
+  } else if (finalTag?.includes('system') || finalTag?.includes('announcement') || finalTitle?.toLowerCase().includes('system') || finalTitle?.toLowerCase().includes('alert')) {
+    msgType = 'system';
+  }
+
+  // Device physical haptic vibe using customized vibration pattern
   try {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([100, 50, 100]);
-    }
+    triggerMessageTypeVibration(msgType);
   } catch (err) {
     // ignore sandbox limit
   }
