@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, collection, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, serverTimestamp, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import { UserProfile, ChatMessage, DirectChat, MessageReaction, InAppNotification } from '../types';
 import {
   subscribeToUsers,
@@ -420,19 +420,53 @@ function DecryptedMessageBubble({
     quotedSnippet = message.replyToText || "";
   }
 
-  // Handle emoji reactions
+  // Handle emoji reactions with Firestore persistence
   const toggleReaction = async (emoji: string) => {
-    const existing = reactions.find(r => r.userId === currentUserId);
-    if (existing && existing.emoji === emoji) {
-      await removeMessageReaction(chatId, message.id, currentUserId);
-    } else {
-      await addOrUpdateMessageReaction(chatId, message.id, {
-        userId: currentUserId,
-        userName: currentUserDisplayName,
-        emoji
-      });
+    try {
+      const existing = reactions.find(r => r.userId === currentUserId);
+      if (existing && existing.emoji === emoji) {
+        await removeMessageReaction(chatId, message.id, currentUserId);
+        try {
+          const msgRef = doc(db, 'chats', chatId, 'messages', message.id);
+          await updateDoc(msgRef, {
+            [`reactions.${currentUserId}`]: deleteField()
+          });
+        } catch (e) {
+          // Field removal fallback
+        }
+      } else {
+        await addOrUpdateMessageReaction(chatId, message.id, {
+          userId: currentUserId,
+          userName: currentUserDisplayName,
+          emoji
+        });
+        try {
+          const msgRef = doc(db, 'chats', chatId, 'messages', message.id);
+          await updateDoc(msgRef, {
+            [`reactions.${currentUserId}`]: emoji
+          });
+        } catch (e) {
+          console.warn("Direct doc reaction write bypassed:", e);
+        }
+      }
+    } catch (err) {
+      console.warn("Reaction toggle error:", err);
     }
     setShowPicker(false);
+  };
+
+  const longPressTimerRef = useRef<any>(null);
+  const handleTouchStart = () => {
+    longPressTimerRef.current = setTimeout(() => {
+      triggerVibration('medium');
+      setShowPicker(true);
+    }, 450);
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   const groupedReactions = reactions.reduce((acc, r) => {
@@ -514,6 +548,14 @@ function DecryptedMessageBubble({
             const snippet = caption || '[Media Node]';
             onReplyTrigger(message.id, senderName, snippet);
           }
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchEnd}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          triggerVibration('medium');
+          setShowPicker(true);
         }}
         className="space-y-1 relative pointer-events-auto w-full min-w-0 break-words overflow-visible cursor-grab active:cursor-grabbing select-none"
       >
@@ -695,18 +737,50 @@ function DecryptedMessageBubble({
                   } catch (e) {
                     return <span className="text-red-500 text-xs font-mono">Poll Artifact Unreadable</span>;
                   }
-                })() : (searchQuery ? (
-                  <HighlightedText text={caption} query={searchQuery} />
-                ) : (
-                  <div className="flex flex-col">
-                    <span>{caption}</span>
-                    {message.isEdited && (
-                      <span className="text-[7.5px] font-mono uppercase text-zinc-500 self-end mt-0.5 tracking-wider">
-                        (edited)
-                      </span>
-                    )}
-                  </div>
-                ))}
+                })() : (() => {
+                  const imgRegex = /(https?:\/\/[^\s]+?\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s]*)?)/gi;
+                  const matches = caption ? caption.match(imgRegex) : null;
+                  return (
+                    <div className="flex flex-col space-y-1.5">
+                      {matches && matches.length > 0 && (
+                        <div className="grid grid-cols-1 gap-1.5 py-1">
+                          {matches.map((url, idx) => (
+                            <div 
+                              key={idx} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setZoomImg(url);
+                              }}
+                              className="relative group cursor-pointer max-w-xs overflow-hidden rounded-md border border-[var(--neon-green)]/30 hover:border-[var(--neon-green)] transition-all bg-black/50"
+                            >
+                              <img 
+                                src={url} 
+                                alt="Thumbnail" 
+                                className="max-h-44 w-full object-cover transition-transform duration-200 group-hover:scale-105" 
+                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span className="bg-black/90 text-[var(--neon-green)] border border-[var(--neon-green)] px-2 py-1 text-[9px] font-mono font-bold tracking-wider uppercase">
+                                  🔍 LIGHTBOX VIEW
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {searchQuery ? (
+                        <HighlightedText text={caption} query={searchQuery} />
+                      ) : (
+                        <span>{caption}</span>
+                      )}
+                      {message.isEdited && (
+                        <span className="text-[7.5px] font-mono uppercase text-zinc-500 self-end mt-0.5 tracking-wider">
+                          (edited)
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </>
@@ -2048,12 +2122,34 @@ export default function ChatSection({
     if (!currentChat?.id || !profile?.uid) return;
 
     const unsubscribe = subscribeToMessages(currentChat.id, (loadedMessages) => {
-      // Filter out burning messages that expired on client or database side
+      // Auto-Purge settings check
+      const autoPurgeOn = localStorage.getItem('flick_auto_purge_enabled') === 'true' || (profile as any)?.autoPurge === true;
+      const autoPurgeRetention = localStorage.getItem('flick_auto_purge_retention') || (profile as any)?.autoPurgeRetention || '24h';
+
+      let retentionMs = 24 * 60 * 60 * 1000;
+      if (autoPurgeRetention === '7d') retentionMs = 7 * 24 * 60 * 60 * 1000;
+      else if (autoPurgeRetention === '30d') retentionMs = 30 * 24 * 60 * 60 * 1000;
+      else if (autoPurgeRetention === '1h') retentionMs = 60 * 60 * 1000;
+      else if (autoPurgeRetention === 'immediate') retentionMs = 0;
+
+      // Filter out burning or auto-purged read messages
       const filtered = loadedMessages.filter(msg => {
         if (msg.expiresAt) {
           const expireTime = msg.expiresAt.seconds ? msg.expiresAt.seconds * 1000 : (msg.expiresAt.toDate ? msg.expiresAt.toDate().getTime() : Date.parse(msg.expiresAt));
           if (Date.now() >= expireTime) {
             return false; // Skip drawing expired E2EE burning files
+          }
+        }
+        if (autoPurgeOn && (msg.read || (msg.readBy && msg.readBy.length > 0))) {
+          const msgTime = msg.createdAt ? (msg.createdAt.seconds ? msg.createdAt.seconds * 1000 : (msg.createdAt.toDate ? msg.createdAt.toDate().getTime() : Date.parse(msg.createdAt))) : Date.now();
+          if (Date.now() - msgTime > retentionMs) {
+            // Auto-purge read expired message from Firestore
+            try {
+              deleteDoc(doc(db, 'chats', currentChat.id, 'messages', msg.id));
+            } catch (purgeErr) {
+              console.warn("Auto-purge message deletion error:", purgeErr);
+            }
+            return false;
           }
         }
         return true;
