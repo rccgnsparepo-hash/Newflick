@@ -2,329 +2,90 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 1. Global Safety Net - Default Deny Catch-All
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // --- Primitive Definitions ---
+    // Primitive helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Owner check for users
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    // Author check for user content
-    function isAuthorizedWrite(authorId) {
-      return isSignedIn() && request.auth.uid == authorId;
-    }
-
-    // Participant verification for private chats
-    function isParticipant(participantIds) {
-      return participantIds != null
-        && participantIds is list
-        && (isSignedIn() && (request.auth.uid in participantIds));
-    }
-
-    // Chat access checker
-    function isParentChatParticipant(chatId) {
-      return isSignedIn() && (
-        chatId == 'global-node-concourse'
-        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
-        || chatId.matches('^chat_.*' + request.auth.uid + '.*')
-        || (
-          exists(/databases/$(database)/documents/chats/$(chatId))
-          && 'participantIds' in get(/databases/$(database)/documents/chats/$(chatId)).data
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds
-        )
-      );
-    }
-
-    // --- Validation Blueprints with strict size enforcements ---
-
-    function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'displayName', 'photoURL', 'email', 'status', 'publicKey', 'updatedAt'])
-        && data.keys().size() >= 7 && data.keys().size() <= 31
-        && data.uid is string && data.uid.size() <= 128
-        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 128
-        && data.photoURL is string && data.photoURL.size() <= 1048576
-        && data.email is string && data.email.size() <= 128
-        && (data.status == 'online' || data.status == 'offline')
-        && data.publicKey is string && data.publicKey.size() <= 4096
-        && (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 500))
-        && (!('soundEnabled' in data) || data.soundEnabled == null || data.soundEnabled is bool)
-        && (!('notifSocialFeed' in data) || data.notifSocialFeed == null || data.notifSocialFeed is bool)
-        && (!('notifMessagesAll' in data) || data.notifMessagesAll == null || data.notifMessagesAll is bool)
-        && (!('notifMessagesFrom' in data) || data.notifMessagesFrom == null || (data.notifMessagesFrom is list && data.notifMessagesFrom.size() <= 100))
-        && (!('lastSeen' in data) || data.lastSeen == null || data.lastSeen is timestamp || data.lastSeen is string || data.lastSeen is int)
-        && (!('fcmToken' in data) || data.fcmToken == null || (data.fcmToken is string && data.fcmToken.size() <= 1024))
-        && (!('fcmTokens' in data) || data.fcmTokens == null || (data.fcmTokens is list && data.fcmTokens.size() <= 100))
-        && (!('oneSignalId' in data) || data.oneSignalId == null || (data.oneSignalId is string && data.oneSignalId.size() <= 128))
-        && (!('oneSignalSubscriptionId' in data) || data.oneSignalSubscriptionId == null || (data.oneSignalSubscriptionId is string && data.oneSignalSubscriptionId.size() <= 128))
-        && (!('oneSignalSubscriptionIds' in data) || data.oneSignalSubscriptionIds == null || (data.oneSignalSubscriptionIds is list && data.oneSignalSubscriptionIds.size() <= 100))
-        && (!('unreadBadgeCount' in data) || data.unreadBadgeCount == null || data.unreadBadgeCount is int)
-        && (!('disabledReadReceipts' in data) || data.disabledReadReceipts == null || (data.disabledReadReceipts is list && data.disabledReadReceipts.size() <= 1000))
-        && (!('isDeleted' in data) || data.isDeleted == null || data.isDeleted is bool)
-        && (!('sportsNotificationPrefs' in data) || data.sportsNotificationPrefs == null || data.sportsNotificationPrefs is map)
-        && (!('platform' in data) || data.platform == null || data.platform is string)
-        && (!('lastActive' in data) || data.lastActive == null || data.lastActive is timestamp || data.lastActive is string || data.lastActive is int)
-        && (data.updatedAt is timestamp || data.updatedAt == null || data.updatedAt is string);
-    }
-
-    function isValidPost(data) {
-      return data.keys().hasAll(['id', 'authorId', 'authorName', 'content', 'likesCount', 'createdAt', 'updatedAt'])
-        && data.id is string
-        && data.authorId is string
-        && (data.authorName == null || data.authorName is string)
-        && (!('authorPhoto' in data) || data.authorPhoto == null || data.authorPhoto is string)
-        && data.content is string
-        && data.likesCount is int
-        && (!('commentsCount' in data) || data.commentsCount == null || data.commentsCount is int)
-        && (!('imageUrl' in data) || data.imageUrl == null || data.imageUrl is string)
-        && (!('videoUrl' in data) || data.videoUrl == null || data.videoUrl is string)
-        && (!('audioUrl' in data) || data.audioUrl == null || data.audioUrl is string)
-        && (!('mediaType' in data) || data.mediaType == null || data.mediaType is string)
-        && (!('isLiveStream' in data) || data.isLiveStream == null || data.isLiveStream is bool)
-        && (!('liveMatchId' in data) || data.liveMatchId == null || data.liveMatchId is string)
-        && (data.createdAt is timestamp || data.createdAt == null || data.createdAt is string)
-        && (data.updatedAt is timestamp || data.updatedAt == null || data.updatedAt is string);
-    }
-
-    function isValidChat(data) {
-      return data.keys().hasAll(['id', 'participantIds', 'lastMessage', 'lastMessageAt'])
-        && data.id is string && data.id.size() <= 128
-        && data.participantIds is list
-        && data.lastMessage is string
-        && (data.lastMessageAt is timestamp || data.lastMessageAt == null || data.lastMessageAt is string)
-        && (
-          (!('isGroup' in data) || data.isGroup == false) ? (
-            data.participantIds.size() == 2
-          ) : (
-            data.isGroup == true
-            && data.participantIds.size() >= 1
-          )
-        );
-    }
-
-    function isValidMessage(data) {
-      return data.keys().hasAll(['id', 'senderId', 'receiverId', 'participantIds', 'createdAt'])
-        && data.id is string && data.id.size() <= 128
-        && data.senderId is string && data.senderId.size() <= 128
-        && data.receiverId is string && data.receiverId.size() <= 128
-        && data.participantIds is list
-        && (
-          (!('isGroupMessage' in data) || data.isGroupMessage == false) ? (
-            data.participantIds.size() == 2
-            && data.participantIds[0] is string
-            && data.participantIds[1] is string
-          ) : (
-            data.isGroupMessage == true
-            && data.participantIds.size() >= 1
-          )
-        )
-        && (!('read' in data) || data.read == null || data.read is bool)
-        && (!('readBy' in data) || data.readBy == null || data.readBy is list)
-        && (!('senderDisplayName' in data) || data.senderDisplayName == null || (data.senderDisplayName is string && data.senderDisplayName.size() <= 256))
-        && (!('expiresAt' in data) || data.expiresAt == null || data.expiresAt is timestamp)
-        && (!('readAt' in data) || data.readAt == null || data.readAt is timestamp || data.readAt == request.time)
-        && (!('pinned' in data) || data.pinned == null || data.pinned is bool)
-        && (data.createdAt is timestamp || data.createdAt == null || data.createdAt is string);
-    }
-
-    function isValidNotification(data) {
-      return data.keys().hasAll(['id', 'receiverId', 'senderName', 'type', 'title', 'body', 'read', 'createdAt'])
-        && data.keys().size() >= 8 && data.keys().size() <= 16
-        && data.id is string && data.id.size() <= 128
-        && data.receiverId is string && data.receiverId.size() <= 128
-        && data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 128
-        && (data.type == 'message' || data.type == 'like')
-        && data.title is string && data.title.size() <= 200
-        && data.body is string && data.body.size() <= 1000
-        && data.read is bool
-        && (data.createdAt is timestamp || data.createdAt == null || data.createdAt is string);
-    }
-
-    function isValidStory(data) {
-      return data.keys().hasAll(['id', 'authorId', 'authorName', 'content', 'mediaType', 'viewsCount', 'viewedBy', 'createdAt'])
-        && data.id is string
-        && data.authorId is string
-        && (data.authorName == null || data.authorName is string)
-        && (!('authorPhoto' in data) || data.authorPhoto == null || data.authorPhoto is string)
-        && data.content is string
-        && (data.mediaType == 'image' || data.mediaType == 'video' || data.mediaType == 'audio' || data.mediaType == 'none')
-        && (!('imageUrl' in data) || data.imageUrl == null || data.imageUrl is string)
-        && (!('videoUrl' in data) || data.videoUrl == null || data.videoUrl is string)
-        && (!('audioUrl' in data) || data.audioUrl == null || data.audioUrl is string)
-        && data.viewsCount is int
-        && data.viewedBy is list
-        && (data.createdAt is timestamp || data.createdAt == null || data.createdAt is string);
-    }
-
-    function isValidNews(data) {
-      return data.keys().hasAll(['title', 'category', 'impactLevel', 'summary', 'body', 'source', 'createdAt'])
-        && data.title is string && data.title.size() <= 256
-        && data.category is string && data.category.size() <= 128
-        && data.impactLevel is string && data.impactLevel.size() <= 64
-        && data.summary is string && data.summary.size() <= 1000
-        && data.body is string && data.body.size() <= 10000
-        && data.source is string && data.source.size() <= 128
-        && (!('url' in data) || data.url == null || (data.url is string && data.url.size() <= 1024))
-        && (data.createdAt is timestamp || data.createdAt == null || data.createdAt is string);
-    }
-
-    // --- Collection Matching and Rules ---
-
-    // Connection testing
+    // Connection test collection
     match /test/{document} {
-      allow read: if true;
+      allow read, write: if true;
     }
 
-    // 1. Users collection of public profiles
+    // 1. Users collection
     match /users/{userId} {
       allow read: if true;
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
-      allow delete: if isOwner(userId);
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
         
-      // Nested Private Info
-      match /private/info {
-        allow read, write: if isOwner(userId);
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
     }
 
     // 2. Feed Posts collection
     match /posts/{postId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid && isValidPost(request.resource.data);
-      allow update: if isSignedIn() && (
-        (resource.data.authorId == request.auth.uid && request.resource.data.authorId == request.auth.uid && request.resource.data.createdAt == resource.data.createdAt && isValidPost(request.resource.data))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'commentsCount', 'updatedAt']) 
-            && (!('likesCount' in request.resource.data) || request.resource.data.likesCount is int)
-            && (!('commentsCount' in request.resource.data) || request.resource.data.commentsCount is int))
-      );
-      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && (resource == null || resource.data.authorId == request.auth.uid);
   
-      // --- Nested Likes Subcollection ---
-      match /likes/{likerId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn() && likerId == request.auth.uid;
-      }
-
-      // --- Nested Post Reactions Subcollection ---
-      match /post_reactions/{userId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn() && userId == request.auth.uid;
-      }
-
-      // --- Nested Comments Subcollection ---
-      match /comments/{commentId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-        allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn();
       }
     }
 
-    // 3. Direct Chats metadata collection
+    // 3. Direct Chats and Group Chats metadata
     match /chats/{chatId} {
-      allow read: if isSignedIn() && (
-        resource == null 
-        || chatId == 'global-node-concourse'
-        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
-        || (request.auth.uid in resource.data.participantIds)
-      );
-      allow create: if isSignedIn() && (
-        chatId == 'global-node-concourse'
-        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
-        || (request.resource.data != null && 'participantIds' in request.resource.data && request.auth.uid in request.resource.data.participantIds)
-      ) && isValidChat(request.resource.data);
-      allow update: if isSignedIn() && (
-        chatId == 'global-node-concourse'
-        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
-        || (resource != null && 'participantIds' in resource.data && request.auth.uid in resource.data.participantIds)
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvalQueue']))
-      ) && isValidChat(request.resource.data);
-      allow delete: if isSignedIn() && (
-        chatId == 'global-node-concourse'
-        || chatId == 'chat_my-ai-bot-uid_' + request.auth.uid
-        || (resource != null && 'participantIds' in resource.data && request.auth.uid in resource.data.participantIds)
-        || (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid)
-      );
+      allow read, create, update: if isSignedIn();
+      allow delete: if isSignedIn();
          
-      // 4. Subcollection messages of direct chats.
+      // Subcollection messages
       match /messages/{messageId} {
-        allow read: if isParentChatParticipant(chatId);
-        allow create: if isParentChatParticipant(chatId) 
-          && (request.resource.data.senderId == request.auth.uid || (chatId.matches('^chat_my-ai-bot-uid_.*') && request.resource.data.senderId == 'my-ai-bot-uid')) 
-          && isValidMessage(request.resource.data);
-        allow update: if isParentChatParticipant(chatId) && isValidMessage(request.resource.data);
-        allow delete: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+        allow read, create, update, delete: if isSignedIn();
 
-        // --- Message Reactions Subcollection ---
-        match /message_reactions/{userId} {
-          allow read: if isParentChatParticipant(chatId);
-          allow write: if isParentChatParticipant(chatId) && userId == request.auth.uid;
+        match /{allSubcollections=**} {
+          allow read, write: if isSignedIn();
         }
       }
 
-      // --- Typing status subcollection ---
-      match /typingStates/{userId} {
-        allow read: if isParentChatParticipant(chatId);
-        allow write: if isParentChatParticipant(chatId) && userId == request.auth.uid;
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn();
       }
     }
 
-    // 5. In-App Notifications collection
+    // 4. In-App Notifications
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.receiverId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && isValidNotification(request.resource.data);
-      allow update: if isSignedIn() && resource.data.receiverId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow delete: if false;
+      allow read, create, update, delete: if isSignedIn();
     }
 
-    // 6. Stories collection
+    // 5. Stories collection
     match /stories/{storyId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid && isValidStory(request.resource.data);
-      allow update: if isSignedIn() && (
-        (resource.data.authorId == request.auth.uid && isValidStory(request.resource.data))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'viewedBy', 'pollVotes', 'pollOptions'])
-            && (!('viewsCount' in request.resource.data) || request.resource.data.viewsCount is int)
-            && (!('viewedBy' in request.resource.data) || request.resource.data.viewedBy is list)
-            && (!('pollVotes' in request.resource.data) || request.resource.data.pollVotes is map)
-            && (!('pollOptions' in request.resource.data) || request.resource.data.pollOptions is list))
-      );
-      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
         
-      // --- Nested Story Reactions Subcollection ---
-      match /story_reactions/{userId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn() && userId == request.auth.uid;
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn();
       }
     }
 
-    // 7. Feedback collection
+    // 6. Feedbacks collection
     match /feedbacks/{feedbackId} {
-      allow create: if true;
-      allow read, update, delete: if false;
+      allow read, create, update: if true;
     }
 
-    // 8. Realtime Active Calls collection
+    // 7. Calls collection
     match /calls/{callId} {
       allow read, write: if isSignedIn();
     }
 
-    // 9. Broadcast News collection
+    // 8. Broadcast News collection
     match /news/{newsId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidNews(request.resource.data);
-      allow update, delete: if isSignedIn() && (request.auth.token != null && 'email' in request.auth.token && request.auth.token.email.matches('^system-backend.*@flick-pwa\\.internal$'));
+      allow create, update, delete: if isSignedIn();
     }
   }
 }
