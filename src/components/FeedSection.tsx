@@ -1424,7 +1424,15 @@ export default function FeedSection({
         {/* Left Column: Main views */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
           {/* Main Tab Views Switcher Wrapper */}
-          <div className={`flex-1 pb-24 md:pb-0 ${activeTab === 'chat' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto px-4 py-3 space-y-5'}`}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className={`flex-1 pb-24 md:pb-0 ${activeTab === 'chat' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto px-4 py-3 space-y-5'}`}
+            >
         
         {/* ==================== HOME TAB VIEW ==================== */}
         {activeTab === 'home' && (
@@ -2127,7 +2135,8 @@ export default function FeedSection({
           </div>
         )}
 
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Right Column: Desktop Sidebar */}

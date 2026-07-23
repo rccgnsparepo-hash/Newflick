@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2 } from 'lucide-react';
+import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { showBrutalistToast } from '../lib/toast';
@@ -14,6 +14,8 @@ import { SettingsAccountTab } from './SettingsAccountTab';
 import { SettingsNotificationsTab } from './SettingsNotificationsTab';
 import { SettingsAccessibilityTab } from './SettingsAccessibilityTab';
 import { SettingsOtherTabs } from './SettingsOtherTabs';
+import { SettingsQrKeyExchangeTab } from './SettingsQrKeyExchangeTab';
+import { SettingsStoragePurgeTab } from './SettingsStoragePurgeTab';
 import { UserProfile } from '../types';
 import { getSavedTheme, applyTheme, BrutalistTheme, THEMES } from '../lib/theme';
 import { isVibrationEnabled, setVibrationEnabled, triggerVibration, getVibrationIntensity, setVibrationIntensity, VibrationIntensity } from '../lib/haptics';
@@ -52,7 +54,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'accessibility' | 'friends' | 'help' | 'quantum'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'accessibility' | 'qr' | 'storage' | 'friends' | 'help' | 'quantum'>('account');
   const [eduModeEnabled, setEduModeEnabled] = useState<boolean>(() => localStorage.getItem('flick_edu_mode') === 'true');
   const [newsFeedStyle, setNewsFeedStyle] = useState<'vapor' | 'brutalist' | 'silicon'>(() => {
     return (localStorage.getItem('flick_news_style') as 'vapor' | 'brutalist' | 'silicon') || 'brutalist';
@@ -462,6 +464,8 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                 <div className="md:col-span-4 flex flex-col gap-1.5 border-b md:border-b-0 md:border-r border-[var(--neon-green)]/20 pb-4 md:pb-0 md:pr-4">
                   {[
                     { id: 'account', label: 'Identity Account', icon: User },
+                    { id: 'qr', label: 'QR Key Exchange', icon: QrCode },
+                    { id: 'storage', label: 'Storage & Purge', icon: HardDrive },
                     { id: 'notifications', label: 'Notifications Hub', icon: Bell },
                     { id: 'accessibility', label: 'Accessibility & UI', icon: Eye },
                     { id: 'friends', label: 'Add Flick Friend', icon: UserPlus },
@@ -515,6 +519,33 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                           onReplayTour={onReplayTour}
                           onClose={onClose}
                         />
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'qr' && (
+                      <motion.div
+                        key="tab-panel-qr"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <SettingsQrKeyExchangeTab
+                          profile={profile}
+                          onCloseModal={onClose}
+                        />
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'storage' && (
+                      <motion.div
+                        key="tab-panel-storage"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <SettingsStoragePurgeTab />
                       </motion.div>
                     )}
 
