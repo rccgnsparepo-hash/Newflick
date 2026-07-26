@@ -98,11 +98,11 @@ function Dashboard() {
     setShowNotifDropdown
   } = useNavigation();
 
-  React.useEffect(() => {
+  useEffect(() => {
     applyTheme(getSavedTheme());
   }, []);
 
-  const [ongoingCall, setOngoingCall] = React.useState<any | null>(null);
+  const [ongoingCall, setOngoingCall] = useState<any | null>(null);
 
   // Programmatically lock scrolling when any overlay/modal/sheet is open, preserving vertical scroll offsets
   const isAnyOverlayOpen = 
@@ -116,7 +116,7 @@ function Dashboard() {
 
   useScrollLock(isAnyOverlayOpen);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Handle Electron Deeplinks and Tray actions
     if (typeof window !== 'undefined' && (window as any).require) {
       try {
@@ -163,7 +163,7 @@ function Dashboard() {
   const { triggerInAppNotification } = useNotificationSystem();
 
   // Subscribe to incoming call requests
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthReady || !profile?.uid) return;
 
     const unsubscribeIncoming = subscribeToIncomingCall(profile.uid, (incomingCall) => {
@@ -192,7 +192,7 @@ function Dashboard() {
   }, [profile?.uid]);
 
   // Sync handshakes in real-time
-  React.useEffect(() => {
+  useEffect(() => {
     if (!ongoingCall?.id) return;
 
     const unsubscribeState = subscribeToCallState(ongoingCall.id, (updatedCall) => {
@@ -214,7 +214,7 @@ function Dashboard() {
   }, [ongoingCall?.id]);
 
   // Handle outbound calls triggered via custom window event
-  React.useEffect(() => {
+  useEffect(() => {
     const handleInitiateCall = async (e: Event) => {
       const customEvent = e as CustomEvent<{
         peerId: string;
@@ -256,15 +256,15 @@ function Dashboard() {
     };
   }, [profile]);
   const { isOnline, connectionType, isSlow } = useConnectivity();
-  const [deepLinkedPostId, setDeepLinkedPostId] = React.useState<string | null>(null);
-  const [deepLinkedStoryId, setDeepLinkedStoryId] = React.useState<string | null>(null);
-  const [deepLinkedNewsId, setDeepLinkedNewsId] = React.useState<string | null>(null);
-  const [deepLinkedAnnouncementId, setDeepLinkedAnnouncementId] = React.useState<string | null>(null);
+  const [deepLinkedPostId, setDeepLinkedPostId] = useState<string | null>(null);
+  const [deepLinkedStoryId, setDeepLinkedStoryId] = useState<string | null>(null);
+  const [deepLinkedNewsId, setDeepLinkedNewsId] = useState<string | null>(null);
+  const [deepLinkedAnnouncementId, setDeepLinkedAnnouncementId] = useState<string | null>(null);
 
-  const [batteryLevel, setBatteryLevel] = React.useState<number | null>(null);
-  const [isCharging, setIsCharging] = React.useState<boolean | null>(null);
+  const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
+  const [isCharging, setIsCharging] = useState<boolean | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let batteryInstance: any = null;
     const nav = navigator as any;
 
@@ -295,7 +295,7 @@ function Dashboard() {
     };
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.uid) {
       const completed = localStorage.getItem(`flick_onboarded_v3_${profile.uid}`) === 'true';
       setShowOnboarding(!completed);
@@ -310,12 +310,12 @@ function Dashboard() {
   }, [profile?.uid]);
 
   // Sync deepLinkManager state triggers
-  React.useEffect(() => {
+  useEffect(() => {
     deepLinkManager.setStates(true, !!profile);
   }, [profile]);
 
   // Subscribe to normalized deep-link manager navigation events
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = deepLinkManager.subscribe((payload) => {
       console.log('[Dashboard DeepLink] Handled dispatcher callback route:', payload);
       const targetId = payload.senderId || payload.params?.id || payload.params?.newsId || payload.params?.postId || payload.params?.storyId || payload.params?.groupId || payload.params?.announcementId || null;
@@ -383,7 +383,7 @@ function Dashboard() {
   }, []);
 
   // Handle native deep link events dispatched from legacy routes or custom elements
-  React.useEffect(() => {
+  useEffect(() => {
     const handleDeepLinkEvent = (e: Event) => {
       const customEvent = e as CustomEvent;
       const data = customEvent.detail;
@@ -401,19 +401,19 @@ function Dashboard() {
     };
   }, []);
 
-  const [notifications, setNotifications] = React.useState<InAppNotification[]>([]);
+  const [notifications, setNotifications] = useState<InAppNotification[]>([]);
 
   // Theme support
-  const [theme, setTheme] = React.useState<'light' | 'dark'>('dark'); // Default to dark for premium green-black look
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark for premium green-black look
 
   // Native notification permission state
-  const [pushPermission, setPushPermission] = React.useState<string>(() => checkNotificationPermission());
+  const [pushPermission, setPushPermission] = useState<string>(() => checkNotificationPermission());
 
   // In-app elegant floating toast state
-  const [toasts, setToasts] = React.useState<{ id: string; title: string; body: string; icon?: string; type?: 'success' | 'error' | 'warning' | 'info' | 'loading' }[]>([]);
+  const [toasts, setToasts] = useState<{ id: string; title: string; body: string; icon?: string; type?: 'success' | 'error' | 'warning' | 'info' | 'loading' }[]>([]);
 
   // Auto Dismiss Toast Alerts (only dismiss non-loading toasts)
-  React.useEffect(() => {
+  useEffect(() => {
     const nonLoadingToasts = toasts.filter(t => t.type !== 'loading');
     if (nonLoadingToasts.length > 0) {
       const firstNonLoading = nonLoadingToasts[0];
@@ -425,7 +425,7 @@ function Dashboard() {
   }, [toasts]);
 
   // Global listener for custom brutalist toast dispatching
-  React.useEffect(() => {
+  useEffect(() => {
     const handleToastTrigger = (e: Event) => {
       const customEvent = e as CustomEvent<{ title: string; body: string; type?: 'success' | 'error' | 'warning' | 'info' | 'loading'; icon?: string; id?: string }>;
       if (customEvent.detail) {
@@ -514,20 +514,20 @@ function Dashboard() {
   };
 
   // Session markers to prevent spam on reload
-  const sessionStartTime = React.useRef<number>(Date.now());
-  const seenNotificationIds = React.useRef<Set<string>>(new Set());
-  const seenPostIds = React.useRef<Set<string>>(new Set());
-  const seenUserStatuses = React.useRef<Record<string, string>>({});
-  const usersRef = React.useRef<any[]>([]);
-  const isFeedInitialLoaded = React.useRef<boolean>(false);
+  const sessionStartTime = useRef<number>(Date.now());
+  const seenNotificationIds = useRef<Set<string>>(new Set());
+  const seenPostIds = useRef<Set<string>>(new Set());
+  const seenUserStatuses = useRef<Record<string, string>>({});
+  const usersRef = useRef<any[]>([]);
+  const isFeedInitialLoaded = useRef<boolean>(false);
 
   // Hardcode always dark mode for absolute brutalism black and green aesthetic
-  React.useEffect(() => {
+  useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
 
   // Proactively request native push notification permissions on initial startup
-  React.useEffect(() => {
+  useEffect(() => {
     const autoRequestPush = async () => {
       if (checkNotificationPermission() === 'default') {
         const res = await requestNotificationPermission();
@@ -547,7 +547,7 @@ function Dashboard() {
   }, []);
 
   // Register Capacitor push notifications once the signed-in profile is active
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.uid) {
       // 1. Register with OneSignal SDK
       registerCapacitorPushNotifications(profile.uid);
@@ -558,7 +558,7 @@ function Dashboard() {
   }, [profile?.uid, profile]);
 
   // Subscribe to unread messages or likes notifications alerts (simulated pushes)
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToNotifications(profile.uid, (unread) => {
       setNotifications(unread);
@@ -567,8 +567,8 @@ function Dashboard() {
   }, [isAuthReady, profile?.uid]);
 
   // Welcome back feedback on login showing pending notifications
-  const isInitialNotifAlert = React.useRef(true);
-  React.useEffect(() => {
+  const isInitialNotifAlert = useRef(true);
+  useEffect(() => {
     if (!profile || notifications.length === 0) return;
     if (isInitialNotifAlert.current) {
       isInitialNotifAlert.current = false;
@@ -581,7 +581,7 @@ function Dashboard() {
   }, [profile, notifications]);
 
   // Dispatch real push notifications for new unread messages/likes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!profile) return;
     notifications.forEach((n) => {
       if (!seenNotificationIds.current.has(n.id)) {
@@ -626,7 +626,7 @@ function Dashboard() {
   }, [notifications, profile?.uid, profile?.notifMessagesAll, profile?.notifMessagesFrom, profile?.notifSocialFeed]);
 
   // Dispatch real push notifications for new posts on Social Feed
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthReady || !profile) return;
     const wasLoaded = isFeedInitialLoaded.current;
     const unsubscribe = subscribeToFeed((posts) => {
@@ -654,7 +654,7 @@ function Dashboard() {
   }, [isAuthReady, profile?.uid, profile?.notifSocialFeed]);
 
   // Dispatch real push notifications for user presence sign ins
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToUsers((allUsers) => {
       usersRef.current = allUsers;
@@ -679,7 +679,7 @@ function Dashboard() {
     return () => unsubscribe();
   }, [isAuthReady, profile?.uid]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
       const isTyping = activeElement && (

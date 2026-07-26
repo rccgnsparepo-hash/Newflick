@@ -55,12 +55,12 @@ export function SettingsAccessibilityTab({
 }: AccessibilityTabProps) {
   const { theme, colorScheme, accentColor, setTheme, setColorScheme, setAccentColor } = useTheme();
 
-  const [isElectron, setIsElectron] = React.useState(false);
-  const [startOnLogin, setStartOnLogin] = React.useState(false);
-  const [desktopLoading, setDesktopLoading] = React.useState(false);
-  const [appVersion, setAppVersion] = React.useState('');
+  const [isElectron, setIsElectron] = useState(false);
+  const [startOnLogin, setStartOnLogin] = useState(false);
+  const [desktopLoading, setDesktopLoading] = useState(false);
+  const [appVersion, setAppVersion] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkElectron = typeof window !== 'undefined' && (window as any).require;
     if (checkElectron) {
       try {
