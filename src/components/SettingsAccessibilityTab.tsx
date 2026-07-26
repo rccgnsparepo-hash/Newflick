@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, Shield, Laptop, Cpu } from 'lucide-react';
 import { BrutalistTheme, THEMES } from '../lib/theme';
 import { VibrationIntensity } from '../lib/haptics';

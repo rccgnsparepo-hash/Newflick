@@ -233,7 +233,7 @@ export async function registerCapacitorPushNotifications(uid: string) {
     // 1. Initialize
     if (Capacitor.isNativePlatform()) {
       addPushDebugLog('info', 'Initializing via Cordova Native Plugin (APK/Capacitor)');
-      OneSignal.initialize("050ecfbd-c43d-453d-a578-2f3ece4649ea");
+      OneSignal.setAppId("050ecfbd-c43d-453d-a578-2f3ece4649ea");
     } else {
       addPushDebugLog('info', 'Initializing via Web SDK (PWA)');
       await OneSignal.init({

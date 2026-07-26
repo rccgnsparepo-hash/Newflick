@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ConnectivityProvider, useConnectivity } from './contexts/ConnectivityContext';
 import { OperationProvider } from './contexts/OperationContext';
