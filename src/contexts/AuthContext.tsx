@@ -426,17 +426,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Explicitly set presence offline
-        const ref = doc(db, 'users', currentUser.uid);
-        await updateDoc(ref, { status: 'offline', updatedAt: serverTimestamp() });
+        try {
+          const ref = doc(db, 'users', currentUser.uid);
+          await updateDoc(ref, { status: 'offline', updatedAt: serverTimestamp() });
+        } catch (e) {
+          console.warn('[AuthContext] Failed to update presence status during logout:', e);
+        }
       }
+      
+      // Reset local state for active session FIRST so React unmounts listeners
+      // and prevents "Missing or insufficient permissions" when token revokes
+      setCurrentUser(null);
+      setProfile(null);
+      setLocalPrivateKey(null);
+      
+      // Give React time to unmount components and clear Firebase listeners
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Perform typical signout (handles Google credentials)
       await signOut(auth);
       
-      // Reset local state for active session
-      setCurrentUser(null);
-      setProfile(null);
-      setLocalPrivateKey(null);
     } catch (error) {
       console.warn("Signout error:", error);
     } finally {
