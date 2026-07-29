@@ -228,16 +228,17 @@ export async function registerCapacitorPushNotifications(uid: string) {
   }
 
   try {
-    addPushDebugLog('info', 'Initializing OneSignal Web App ID: 050ecfbd-c43d-453d-a578-2f3ece4649ea');
+    const ONESIGNAL_ID = "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
+    addPushDebugLog('info', `Initializing OneSignal App ID: ${ONESIGNAL_ID}`);
     
     // 1. Initialize
     if (Capacitor.isNativePlatform()) {
       addPushDebugLog('info', 'Initializing via Cordova Native Plugin (APK/Capacitor)');
-      OneSignal.initialize("050ecfbd-c43d-453d-a578-2f3ece4649ea");
+      OneSignal.initialize(ONESIGNAL_ID);
     } else {
-      addPushDebugLog('info', 'Initializing via Web SDK (PWA)');
+      addPushDebugLog('info', 'Initializing via Web SDK (PWA / Median)');
       await OneSignal.init({
-        appId: "050ecfbd-c43d-453d-a578-2f3ece4649ea",
+        appId: ONESIGNAL_ID,
         allowLocalhostAsSecureOrigin: true,
         serviceWorkerParam: { scope: "/" },
         serviceWorkerPath: "OneSignalSDKWorker.js",
@@ -495,7 +496,7 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
     // Deduplicate and filter empty
     playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-    const ONESIGNAL_APP_ID = "050ecfbd-c43d-453d-a578-2f3ece4649ea";
+    const ONESIGNAL_APP_ID = process.env.VITE_ONESIGNAL_APP_ID || process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
     let channelId = "messages";
     if (extraData && extraData.type) {
       const type = extraData.type;

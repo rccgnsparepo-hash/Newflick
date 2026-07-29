@@ -154,7 +154,7 @@ async function startServer() {
 
                 playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-                const ONESIGNAL_APP_ID = "050ecfbd-c43d-453d-a578-2f3ece4649ea";
+                const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
                 const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
 
                 let channelId = "messages";
@@ -243,7 +243,7 @@ async function startServer() {
 
               playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-              const ONESIGNAL_APP_ID = "050ecfbd-c43d-453d-a578-2f3ece4649ea";
+              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
               const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
 
               const payload: any = {
@@ -311,7 +311,7 @@ async function startServer() {
 
               playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-              const ONESIGNAL_APP_ID = "050ecfbd-c43d-453d-a578-2f3ece4649ea";
+              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
               const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
 
               const payload: any = {

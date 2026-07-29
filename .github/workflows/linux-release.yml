@@ -1,0 +1,69 @@
+name: Build & Release Linux App (.deb & AppImage)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Inject Repository Info
+        run: |
+          npm pkg set repository.type="git"
+          npm pkg set repository.url="https://github.com/${{ github.repository }}.git"
+
+      - name: Install Dependencies
+        run: npm ci || npm install --legacy-peer-deps
+
+      - name: Bump Version
+        run: npm version 1.0.${{ github.run_number }} --no-git-tag-version
+
+      - name: Generate and Push Git Tag
+        id: tag
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          TAG_NAME="linux-v1.0.${{ github.run_number }}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          git tag $TAG_NAME || true
+          git push origin $TAG_NAME || true
+
+      - name: Convert Icon for Electron
+        run: node scripts/build-icon.js || true
+
+      - name: Build Web App
+        run: npm run build
+
+      - name: Build Linux Packages (.deb & AppImage for Deepin OS / Debian / Ubuntu)
+        run: npx electron-builder --linux deb AppImage -p never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            release/*.deb
+            release/*.AppImage
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -25,18 +25,35 @@ let bootstrapPromise: Promise<BootstrapConfig> | null = null;
 export function getBackendUrl(): string {
   if (typeof window === 'undefined') return '';
   
-  // 1. Check localStorage first
+  // 1. Check localStorage for user-overridden backend server URL
   const savedUrl = localStorage.getItem('flick_backend_url');
-  if (savedUrl) {
-    return savedUrl.replace(/\/$/, '');
+  if (savedUrl && savedUrl.trim()) {
+    return savedUrl.trim().replace(/\/$/, '');
   }
   
-  // 2. If we are running in the browser normally, use the current origin
-  if (window.location.protocol !== 'file:' && window.location.hostname !== '') {
-    return '';
+  // 2. Check build-time environment variable
+  const envUrl = (import.meta as any).env?.VITE_BACKEND_URL || (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/$/, '');
   }
-  
-  return '';
+
+  // 3. Detect standalone desktop executable (Electron file:/app: protocol) or Capacitor APK (capacitor:// / localhost)
+  const isStandalone = (
+    window.location.protocol === 'file:' ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'app:' ||
+    (window.location.hostname === 'localhost' && window.location.port !== '3000') ||
+    (window.location.hostname === '127.0.0.1' && window.location.port !== '3000')
+  );
+
+  if (isStandalone) {
+    // Connect to live Cloud Run server for Father AI, Flick Arena sports, and Firebase config pairing
+    const remoteBackend = (import.meta as any).env?.VITE_REMOTE_BACKEND_URL || "https://ais-dev-zu5wepafp2hyqxyhqmj344-930155083055.europe-west2.run.app";
+    return remoteBackend.replace(/\/$/, '');
+  }
+
+  // 4. Default web browser origin
+  return window.location.origin || '';
 }
 
 /**

@@ -1832,6 +1832,9 @@ export default function ChatSection({
   // Burning message mode selector
   const [selfDestructSeconds, setSelfDestructSeconds] = useState<number>(0); // 0 = standard unlimited message, >0 represent custom lifespan
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef<any>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
   
   // Custom brutalist theme accent variables and chat settings panel
   const [isChatInfoOpen, setIsChatInfoOpen] = useState(false);
@@ -2565,6 +2568,7 @@ export default function ChatSection({
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
@@ -2576,14 +2580,25 @@ export default function ChatSection({
       };
 
       recorder.onstop = async () => {
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+          audioStreamRef.current = null;
+        }
+
+        if (audioChunksRef.current.length === 0) return;
+
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         try {
-          const fileSegment = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+          const fileSegment = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
           const b64 = await fileToBase64(fileSegment);
           setSelectedAttachment({
             dataUrl: b64,
             type: 'audio',
-            name: `voice-message-${Date.now()}.webm`
+            name: `Voice Note (${Math.floor(recordingSeconds / 60)}:${(recordingSeconds % 60).toString().padStart(2, '0')})`
           });
           playLikeSound();
         } catch (e) {
@@ -2593,7 +2608,13 @@ export default function ChatSection({
 
       recorder.start();
       setIsRecording(true);
+      setRecordingSeconds(0);
       playGlitchClickSound();
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(prev => prev + 1);
+      }, 1000);
     } catch (e) {
       setError("Audio capture microphone missing or permission blocked.");
     }
@@ -2605,6 +2626,24 @@ export default function ChatSection({
       setIsRecording(false);
       playGlitchClickSound();
     }
+  };
+
+  const cancelVoiceRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
+    }
+    if (mediaRecorderRef.current && isRecording) {
+      audioChunksRef.current = [];
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setRecordingSeconds(0);
+    playGlitchClickSound();
   };
 
   // Toggle Speech-to-text translation microphone listeners
@@ -3581,9 +3620,10 @@ export default function ChatSection({
                 } else {
                   if (!peer) return false;
                   const nameMatch = peer.displayName.toLowerCase().includes(q);
+                  const emailMatch = peer.email?.toLowerCase().includes(q);
                   const aliasMatch = (renamedNicknames[peer.uid] || '').toLowerCase().includes(q);
                   const lastMsgMatch = chat.lastMessage?.toLowerCase().includes(q);
-                  if (!nameMatch && !aliasMatch && !lastMsgMatch) return false;
+                  if (!nameMatch && !emailMatch && !aliasMatch && !lastMsgMatch) return false;
                 }
               }
               return true;
@@ -5745,38 +5785,86 @@ export default function ChatSection({
 
               {/* Message Typing Panel */}
               <div className="flex items-center space-x-2.5">
-                <input
-                  type="text"
-                  placeholder="TRANSMIT SECURE ENCRYPTED DIALOGUE..."
-                  value={text}
-                  onChange={(e) => {
-                    setText(e.target.value);
-                    handleTypingPulse();
-                  }}
-                  onPaste={handlePaste}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const sendShortcutSetting = localStorage.getItem('flick_send_shortcut') || 'enter';
-                      if (sendShortcutSetting === 'cmd-enter') {
-                        const isCmdOrCtrl = e.metaKey || e.ctrlKey;
-                        if (!isCmdOrCtrl) {
-                          e.preventDefault();
+                {isRecording ? (
+                  <div className="flex-1 flex items-center justify-between bg-red-950/40 border-2 border-red-500/60 p-2.5 px-3.5 space-x-3 font-mono">
+                    <div className="flex items-center space-x-2.5">
+                      <span className="w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
+                      <span className="text-red-400 font-extrabold text-xs uppercase tracking-wider">
+                        REC {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}
+                      </span>
+                      <div className="hidden sm:flex items-center space-x-1 pl-2">
+                        <span className="w-1 h-3 bg-red-500 animate-pulse" />
+                        <span className="w-1 h-5 bg-red-400 animate-pulse delay-75" />
+                        <span className="w-1 h-2 bg-red-500 animate-pulse delay-150" />
+                        <span className="w-1 h-4 bg-red-400 animate-pulse delay-100" />
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={cancelVoiceRecording}
+                        className="p-1.5 border border-red-500/50 hover:bg-red-900/60 text-red-300 font-bold text-[10px] uppercase flex items-center space-x-1 cursor-pointer"
+                        title="Discard voice recording"
+                      >
+                        <Trash className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">DISCARD</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopVoiceRecording}
+                        className="px-3 py-1.5 bg-red-500 hover:bg-red-400 text-black font-extrabold text-[10px] uppercase flex items-center space-x-1 cursor-pointer"
+                        title="Stop and attach voice note"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>ATTACH VOICE NOTE</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="TRANSMIT SECURE ENCRYPTED DIALOGUE..."
+                      value={text}
+                      onChange={(e) => {
+                        setText(e.target.value);
+                        handleTypingPulse();
+                      }}
+                      onPaste={handlePaste}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const sendShortcutSetting = localStorage.getItem('flick_send_shortcut') || 'enter';
+                          if (sendShortcutSetting === 'cmd-enter') {
+                            const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+                            if (!isCmdOrCtrl) {
+                              e.preventDefault();
+                            }
+                          }
                         }
-                      }
-                    }
-                  }}
-                  disabled={sending}
-                  className="flex-1 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 p-3 leading-none text-xs text-[var(--neon-green)] focus:outline-none focus:border-[var(--neon-green)] placeholder:opacity-50 select-text font-serif"
-                />
-                
-                <button
-                  type="submit"
-                  disabled={sending || (!text.trim() && !selectedAttachment)}
-                  className="bg-[var(--neon-green)] border border-black text-black font-extrabold uppercase px-6 py-3.5 text-xs transition-all cursor-pointer hover:bg-white hover:text-black shrink-0 flex items-center space-x-2 select-none"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">SEND</span>
-                </button>
+                      }}
+                      disabled={sending}
+                      className="flex-1 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 p-3 leading-none text-xs text-[var(--neon-green)] focus:outline-none focus:border-[var(--neon-green)] placeholder:opacity-50 select-text font-serif"
+                    />
+                    
+                    <button
+                      type="button"
+                      onClick={startVoiceRecording}
+                      className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition cursor-pointer shrink-0"
+                      title="Record Voice Note"
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={sending || (!text.trim() && !selectedAttachment)}
+                      className="bg-[var(--neon-green)] border border-black text-black font-extrabold uppercase px-6 py-3.5 text-xs transition-all cursor-pointer hover:bg-white hover:text-black shrink-0 flex items-center space-x-2 select-none"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">SEND</span>
+                    </button>
+                  </>
+                )}
               </div>
 
             </form>

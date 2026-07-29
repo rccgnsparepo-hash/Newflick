@@ -21,3 +21,20 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Flick
   artifactName: Flick-Setup-${version}.${ext}
+linux:
+  target:
+    - deb
+    - AppImage
+  icon: public/icon.png
+  category: Utility
+  maintainer: Flick Developers <support@flick.app>
+  description: Flick Secure Cryptographic Campus Network & Social Hub
+  artifactName: Flick-${version}.${ext}
+deb:
+  depends:
+    - gconf2
+    - gconf-service
+    - libnotify4
+    - libappindicator1
+    - libxtst6
+    - nss

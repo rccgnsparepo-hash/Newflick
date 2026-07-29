@@ -1424,19 +1424,11 @@ export default function FeedSection({
         {/* Left Column: Main views */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
           {/* Main Tab Views Switcher Wrapper */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className={`flex-1 pb-24 md:pb-0 ${activeTab === 'chat' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto px-4 py-3 space-y-5'}`}
-            >
+          <div className="flex-1 w-full h-full relative">
         
         {/* ==================== HOME TAB VIEW ==================== */}
-        {activeTab === 'home' && (
-          <div className="max-w-xl md:max-w-2xl mx-auto w-full space-y-5 pb-12 animate-fade-in">
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-4 py-3 pb-24 md:pb-0 space-y-5 ${activeTab === 'home' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+          <div className="max-w-xl md:max-w-2xl mx-auto w-full space-y-5 pb-12">
             {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
             <div className="sticky -top-3.5 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
               <button
@@ -1961,13 +1953,11 @@ export default function FeedSection({
       </>
     )}
           </div>
-        )}
-
-
+        </div>
 
         {/* ==================== MATCH TAB VIEW ==================== */}
-        {activeTab === 'match' && (
-          <div className="space-y-5 animate-fade-in">
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-4 py-3 pb-24 md:pb-0 ${activeTab === 'match' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+          <div className="space-y-5">
             <span className="text-[9px] uppercase tracking-widest font-mono text-zinc-500 font-black block border-l border-pink-500 pl-1.5">
               OMEGLE-LIKE CAMPUS MATCHER
             </span>
@@ -2092,10 +2082,10 @@ export default function FeedSection({
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* ==================== PROFILE TAB VIEW ==================== */}
-        {activeTab === 'profile' && (
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-4 py-3 pb-24 md:pb-0 ${activeTab === 'profile' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
           <BentoProfile
             profile={profile}
             firebasePosts={firebasePosts}
@@ -2108,11 +2098,11 @@ export default function FeedSection({
             triggerVibration={triggerVibration}
             showBrutalistToast={showBrutalistToast}
           />
-        )}
+        </div>
 
         {/* ==================== SECURE CRYPTO CHATS TAB ==================== */}
-        {activeTab === 'chat' && (
-          <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col animate-fade-in bg-[var(--color-surface)]">
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-hidden bg-[var(--color-surface)] ${activeTab === 'chat' ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-95 pointer-events-none'}`}>
+          <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
             <ChatSection 
               deepLinkedPeerId={deepLinkedPeerId} 
               onClearDeepLink={onClearDeepLink} 
@@ -2120,23 +2110,23 @@ export default function FeedSection({
               onClearDeepLinkedGroup={onClearDeepLinkedGroup}
             />
           </div>
-        )}
+        </div>
 
         {/* ==================== WORKSPACE HUB TAB ==================== */}
-        {activeTab === 'workspace' && (
-          <div className="flex-1 overflow-hidden animate-fade-in flex flex-col p-4">
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-hidden p-4 pb-24 md:pb-0 ${activeTab === 'workspace' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+          <div className="flex-1 overflow-hidden flex flex-col">
             <WorkspaceHub />
           </div>
-        )}
+        </div>
+
         {/* ==================== CAMPUS NEWS WIRE TAB ==================== */}
-        {activeTab === 'news' && (
-          <div className="flex-1 overflow-y-auto pb-10 animate-fade-in">
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto pb-24 md:pb-10 px-4 pt-3 ${activeTab === 'news' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+          <div className="flex-1 flex flex-col">
             <SecureNewsFlow />
           </div>
-        )}
+        </div>
 
-            </motion.div>
-          </AnimatePresence>
+        </div>
         </div>
 
         {/* Right Column: Desktop Sidebar */}
@@ -3203,132 +3193,77 @@ export default function FeedSection({
         </div>
       )}
 
-      {/* =================================== MOBILE FLOATING BOTTOM NAVIGATION BAR =================================== */}
-      <nav className="fixed bottom-5 left-5 right-5 md:hidden z-50 bg-[#0a0a0c]/85 backdrop-blur-lg border border-[var(--neon-green-border)]/60 p-1.5 rounded-2xl flex items-center justify-around shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden">
+      {/* =================================== MOBILE NATIVE BOTTOM NAVIGATION BAR =================================== */}
+      <nav className="fixed bottom-0 left-0 right-0 md:hidden z-50 bg-[var(--color-surface)]/95 backdrop-blur-xl border-t border-zinc-800 pb-[env(safe-area-inset-bottom)] pt-1 px-2 flex items-center justify-around shadow-2xl">
         
         {/* Feed Tab */}
         <button
           onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('home'); }}
-          className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer z-10 ${
-            activeTab === 'home' ? 'text-[var(--neon-green)] font-extrabold scale-105' : 'text-zinc-500'
-          }`}
+          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
         >
-          {activeTab === 'home' && (
-            <motion.div 
-              layoutId="activeTabMobileGlow"
-              className="absolute inset-0 bg-[var(--neon-green)]/10 border border-[var(--neon-green)]/20 rounded-xl -z-10"
-              transition={{ type: 'spring', damping: 18, stiffness: 220 }}
-            />
-          )}
-          <School className="w-4.5 h-4.5" />
-          <span className="text-[7px] mt-0.5 font-mono uppercase tracking-wider">Feed</span>
+          <School className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'home' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
+          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'home' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Feed</span>
         </button>
 
         {/* Radio Tab */}
         <button
           onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('news'); }}
-          className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer z-10 ${
-            activeTab === 'news' ? 'text-[var(--neon-green)] font-extrabold scale-105' : 'text-zinc-500'
-          }`}
+          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
         >
-          {activeTab === 'news' && (
-            <motion.div 
-              layoutId="activeTabMobileGlow"
-              className="absolute inset-0 bg-[var(--neon-green)]/10 border border-[var(--neon-green)]/20 rounded-xl -z-10"
-              transition={{ type: 'spring', damping: 18, stiffness: 220 }}
-            />
-          )}
-          <Radio className="w-4.5 h-4.5" />
-          <span className="text-[7px] mt-0.5 font-mono uppercase tracking-wider">Radio</span>
+          <Radio className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'news' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
+          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'news' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Radio</span>
         </button>
 
         {/* Workspace Mobile Tab */}
         <button
           onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('workspace'); }}
-          className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer z-10 ${
-            activeTab === 'workspace' ? 'text-[var(--neon-green)] font-extrabold scale-105' : 'text-zinc-500'
-          }`}
+          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
         >
-          {activeTab === 'workspace' && (
-            <motion.div 
-              layoutId="activeTabMobileGlow"
-              className="absolute inset-0 bg-[var(--neon-green)]/10 border border-[var(--neon-green)]/20 rounded-xl -z-10"
-              transition={{ type: 'spring', damping: 18, stiffness: 220 }}
-            />
-          )}
-          <Briefcase className="w-4.5 h-4.5" />
-          <span className="text-[7px] mt-0.5 font-mono uppercase tracking-wider">Hub</span>
+          <Briefcase className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'workspace' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
+          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'workspace' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Hub</span>
         </button>
 
         {/* Chats Tab */}
         <button
           onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('chat'); }}
-          className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer z-10 ${
-            activeTab === 'chat' ? 'text-[var(--neon-green)] font-extrabold scale-105' : 'text-zinc-500'
-          }`}
+          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
         >
-          {activeTab === 'chat' && (
-            <motion.div 
-              layoutId="activeTabMobileGlow"
-              className="absolute inset-0 bg-[var(--neon-green)]/10 border border-[var(--neon-green)]/20 rounded-xl -z-10"
-              transition={{ type: 'spring', damping: 18, stiffness: 220 }}
-            />
-          )}
           <div className="relative">
-            <MessageSquare className="w-4.5 h-4.5" />
+            <MessageSquare className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'chat' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
             {unreadE2EECount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-[var(--color-text)] font-mono font-black text-[6px] w-3 h-3 rounded-full flex items-center justify-center border border-black animate-pulse">
+              <span className="absolute -top-1 -right-1.5 bg-red-500 text-white font-bold text-[10px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-[var(--color-surface)]">
                 {unreadE2EECount}
               </span>
             )}
           </div>
-          <span className="text-[7px] mt-0.5 font-mono uppercase tracking-wider">Chats</span>
+          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'chat' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Chats</span>
         </button>
 
         {/* Match Tab */}
         <button
           onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('match'); }}
-          className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer z-10 ${
-            activeTab === 'match' ? 'text-pink-500 font-extrabold scale-105' : 'text-zinc-500 hover:text-pink-400'
-          }`}
+          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
         >
-          {activeTab === 'match' && (
-            <motion.div 
-              layoutId="activeTabMobileGlow"
-              className="absolute inset-0 bg-pink-500/10 border border-pink-500/20 rounded-xl -z-10"
-              transition={{ type: 'spring', damping: 18, stiffness: 220 }}
-            />
-          )}
-          <Sparkles className="w-4.5 h-4.5 text-pink-500" />
-          <span className="text-[7px] mt-0.5 font-mono uppercase tracking-wider text-pink-500">Match</span>
+          <Sparkles className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'match' ? 'text-pink-500' : 'text-zinc-500'}`} />
+          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'match' ? 'text-pink-500' : 'text-zinc-500'}`}>Match</span>
         </button>
 
         {/* Profile Tab */}
         <button
           onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('profile'); }}
-          className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer z-10 ${
-            activeTab === 'profile' ? 'text-red-500 font-extrabold scale-105' : 'text-zinc-500 hover:text-red-400'
-          }`}
+          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
         >
-          {activeTab === 'profile' && (
-            <motion.div 
-              layoutId="activeTabMobileGlow"
-              className="absolute inset-0 bg-red-500/10 border border-red-500/20 rounded-xl -z-10"
-              transition={{ type: 'spring', damping: 18, stiffness: 220 }}
-            />
-          )}
           <img
             src={profile?.photoURL}
             alt=""
-            className={`w-4.5 h-4.5 rounded-full object-cover border ${
-              activeTab === 'profile' ? 'border-red-500' : 'border-zinc-700'
+            className={`w-6 h-6 rounded-full object-cover border-2 transition-colors duration-200 ${
+              activeTab === 'profile' ? 'border-red-500' : 'border-transparent'
             }`}
             referrerPolicy="no-referrer"
           />
-          <span className="text-[7px] mt-0.5 font-mono uppercase tracking-wider">Node</span>
+          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'profile' ? 'text-red-500' : 'text-zinc-500'}`}>Node</span>
         </button>
       </nav>
-
     </div>
   );
 }

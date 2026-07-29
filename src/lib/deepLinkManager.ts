@@ -23,16 +23,59 @@ class DeepLinkManager {
 
   constructor() {
     this.restorePendingDeepLink();
+    this.initNativeAndWebListeners();
+  }
+
+  private initNativeAndWebListeners() {
+    if (typeof window === 'undefined') return;
+
+    // Check window URL query parameters on initial load
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const routeParam = urlParams.get('route') || (urlParams.get('chatId') || urlParams.get('senderId') ? 'chat' : null);
+      if (routeParam) {
+        const payload = this.parsePayload({
+          route: routeParam,
+          senderId: urlParams.get('senderId') || urlParams.get('chatId') || undefined,
+          chatId: urlParams.get('chatId') || undefined,
+          id: urlParams.get('id') || `url-query-${Date.now()}`
+        });
+        if (payload) {
+          console.log('[DeepLink Manager] Query parameter deep link detected on load:', payload);
+          this.queueDeepLink(payload);
+        }
+      }
+    } catch (e) {
+      console.warn('[DeepLink Manager] Error reading window location query:', e);
+    }
+
+    // Median.co / GoNative JavaScript Bridge integration
+    const uWindow = window as any;
+    uWindow.gonative_onesignal_opened = (data: any) => {
+      console.log('[Median Bridge] OneSignal notification opened:', data);
+      if (data && data.additionalData) {
+        const parsed = this.parsePayload(data.additionalData);
+        if (parsed) this.queueDeepLink(parsed);
+      }
+    };
+
+    // Listen for custom window event dispatches
+    window.addEventListener('fara-flick-deeplink', (e: any) => {
+      if (e.detail) {
+        const parsed = this.parsePayload(e.detail);
+        if (parsed) this.queueDeepLink(parsed);
+      }
+    });
   }
 
   /**
-   * Safe parser to extract route/params from app:// scheme links
+   * Safe parser to extract route/params from custom scheme or web URLs
    */
   public parseUrl(urlStr: string): DeepLinkPayload | null {
     if (!urlStr) return null;
     try {
       console.log('[DeepLink Parser] Parsing url:', urlStr);
-      const cleaned = urlStr.replace(/^(app|faraflick):\/\//i, '');
+      const cleaned = urlStr.replace(/^(app|faraflick|flick|https?):\/\//i, '');
       const parts = cleaned.split('/');
       const route = parts[0]?.toLowerCase().trim();
       const id = parts[1]?.split('?')[0] || null;

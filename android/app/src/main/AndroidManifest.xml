@@ -26,6 +26,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="app" />
+                <data android:scheme="flick" />
+                <data android:scheme="faraflick" />
             </intent-filter>
         </activity>
 
