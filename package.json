@@ -47,6 +47,12 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Flick",
       "artifactName": "Flick-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "desktopName": "Flick",
+      "category": "Network;Chat",
+      "syncDesktopName": true,
+      "icon": "public/icon.png"
     }
   },
   "scripts": {

@@ -3,9 +3,11 @@ import {createRoot} from 'react-dom/client';
 import './index.css';
 import { initBootstrap } from './lib/bootstrap';
 
+
+
 const originalConsoleError = console.error;
 console.error = function(...args) {
-  const msg = args.join(' ');
+  const msg = args.map(arg => arg instanceof Error ? arg.message : typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : String(arg)).join(' ');
   if (msg.includes('Missing or insufficient permissions') || msg.includes('ResizeObserver')) {
     return;
   }
