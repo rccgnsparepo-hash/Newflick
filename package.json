@@ -1,6 +1,9 @@
 {
   "name": "flick",
-  "author": "Faratech",
+  "author": {
+    "name": "Faratech",
+    "email": "boboyaga78@gmail.com"
+  },
   "description": "Flick - Secure Encrypted Chat",
   "private": true,
   "version": "0.0.0",
