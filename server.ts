@@ -154,8 +154,8 @@ async function startServer() {
 
                 playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-                const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
-                const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
+                const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
+                const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
                 let channelId = "messages";
                 if (type === 'message' || type === 'group_message') channelId = "messages";
@@ -243,8 +243,8 @@ async function startServer() {
 
               playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
-              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
+              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
+              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
               const payload: any = {
                 app_id: ONESIGNAL_APP_ID,
@@ -311,8 +311,8 @@ async function startServer() {
 
               playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
-              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
+              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
+              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
               const payload: any = {
                 app_id: ONESIGNAL_APP_ID,
@@ -411,7 +411,7 @@ async function startServer() {
   // API Route for sending OneSignal push notifications securely (no CORS preflight issue!)
   app.post("/api/push/send", async (req, res) => {
     try {
-      const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_auhm7poehvct3jlyf47m4rsj5liwvlrc3m7umv5dkmrx4wayralvoioinr3swnssztksl2bxl5c2ro3xkwmqhjfasy5pxcjerfa2mdi";
+      const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
       // Forward full body from client to preserve all native options (channel_id, small_icon, large_icon, collapse_id, etc.)
       const payload = { ...req.body };

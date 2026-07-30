@@ -228,7 +228,7 @@ export async function registerCapacitorPushNotifications(uid: string) {
   }
 
   try {
-    const ONESIGNAL_ID = "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
+    const ONESIGNAL_ID = "453179e9-df43-4411-847b-e1cd7ae1a0f3";
     addPushDebugLog('info', `Initializing OneSignal App ID: ${ONESIGNAL_ID}`);
     
     // 1. Initialize
@@ -496,7 +496,7 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
     // Deduplicate and filter empty
     playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-    const ONESIGNAL_APP_ID = process.env.VITE_ONESIGNAL_APP_ID || process.env.ONESIGNAL_APP_ID || "a03fc9f3-4a7e-498f-89fe-2436e4de34d0";
+    const ONESIGNAL_APP_ID = process.env.VITE_ONESIGNAL_APP_ID || process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
     let channelId = "messages";
     if (extraData && extraData.type) {
       const type = extraData.type;

@@ -13,6 +13,7 @@
     "appId": "com.faratech.flick",
     "productName": "Flick",
     "compression": "maximum",
+    "icon": "public/icon.png",
     "directories": {
       "output": "release"
     },
