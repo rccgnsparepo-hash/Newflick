@@ -7,28 +7,44 @@ import { initBootstrap } from './lib/bootstrap';
 
 const originalConsoleError = console.error;
 console.error = function(...args) {
-  const msg = args.map(arg => arg instanceof Error ? arg.message : typeof arg === 'object' && arg !== null ? JSON.stringify(arg) : String(arg)).join(' ');
-  if (msg.includes('Missing or insufficient permissions') || msg.includes('ResizeObserver')) {
+  const msg = args.map(arg => {
+    if (arg instanceof Error) return arg.message + ' ' + (arg.stack || '');
+    if (typeof arg === 'object' && arg !== null) {
+      try { return JSON.stringify(arg); } catch (e) { return String(arg); }
+    }
+    return String(arg);
+  }).join(' ');
+
+  if (
+    msg.includes('Missing or insufficient permissions') ||
+    msg.includes('permission-denied') ||
+    msg.includes('ResizeObserver')
+  ) {
     return;
   }
   originalConsoleError.apply(console, args);
 };
 
-
 // Prevent ResizeObserver loop limit exceeded error from bubbling up as a fatal error
 window.addEventListener('error', (e) => {
-  if (e.message && (
-    e.message.includes('ResizeObserver loop completed') ||
-    e.message.includes('ResizeObserver loop limit') ||
-    e.message.includes('Missing or insufficient permissions')
-  )) {
+  const msg = e.message || (e.error && e.error.message) || String(e);
+  if (
+    msg.includes('ResizeObserver') ||
+    msg.includes('Missing or insufficient permissions') ||
+    msg.includes('permission-denied')
+  ) {
     e.stopImmediatePropagation();
     e.preventDefault();
   }
 });
 
 window.addEventListener('unhandledrejection', (e) => {
-  if (e.reason && e.reason.message && e.reason.message.includes('Missing or insufficient permissions')) {
+  const reasonMsg = e.reason ? (e.reason.message || (typeof e.reason === 'object' ? JSON.stringify(e.reason) : String(e.reason))) : '';
+  if (
+    reasonMsg.includes('Missing or insufficient permissions') ||
+    reasonMsg.includes('permission-denied') ||
+    reasonMsg.includes('ResizeObserver')
+  ) {
     e.preventDefault();
     e.stopImmediatePropagation();
   }

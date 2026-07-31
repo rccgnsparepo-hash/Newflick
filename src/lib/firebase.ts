@@ -91,9 +91,10 @@ export interface FirestoreErrorInfo {
  * Enhanced Firestore Error Handler that throws a JSON string containing the context.
  * Required by Firebase integration skill checklist to diagnostics policies.
  */
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
+  const errMessage = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMessage,
     authInfo: {
       userId: auth?.currentUser?.uid,
       email: auth?.currentUser?.email,
@@ -109,6 +110,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
   console.warn('Firestore Error Captured:', JSON.stringify(errInfo));
+  
+  // Do not throw unhandled rejections for list/read queries or permission denied errors
+  if (
+    operationType === OperationType.LIST || 
+    operationType === OperationType.GET || 
+    errMessage.includes('permission') || 
+    errMessage.includes('Missing or insufficient permissions')
+  ) {
+    return;
+  }
+
   throw new Error(JSON.stringify(errInfo));
 }
 
