@@ -49,10 +49,15 @@
       "artifactName": "Flick-Setup-${version}.${ext}"
     },
     "linux": {
-      "desktopName": "Flick",
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "icon": "public/icon.png",
       "category": "Network;Chat",
-      "syncDesktopName": true,
-      "icon": "public/icon.png"
+      "maintainer": "Faratech <boboyaga78@gmail.com>",
+      "description": "Flick - Secure Encrypted Chat",
+      "artifactName": "Flick-${version}.${ext}"
     }
   },
   "scripts": {

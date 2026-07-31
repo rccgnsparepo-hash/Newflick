@@ -26,9 +26,9 @@ linux:
     - deb
     - AppImage
   icon: public/icon.png
-  category: Utility
-  maintainer: Flick Developers <support@flick.app>
-  description: Flick Secure Cryptographic Campus Network & Social Hub
+  category: Network;Chat
+  maintainer: Faratech <boboyaga78@gmail.com>
+  description: Flick - Secure Encrypted Chat
   artifactName: Flick-${version}.${ext}
 deb:
   depends:
