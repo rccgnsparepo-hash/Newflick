@@ -501,7 +501,7 @@ export async function sendE2EEMessage(params: {
       lastMessageAt: serverTimestamp()
     });
 
-    // Submit push Notification metadata so recipient's device triggers sound/banners (Pillar 7 existsAfter equivalent)
+    // Submit push Notification metadata so recipient's device triggers sound/banners
     const notifyPayload = {
       id: notificationId,
       receiverId,
@@ -514,12 +514,25 @@ export async function sendE2EEMessage(params: {
       read: false,
       createdAt: serverTimestamp()
     };
-
+    
     // Zod Validation
     InAppNotificationSchema.parse(notifyPayload);
     batch.set(notificationRef, notifyPayload);
-
+    
     await batch.commit();
+
+    // TRIGGER NATIVE PUSH IMMEDIATELY VIA REST PROXY FOR INSTANT DELIVERY
+    try {
+      // Lazy load to avoid circular dependencies
+      const { sendOneSignalPush } = await import('./pushNotifications');
+      await sendOneSignalPush(receiverId, `E2EE Message from ${senderDisplayName}`, 'Click to unlock private message', {
+        chatId,
+        senderName: senderDisplayName,
+        type: 'message'
+      });
+    } catch (pushFastPathErr) {
+      console.warn("Fast-path push failed, relying on backend watcher", pushFastPathErr);
+    }
 
     // Note: Background native push notification dispatch is now fully delegated to the 
     // secure, authenticated backend system snapshot trigger engine (server.ts) to eliminate
@@ -845,9 +858,18 @@ export async function sendGroupMessageService(params: {
             // Validate and save
             InAppNotificationSchema.parse(notifyPayload);
             await setDoc(notificationRef, notifyPayload);
-
-            // Note: Native push notification dispatch is fully managed by the server listener (server.ts) 
-            // when notification is written above.
+            
+            // FAST PATH INSTANT NATIVE PUSH DISPATCH
+            try {
+              const { sendOneSignalPush } = await import('./pushNotifications');
+              await sendOneSignalPush(destUid, `Group ${chatSnap.data().name || 'Chat'}`, `${senderDisplayName}: ${snippet.slice(0, 75)}`, {
+                chatId,
+                senderName: senderDisplayName,
+                type: 'group_message'
+              });
+            } catch (pushFastPathErr) {
+               console.warn("Fast-path group push failed, relying on backend watcher", pushFastPathErr);
+            }
           }
         }
       }

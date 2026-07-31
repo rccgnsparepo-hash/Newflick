@@ -518,7 +518,9 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
       headings: { en: title },
       contents: { en: body || "" },
       data: extraData || {},
-      priority: 10,                 // High priority: dispatches immediately and wakes up deep-sleeping devices
+      priority: 10,
+      content_available: true,
+      mutable_content: true,                 // High priority: dispatches immediately and wakes up deep-sleeping devices
       ttl: 259200,                  // Time To Live: 3 days in seconds
       android_visibility: 1,        // Public: visible on lock screen
       android_sound: "default",
@@ -547,6 +549,9 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
       payload.include_aliases = { external_id: [recipientId] };
       payload.include_external_user_ids = [recipientId]; // Fallback for older API versions
       payload.target_channel = "push";
+      payload.isAndroid = true;
+      payload.isIos = true;
+      payload.isAnyWeb = true;
       addPushDebugLog('info', `Targeting alias external_id: ${recipientId}`);
     }
 

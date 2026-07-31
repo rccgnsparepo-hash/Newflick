@@ -129,7 +129,7 @@ async function startServer() {
     }, 5000);
 
     // 1. Listen to notifications collection (covers: Messages, Likes, Comments, Mentions, Follows)
-    if (isAuthenticated) {
+    if (true) {
       onSnapshot(query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(1)), async (snapshot) => {
         if (!initialLoadComplete) return;
 
@@ -174,6 +174,8 @@ async function startServer() {
                     type
                   },
                   priority: 10,
+                  content_available: true,
+                  mutable_content: true,
                   ttl: 259200,
                   android_visibility: 1,
                   android_sound: "default",
@@ -190,6 +192,7 @@ async function startServer() {
                   payload.include_aliases = { external_id: [receiverId] };
                   payload.include_external_user_ids = [receiverId]; // Fallback for older API versions
                   payload.target_channel = "push";
+                  payload.isAndroid = true; // Ensure native Android push delivery
                 }
 
                 const osResponse = await fetch("https://onesignal.com/api/v1/notifications", {
@@ -256,6 +259,8 @@ async function startServer() {
                   type: "new_post"
                 },
                 priority: 10,
+                  content_available: true,
+                  mutable_content: true,
                 ttl: 259200,
                 android_channel_id: "updates",
                 small_icon: "ic_stat_flick_logo",
@@ -267,6 +272,7 @@ async function startServer() {
               } else {
                 payload.include_aliases = { external_id: [uDoc.id] };
                 payload.target_channel = "push";
+                payload.isAndroid = true; // Ensure native Android push delivery
               }
 
               await fetch("https://onesignal.com/api/v1/notifications", {
@@ -323,6 +329,8 @@ async function startServer() {
                   type: "news"
                 },
                 priority: 10,
+                  content_available: true,
+                  mutable_content: true,
                 ttl: 259200,
                 android_channel_id: "updates",
                 small_icon: "ic_stat_flick_logo",
@@ -334,6 +342,7 @@ async function startServer() {
               } else {
                 payload.include_aliases = { external_id: [uDoc.id] };
                 payload.target_channel = "push";
+                payload.isAndroid = true; // Ensure native Android push delivery
               }
 
               await fetch("https://onesignal.com/api/v1/notifications", {
