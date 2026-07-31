@@ -577,6 +577,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                           notifMessagesFrom={notifMessagesFrom}
                           systemUsers={systemUsers}
                           toggleAllowedSender={toggleAllowedSender}
+                          profile={profile}
                         />
                       </motion.div>
                     )}

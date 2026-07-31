@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Clock, Smartphone, Zap, ShieldAlert, Volume2 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { playGroupNotificationSound } from '../lib/sounds';
+import { NativePushDebugger } from './NativePushDebugger';
 import {
   getHapticPatternForMessageType,
   setHapticPatternForMessageType,
@@ -36,6 +37,7 @@ interface NotificationsTabProps {
   notifMessagesFrom: string[];
   systemUsers: UserProfile[];
   toggleAllowedSender: (uid: string) => void;
+  profile?: UserProfile;
 }
 
 export function SettingsNotificationsTab({
@@ -57,7 +59,8 @@ export function SettingsNotificationsTab({
   setNotifPriorityChatsOnly,
   notifMessagesFrom,
   systemUsers,
-  toggleAllowedSender
+  toggleAllowedSender,
+  profile
 }: NotificationsTabProps) {
   const [, setSoundsUpdateToken] = useState(0);
 
@@ -505,6 +508,20 @@ export function SettingsNotificationsTab({
             })
           )}
         </div>
+      </div>
+
+      {/* Native Push Diagnostic & Push Test Dispatcher */}
+      <div className="space-y-2 border-t border-dashed border-[var(--neon-green)]/20 pt-4">
+        <label className="text-[10px] uppercase tracking-widest font-extrabold text-[var(--neon-green)] font-mono block">
+          ⚡ NATIVE PUSH TEST & DISPATCHER
+        </label>
+        <p className="text-[8.5px] text-zinc-500 leading-normal mb-2 font-mono">
+          Dispatch live native push notifications to your registered devices (APK & Web):
+        </p>
+        <NativePushDebugger 
+          uid={profile?.uid} 
+          oneSignalSubscriptionId={profile?.oneSignalSubscriptionId || profile?.oneSignalId} 
+        />
       </div>
     </div>
   );

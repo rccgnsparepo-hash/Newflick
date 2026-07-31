@@ -17,6 +17,8 @@ export interface UserProfile {
   disabledReadReceipts?: string[];
   encryptedPrivateKey?: string; // Symmetrically encrypted privateKeyJwk using Global Key Password
   globalKeyPassword?: string; // Backed up human-readable Recovery/Sync Passkey
+  oneSignalSubscriptionId?: string;
+  oneSignalId?: string;
 }
 
 export interface PrivateUserInfo {

@@ -239,7 +239,7 @@ export function SettingsOtherTabs({
             </div>
           </div>
 
-          <div className="border-t border-zinc-950 pt-2 opacity-50 pointer-events-none select-none filter blur-[1px]">
+          <div className="border-t border-zinc-950 pt-2">
             <NativePushDebugger 
               uid={profile?.uid} 
               oneSignalSubscriptionId={profile?.oneSignalSubscriptionId || profile?.oneSignalId} 

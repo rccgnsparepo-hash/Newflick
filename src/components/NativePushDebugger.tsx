@@ -5,8 +5,10 @@ import {
   PushDebugLog, 
   validatePushNotificationPayload, 
   addPushDebugLog,
-  checkNotificationPermission
+  checkNotificationPermission,
+  sendOneSignalPush
 } from '../lib/pushNotifications';
+import { showBrutalistToast } from '../lib/toast';
 import { 
   Terminal, 
   CheckCircle2, 
@@ -19,7 +21,9 @@ import {
   ChevronUp, 
   Info, 
   Sparkles,
-  Layers
+  Layers,
+  Send,
+  BellRing
 } from 'lucide-react';
 
 interface NativePushDebuggerProps {
@@ -30,6 +34,19 @@ interface NativePushDebuggerProps {
 export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, oneSignalSubscriptionId }) => {
   const [logs, setLogs] = useState<PushDebugLog[]>([]);
   const [expandedLogIdx, setExpandedLogIdx] = useState<number | null>(null);
+  const [isSendingPush, setIsSendingPush] = useState(false);
+  
+  // Native Push Dispatcher state
+  const [targetUid, setTargetUid] = useState(uid || '');
+  const [pushTitle, setPushTitle] = useState('⚡ NATIVE PUSH SIGNAL TEST');
+  const [pushBody, setPushBody] = useState('Cross-platform sync verified. Desktop ↔ APK delivery working!');
+
+  useEffect(() => {
+    if (uid && !targetUid) {
+      setTargetUid(uid);
+    }
+  }, [uid]);
+
   const [testPayload, setTestPayload] = useState({
     senderId: 'debug_node_fara',
     content: 'Enrypted tunnel handshake synchronization sequence complete.',
@@ -53,6 +70,37 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
   const handleClearLogs = () => {
     clearPushDebugLogs();
     setExpandedLogIdx(null);
+  };
+
+  const handleSendNativePushTest = async () => {
+    const destId = targetUid.trim() || uid;
+    if (!destId) {
+      showBrutalistToast('TARGET UID REQUIRED', 'Please specify a target user UID to dispatch native push.', 'error');
+      return;
+    }
+
+    setIsSendingPush(true);
+    addPushDebugLog('info', `Triggering interactive Native Push test to UID: ${destId}`);
+
+    try {
+      const res = await sendOneSignalPush(destId, pushTitle, pushBody, {
+        type: 'message',
+        senderName: 'SYSTEM TESTER',
+        isNativeTest: true
+      });
+
+      if (res.success) {
+        showBrutalistToast('NATIVE PUSH DISPATCHED', `Signal routed via OneSignal proxy to UID: ${destId}`, 'success');
+      } else {
+        const errDetail = Array.isArray(res.errors) ? res.errors.join(', ') : 'Check debugger logs for details.';
+        showBrutalistToast('PUSH DISPATCH WARNING', `Response: ${errDetail}`, 'warning');
+      }
+    } catch (err: any) {
+      addPushDebugLog('error', `Native Push dispatch exception: ${err?.message || String(err)}`);
+      showBrutalistToast('DISPATCH EXCEPTION', err?.message || 'Failed sending native push', 'error');
+    } finally {
+      setIsSendingPush(false);
+    }
   };
 
   const handleTestValidator = () => {
@@ -79,20 +127,80 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
   const currentPermission = checkNotificationPermission();
 
   return (
-    <div id="native-push-debugger-root" className="border border-[var(--neon-green)]/20 bg-[var(--color-surface)]/90 p-4 font-mono select-text w-full">
+    <div id="native-push-debugger-root" className="border border-[var(--neon-green)]/30 bg-[var(--color-surface)]/90 p-4 font-mono select-text w-full">
       {/* Title Header */}
       <div className="flex items-center justify-between border-b border-[var(--neon-green)]/20 pb-3 mb-4">
         <div className="flex items-center space-x-2">
           <Terminal className="w-4 h-4 text-[var(--neon-green)] animate-pulse" />
           <span className="text-xs font-bold tracking-widest text-[var(--neon-green)] uppercase">
-            Native Push Debugger & Diagnostic Logs
+            Native Push Debugger & Dispatcher
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <span className="text-[9px] px-1.5 py-0.5 bg-[var(--neon-green)]/15 text-[var(--neon-green)] rounded-none border border-[var(--neon-green)]/35">
-            PWA SANDBOX
+          <span className="text-[9px] px-1.5 py-0.5 bg-[var(--neon-green)]/15 text-[var(--neon-green)] rounded-none border border-[var(--neon-green)]/35 font-bold">
+            CROSS-PLATFORM PUSH
           </span>
         </div>
+      </div>
+
+      {/* Main Interactive Dispatch Box */}
+      <div className="border border-[var(--neon-green)]/40 bg-[var(--neon-green)]/5 p-3 mb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--neon-green)] flex items-center gap-1.5">
+            <BellRing className="w-4 h-4 text-[var(--neon-green)] animate-bounce" /> Live Native Push Dispatcher
+          </span>
+          <span className="text-[8.5px] text-zinc-400">Pushes to APK & Web background workers</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[9.5px]">
+          <div>
+            <label className="text-[8.5px] text-zinc-400 block uppercase mb-0.5">Target User UID:</label>
+            <input 
+              type="text"
+              value={targetUid}
+              onChange={e => setTargetUid(e.target.value)}
+              placeholder="e.g. your_uid_or_peer_uid"
+              className="w-full bg-[var(--color-background)] border border-[var(--neon-green-border)] p-1.5 text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
+            />
+          </div>
+          <div>
+            <label className="text-[8.5px] text-zinc-400 block uppercase mb-0.5">Notification Title:</label>
+            <input 
+              type="text"
+              value={pushTitle}
+              onChange={e => setPushTitle(e.target.value)}
+              placeholder="Title"
+              className="w-full bg-[var(--color-background)] border border-[var(--neon-green-border)] p-1.5 text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
+            />
+          </div>
+          <div>
+            <label className="text-[8.5px] text-zinc-400 block uppercase mb-0.5">Notification Body:</label>
+            <input 
+              type="text"
+              value={pushBody}
+              onChange={e => setPushBody(e.target.value)}
+              placeholder="Message body"
+              className="w-full bg-[var(--color-background)] border border-[var(--neon-green-border)] p-1.5 text-[var(--color-text)] focus:outline-none focus:border-[var(--neon-green)]"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSendNativePushTest}
+          disabled={isSendingPush}
+          className="w-full py-2 bg-[var(--neon-green)]/20 border border-[var(--neon-green)] hover:bg-[var(--neon-green)] text-[var(--neon-green)] hover:text-black font-extrabold text-xs uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2"
+        >
+          {isSendingPush ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" /> DISPATCHING VIA ONESIGNAL PROXY...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" /> SEND TEST NATIVE PUSH NOTIFICATION
+            </>
+          )}
+        </button>
       </div>
 
       {/* Grid of details */}
@@ -220,7 +328,7 @@ export const NativePushDebugger: React.FC<NativePushDebuggerProps> = ({ uid, one
                   >
                     <div className="flex items-center space-x-2 min-w-0">
                       <LogIcon className={`w-3.5 h-3.5 shrink-0 ${typeColor}`} />
-                      <span className="text-zinc-600 shrink-0 font-light	">[{log.timestamp}]</span>
+                      <span className="text-zinc-600 shrink-0 font-light">[{log.timestamp}]</span>
                       <span className="text-[var(--color-text)] truncate font-medium">{log.message}</span>
                     </div>
                     <div>
