@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   });
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const verifyingUidRef = useRef<string | null>(null);
 
   // Helper to generate a human-readable cyber-styled Global Key Password
   const generateGlobalKeyPassword = (): string => {
@@ -249,51 +250,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      const hasCache = !!localStorage.getItem('flick_cached_user') && !!localStorage.getItem('flick_cached_profile');
-      if (!hasCache) {
-        setLoading(true);
-      }
+      try {
+        const hasCache = !!localStorage.getItem('flick_cached_user') && !!localStorage.getItem('flick_cached_profile');
+        if (!hasCache) {
+          setLoading(true);
+        }
 
-      if (user) {
-        const simplifiedUser = {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        };
-        try {
-          localStorage.setItem('flick_cached_user', JSON.stringify(simplifiedUser));
-          localStorage.setItem('flick_cached_uid', user.uid);
-        } catch {}
+        if (user) {
+          const simplifiedUser = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          };
+          try {
+            localStorage.setItem('flick_cached_user', JSON.stringify(simplifiedUser));
+            localStorage.setItem('flick_cached_uid', user.uid);
+          } catch {}
 
-        setCurrentUser(user);
-        await handleKeyVerification(
-          user.uid,
-          user.displayName || 'Google User',
-          user.email || '',
-          user.photoURL || ''
-        );
-      } else {
-        // Clear cache if session is explicitly cleared / logged out
-        try {
-          localStorage.removeItem('flick_cached_user');
-          localStorage.removeItem('flick_cached_profile');
-          localStorage.removeItem('flick_cached_private_key');
-          localStorage.removeItem('flick_cached_uid');
-        } catch {}
-        setCurrentUser(null);
-        setProfile(null);
-        setLocalPrivateKey(null);
+          setCurrentUser(user);
+
+          // Prevent race conditions and duplicate concurrent verification runs
+          if (verifyingUidRef.current !== user.uid) {
+            verifyingUidRef.current = user.uid;
+            await handleKeyVerification(
+              user.uid,
+              user.displayName || 'Google User',
+              user.email || '',
+              user.photoURL || ''
+            ).catch((err) => console.warn('Key verification warning:', err));
+            verifyingUidRef.current = null;
+          }
+        } else {
+          verifyingUidRef.current = null;
+          // Clear cache if session is explicitly cleared / logged out
+          try {
+            localStorage.removeItem('flick_cached_user');
+            localStorage.removeItem('flick_cached_profile');
+            localStorage.removeItem('flick_cached_private_key');
+            localStorage.removeItem('flick_cached_uid');
+          } catch {}
+          setCurrentUser(null);
+          setProfile(null);
+          setLocalPrivateKey(null);
+        }
+      } catch (err) {
+        console.warn("[AuthContext] onAuthStateChanged processing error:", err);
+      } finally {
+        setLoading(false);
+        setIsAuthReady(true);
       }
-      setLoading(false);
-      setIsAuthReady(true);
     });
 
     // Handle offline status trigger tab/window exit
     const handleBeforeUnload = () => {
-      if (currentUser?.uid && db) {
+      if (auth?.currentUser?.uid && db) {
         // Set offline in Firestore (runs best effort synchronously)
-        const ref = doc(db, 'users', currentUser.uid);
+        const ref = doc(db, 'users', auth.currentUser.uid);
         updateDoc(ref, { status: 'offline', updatedAt: serverTimestamp() }).catch(console.warn);
       }
     };
@@ -304,7 +317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [currentUser?.uid]);
+  }, []);
 
   // Sync Realtime Database presence
   useEffect(() => {

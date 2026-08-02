@@ -90,7 +90,16 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       }
 
       const baseUrl = getBackendUrl();
-      const response = await fetch(`${baseUrl}/api/bootstrap`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}/api/bootstrap`, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
       if (!response.ok) {
         throw new Error(`Failed to fetch bootstrap config: ${response.status}`);
       }

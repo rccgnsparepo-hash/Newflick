@@ -6,12 +6,53 @@
 import { isSoundEnabled } from './sounds';
 import { triggerMessageTypeVibration, triggerPatternVibration, MessageType } from './haptics';
 import { doc, setDoc, arrayUnion, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, app } from './firebase';
 import { deepLinkManager } from './deepLinkManager';
 import { PushPayloadSchema } from './schemas';
 import { Capacitor } from '@capacitor/core';
 import OneSignalPlugin from 'onesignal-cordova-plugin';
 import { getBackendUrl } from './bootstrap';
+
+/**
+ * Registers Firebase Cloud Messaging (FCM) push tokens if supported on device/browser
+ */
+export async function registerFcmNotifications(uid: string) {
+  try {
+    const { getMessaging, getToken, onMessage, isSupported } = await import('firebase/messaging');
+    const supported = await isSupported().catch(() => false);
+    if (!supported || !app) {
+      addPushDebugLog('info', 'FCM Web Push messaging is not available on this platform/browser.');
+      return;
+    }
+
+    const messaging = getMessaging(app);
+    const vapidKey = (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY || undefined;
+
+    const currentToken = await getToken(messaging, { vapidKey }).catch((err) => {
+      console.warn('[FCM] Token acquisition exception:', err?.message || err);
+      return null;
+    });
+
+    if (currentToken) {
+      addPushDebugLog('success', `Obtained native FCM token: ${currentToken.slice(0, 15)}...`);
+      const userRef = doc(db, 'users', uid);
+      await setDoc(userRef, {
+        fcmToken: currentToken,
+        fcmTokens: arrayUnion(currentToken),
+        updatedAt: new Date()
+      }, { merge: true }).catch(console.warn);
+    }
+
+    onMessage(messaging, (payload) => {
+      addPushDebugLog('payload', 'Foreground FCM Push Payload received', payload);
+      const title = payload.notification?.title || payload.data?.title || '⚡ Flick System Signal';
+      const body = payload.notification?.body || payload.data?.body || payload.data?.content || 'New update available.';
+      showPushNotification(title, body);
+    });
+  } catch (err: any) {
+    console.warn('[FCM Registration Exception]:', err?.message || err);
+  }
+}
 
 /**
  * Quiet Hours & Priority Senders Configuration Interface
@@ -217,13 +258,19 @@ async function getOneSignal(): Promise<any> {
  */
 export async function registerCapacitorPushNotifications(uid: string) {
   const border = '==================================================';
-  console.log(`${border}\n[OneSignal Web PWA Register Engine] STARTING HANDSHAKE FOR UID: ${uid}\n${border}`);
-  addPushDebugLog('info', 'Connecting to OneSignal Web Push pipeline...', { uid });
+  console.log(`${border}\n[Native Push Register Engine] STARTING HANDSHAKE FOR UID: ${uid}\n${border}`);
+  addPushDebugLog('info', 'Connecting to Native Push & FCM pipeline...', { uid });
 
+  // 1. Proactively register native Firebase Cloud Messaging (FCM) token
+  registerFcmNotifications(uid).catch((err) => {
+    console.warn('[Push Engine] FCM token setup warning:', err);
+  });
+
+  // 2. Resolve OneSignal SDK
   const OneSignal = await getOneSignal();
   if (!OneSignal) {
-    console.warn('[OneSignal-Web] SDK failed to load. Operating in local notification mode.');
-    addPushDebugLog('error', 'OneSignal Web SDK not available in window context.');
+    console.warn('[OneSignal] SDK failed to load. Operating in direct FCM and local notification mode.');
+    addPushDebugLog('warning', 'OneSignal SDK not available in window context. FCM fallback active.');
     return;
   }
 
@@ -231,10 +278,14 @@ export async function registerCapacitorPushNotifications(uid: string) {
     const ONESIGNAL_ID = "453179e9-df43-4411-847b-e1cd7ae1a0f3";
     addPushDebugLog('info', `Initializing OneSignal App ID: ${ONESIGNAL_ID}`);
     
-    // 1. Initialize
+    // Initialize
     if (Capacitor.isNativePlatform()) {
       addPushDebugLog('info', 'Initializing via Cordova Native Plugin (APK/Capacitor)');
-      OneSignal.initialize(ONESIGNAL_ID);
+      try {
+        OneSignal.initialize(ONESIGNAL_ID);
+      } catch (e) {
+        console.warn('[OneSignal Native Init Exception]:', e);
+      }
     } else {
       addPushDebugLog('info', 'Initializing via Web SDK (PWA / Median)');
       await OneSignal.init({
@@ -242,68 +293,111 @@ export async function registerCapacitorPushNotifications(uid: string) {
         allowLocalhostAsSecureOrigin: true,
         serviceWorkerParam: { scope: "/" },
         serviceWorkerPath: "OneSignalSDKWorker.js",
-      });
+      }).catch(err => console.warn('[OneSignal Web Init Exception]:', err));
     }
     addPushDebugLog('success', 'OneSignal SDK initialized.');
 
-    // 2. Associate authenticated User UID
+    // Associate authenticated User UID
     addPushDebugLog('info', `Establishing external user alignment with UID: ${uid}`);
-    await OneSignal.login(uid);
+    if (typeof OneSignal.login === 'function') {
+      await OneSignal.login(uid).catch(console.warn);
+    } else if (typeof OneSignal.setExternalUserId === 'function') {
+      await OneSignal.setExternalUserId(uid).catch(console.warn);
+    }
     addPushDebugLog('success', `OneSignal logged-in state completed. External ID mapped.`);
 
-    // 3. Register click handler
-    OneSignal.Notifications.addEventListener('click', (event: any) => {
-      console.log('[OneSignal-Web] Notification click action observed:', event);
-      addPushDebugLog('info', 'Push notification click registered', event);
-      
-      const data = event.notification?.additionalData;
-      if (data) {
-        addPushDebugLog('payload', 'Extracted click-through routing parameters', data);
+    // Register click handler
+    if (OneSignal.Notifications?.addEventListener) {
+      OneSignal.Notifications.addEventListener('click', (event: any) => {
+        console.log('[OneSignal] Notification click action observed:', event);
+        addPushDebugLog('info', 'Push notification click registered', event);
         
-        // Dispatch custom global event for backwards-compatibility
-        const customEvent = new CustomEvent('fara-flick-deeplink', { detail: data });
-        window.dispatchEvent(customEvent);
+        const data = event.notification?.additionalData;
+        if (data) {
+          addPushDebugLog('payload', 'Extracted click-through routing parameters', data);
+          
+          const customEvent = new CustomEvent('fara-flick-deeplink', { detail: data });
+          window.dispatchEvent(customEvent);
 
-        // Process routing via deepLinkManager
-        const parsed = deepLinkManager.parsePayload(data);
-        if (parsed) {
-          deepLinkManager.queueDeepLink(parsed);
+          const parsed = deepLinkManager.parsePayload(data);
+          if (parsed) {
+            deepLinkManager.queueDeepLink(parsed);
+          }
         }
-      }
-    });
-
-    // 4. Request browser notification permission proactively
-    addPushDebugLog('info', 'Prompting notification permission dialog...');
-    const permission = Capacitor.isNativePlatform() 
-      ? await OneSignal.Notifications.requestPermission(true)
-      : await OneSignal.Notifications.requestPermission();
-    addPushDebugLog('success', `Notification permissions result: ${permission}`);
-
-    // 5. Fetch subscription ID and persist to Firestore
-    const subscriptionId = typeof OneSignal.User.pushSubscription.getIdAsync === 'function'
-      ? await OneSignal.User.pushSubscription.getIdAsync()
-      : OneSignal.User.pushSubscription.id;
-    if (subscriptionId) {
-      addPushDebugLog('success', `Obtained active Web Push subscription ID: ${subscriptionId}`);
-      await saveOneSignalTokenToFirestore(uid, subscriptionId);
-    } else {
-      addPushDebugLog('warning', 'OneSignal registration complete, but subscription ID remains unassigned.');
+      });
     }
 
-    // 6. Listen for push subscription shifts to keep Firestore perfectly synchronized
-    OneSignal.User.pushSubscription.addEventListener('change', async (event: any) => {
-      const newId = event.current.id;
-      addPushDebugLog('info', `Subscription shift noticed. New subscriptionId: ${newId || 'NONE'}`);
-      if (newId) {
-        await saveOneSignalTokenToFirestore(uid, newId);
+    // Request notification permission
+    addPushDebugLog('info', 'Prompting notification permission dialog...');
+    if (Capacitor.isNativePlatform()) {
+      if (OneSignal.Notifications?.requestPermission) {
+        await OneSignal.Notifications.requestPermission(true).catch(console.warn);
+      } else if (OneSignal.promptForPushNotificationsWithUserResponse) {
+        OneSignal.promptForPushNotificationsWithUserResponse(true);
       }
-    });
+    } else {
+      if (OneSignal.Notifications?.requestPermission) {
+        await OneSignal.Notifications.requestPermission().catch(console.warn);
+      }
+    }
 
-    console.log(`${border}\n[OneSignal Web PWA Register Engine] PIPELINE SECURED\n${border}`);
+    // Helper to safely fetch subscription ID across OneSignal version variants
+    const fetchSubscriptionId = async (): Promise<string | null> => {
+      try {
+        if (typeof OneSignal.User?.pushSubscription?.getIdAsync === 'function') {
+          return await OneSignal.User.pushSubscription.getIdAsync();
+        }
+        if (OneSignal.User?.pushSubscription?.id) {
+          return OneSignal.User.pushSubscription.id;
+        }
+        if (typeof OneSignal.getDeviceState === 'function') {
+          const state = await OneSignal.getDeviceState();
+          return state?.userId || state?.subscriptionId || null;
+        }
+      } catch {
+        return null;
+      }
+      return null;
+    };
+
+    let subscriptionId = await fetchSubscriptionId();
+    if (subscriptionId) {
+      addPushDebugLog('success', `Obtained active Push subscription ID: ${subscriptionId}`);
+      await saveOneSignalTokenToFirestore(uid, subscriptionId);
+    } else {
+      addPushDebugLog('warning', 'OneSignal subscription pending Play Services FCM token assignment. Starting poll...');
+      // Poll every 1.5 seconds for up to 15 seconds to catch async FCM Play Services registration
+      let attempts = 0;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        subscriptionId = await fetchSubscriptionId();
+        if (subscriptionId) {
+          clearInterval(pollInterval);
+          addPushDebugLog('success', `Async subscription token acquired on attempt ${attempts}: ${subscriptionId}`);
+          await saveOneSignalTokenToFirestore(uid, subscriptionId);
+        } else if (attempts >= 10) {
+          clearInterval(pollInterval);
+          addPushDebugLog('info', 'Async subscription poll complete. External UID remains mapped for backend push targeting.');
+        }
+      }, 1500);
+    }
+
+    // Listen for push subscription shifts to keep Firestore synchronized
+    if (OneSignal.User?.pushSubscription?.addEventListener) {
+      OneSignal.User.pushSubscription.addEventListener('change', async (event: any) => {
+        const newId = event?.current?.id;
+        if (newId) {
+          addPushDebugLog('info', `Subscription shift noticed: ${newId}`);
+          await saveOneSignalTokenToFirestore(uid, newId);
+        }
+      });
+    }
+
+    console.log(`${border}\n[Native Push Engine] PIPELINE SECURED\n${border}`);
 
   } catch (err: any) {
-    console.warn('[OneSignal-Web] Web Push initialization is unavailable in the preview sandbox (this is expected until a Web Push App ID is configured for this domain in OneSignal dashboard). Fallback local notifications are active:', err?.message || JSON.stringify(err));
-    addPushDebugLog('warning', `Web Push not fully configured: ${err?.message || JSON.stringify(err)}. Falling back to robust Local Notification engine.`, err);
+    console.warn('[Push Engine] Setup exception:', err?.message || JSON.stringify(err));
+    addPushDebugLog('warning', `Push setup exception: ${err?.message || JSON.stringify(err)}`, err);
   }
 }
 
