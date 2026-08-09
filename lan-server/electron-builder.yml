@@ -5,7 +5,6 @@ electronVersion: 34.0.0
 
 directories:
   output: release
-  buildResources: build
 
 files:
   - "dist/**/*"
@@ -17,13 +16,11 @@ extraResources:
   - from: "src/dashboard"
     to: "dashboard"
 
-# Windows Configuration
 win:
   target:
     - target: nsis
       arch:
         - x64
-        - ia32
     - target: portable
       arch:
         - x64
@@ -38,10 +35,9 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Flick LAN Server
-  artifactName: Flick-LAN-Server-Setup-${version}-${arch}.${ext}
+  artifactName: Flick-LAN-Server-Setup-${version}.${ext}
   uninstallDisplayName: Flick LAN Server
 
-# macOS Configuration
 mac:
   target:
     - target: dmg
@@ -54,26 +50,12 @@ mac:
         - arm64
   category: public.app-category.utilities
   icon: ../public/icon.png
-  hardenedRuntime: true
-  gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
 
 dmg:
   title: Flick LAN Server ${version}
-  artifactName: Flick-LAN-Server-macOS-${version}-${arch}.${ext}
-  contents:
-    - x: 130
-      y: 220
-    - x: 410
-      y: 220
-      type: link
-      path: /Applications
+  artifactName: Flick-LAN-Server-macOS-${version}.${ext}
 
-# Linux Configuration
 linux:
-  desktopName: Flick-LAN-Server
-  maintainer: Faratech <boboyaga78@gmail.com>
   target:
     - target: AppImage
       arch:
@@ -86,11 +68,12 @@ linux:
         - x64
   category: Utility
   icon: ../public/icon.png
+  maintainer: Faratech <boboyaga78@gmail.com>
   synopsis: Flick Offline-First School LAN Infrastructure Server
-  description: Realtime local network backend for Flick communication clients.
+  artifactName: Flick-LAN-Server-${version}.${ext}
 
 deb:
-  artifactName: flick-lan-server_${version}_${arch}.deb
+  artifactName: flick-lan-server_${version}_amd64.deb
   depends:
     - gconf2
     - gconf-service
@@ -99,4 +82,4 @@ deb:
     - libxss1
 
 appImage:
-  artifactName: Flick-LAN-Server-${version}-${arch}.AppImage
+  artifactName: Flick-LAN-Server-${version}-x86_64.AppImage

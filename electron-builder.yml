@@ -28,7 +28,7 @@ linux:
   icon: public/icon.png
   category: Network;Chat
   maintainer: Faratech <boboyaga78@gmail.com>
-  description: Flick - Secure Encrypted Chat
+  synopsis: Flick - Secure Encrypted Chat
   artifactName: Flick-${version}.${ext}
 deb:
   depends:

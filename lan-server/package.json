@@ -7,6 +7,10 @@
     "email": "boboyaga78@gmail.com"
   },
   "homepage": "https://flick.network",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Faratech/Newflick.git"
+  },
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc && node -e \"const fs=require('fs'); fs.mkdirSync('dist/dashboard', {recursive:true}); fs.copyFileSync('src/dashboard/dashboard.html', 'dist/dashboard/dashboard.html'); fs.copyFileSync('src/dashboard/dashboardApp.js', 'dist/dashboard/dashboardApp.js');\"",
