@@ -169,6 +169,16 @@ export default function OnboardingIntro({ onComplete }: OnboardingIntroProps) {
                 <span>Agree and Continue</span>
                 <ArrowRight className="w-4 h-4 shrink-0" />
               </button>
+
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  window.dispatchEvent(new CustomEvent('faraflick-trigger-cinematic'));
+                }}
+                className="text-[10px] font-mono text-[var(--neon-green)] uppercase tracking-wider underline hover:text-white transition cursor-pointer flex items-center justify-center gap-1 mt-2"
+              >
+                ⚡ WATCH CINEMATIC AD TRAILER
+              </button>
             </motion.div>
           )}
 

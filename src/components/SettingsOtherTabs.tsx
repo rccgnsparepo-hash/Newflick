@@ -181,6 +181,20 @@ export function SettingsOtherTabs({
             Maintain abstract peer handshakes and rotate local entropy values asynchronously to prevent tracking. External diagnostic vectors are filtered.
           </p>
 
+          <div className="p-3 border border-[var(--neon-green)] bg-[var(--neon-green)]/10 rounded-lg flex items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-mono font-bold text-[var(--neon-green)] uppercase">⚡ DEEP CINEMATIC AD ENTRANCE</div>
+              <div className="text-[9.5px] text-zinc-400 font-sans">Launch the full-screen deep commercial ad entrance and export the standalone HTML ad file.</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-cinematic'))}
+              className="px-3 py-1.5 bg-[var(--neon-green)] text-black font-mono font-extrabold text-[10px] uppercase tracking-wider hover:bg-white transition cursor-pointer shrink-0 rounded shadow-[2px_2px_0px_#000]"
+            >
+              LAUNCH CINEMATIC AD
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-2 mt-2">
             <button
               type="button"

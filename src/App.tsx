@@ -10,10 +10,12 @@ import FeedSection from './components/FeedSection';
 import SecureNewsFlow from './components/SecureNewsFlow';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
+import { CinematicIntroModal } from './components/CinematicIntroModal';
 import AppTour from './components/AppTour';
 import ProfileSettingsModal from './components/ProfileSettingsModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import HorizontalTicker from './components/HorizontalTicker';
+import { ConnectionStatusBadge } from './components/ConnectionStatusBadge';
 import UserProfileModal from './components/UserProfileModal';
 import LiveNewsScheduler from './components/LiveNewsScheduler';
 import BrutalistNotificationBanner from './components/BrutalistNotificationBanner';
@@ -103,6 +105,7 @@ function Dashboard() {
   }, []);
 
   const [ongoingCall, setOngoingCall] = useState<any | null>(null);
+  const [showCinematicIntro, setShowCinematicIntro] = useState(false);
 
   // Programmatically lock scrolling when any overlay/modal/sheet is open, preserving vertical scroll offsets
   const isAnyOverlayOpen = 
@@ -111,6 +114,7 @@ function Dashboard() {
     isShortcutsOpen || 
     viewedProfileId !== null || 
     showOnboarding || 
+    showCinematicIntro ||
     isTourOpen || 
     ongoingCall !== null;
 
@@ -151,11 +155,16 @@ function Dashboard() {
     const handleTriggerOnboarding = () => {
       setShowOnboarding(true);
     };
+    const handleTriggerCinematic = () => {
+      setShowCinematicIntro(true);
+    };
     window.addEventListener('faraflick-view-profile', handleViewProfileEvent);
     window.addEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
+    window.addEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
     return () => {
       window.removeEventListener('faraflick-view-profile', handleViewProfileEvent);
       window.removeEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
+      window.removeEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
     };
   }, []);
 
@@ -797,7 +806,11 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
           
           {/* Logo and navigation links */}
-          <div className="flex items-center space-x-6 select-none group/logo cursor-pointer">
+          <div 
+            onClick={() => setShowCinematicIntro(true)} 
+            className="flex items-center space-x-6 select-none group/logo cursor-pointer"
+            title="Fara Flick Sovereign Net"
+          >
             <div className="flex items-center space-x-3.5">
               <div className="w-10 h-10 border-2 border-[var(--neon-green)] flex items-center justify-center font-serif text-2xl font-black bg-[var(--color-surface)] text-[var(--neon-green)] shadow-[3px_3px_0px_var(--neon-green)] transition-all duration-100 container-glitch-hover">
                 F
@@ -815,6 +828,9 @@ function Dashboard() {
 
           {/* Current credentials state & settings drawer triggers - Desktop Only */}
           <div className="hidden md:flex items-center space-x-2.5">
+
+            {/* Flick Hybrid LAN & Cloud Connection Status Badge */}
+            <ConnectionStatusBadge />
 
             {/* Real-time Network Connectivity Monitor */}
             <div 
@@ -1218,6 +1234,11 @@ function Dashboard() {
       />
 
       <UserProfileModal uid={viewedProfileId} onClose={() => setViewedProfileId(null)} />
+
+      <CinematicIntroModal 
+        isOpen={showCinematicIntro} 
+        onClose={() => setShowCinematicIntro(false)} 
+      />
 
       {showOnboarding && (
         <OnboardingIntro 
