@@ -1,0 +1,82 @@
+name: Build & Release Flick LAN Server (.exe & AppImage)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-lan-server:
+    name: Build LAN Server (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Inject Repository Info
+        shell: bash
+        run: |
+          npm pkg set repository.type="git"
+          npm pkg set repository.url="https://github.com/${{ github.repository }}.git"
+
+      - name: Install Root Dependencies
+        run: npm ci || npm install --legacy-peer-deps
+
+      - name: Install LAN Server Dependencies
+        run: cd lan-server && (npm ci || npm install --legacy-peer-deps)
+
+      - name: Package LAN Server Executable
+        shell: bash
+        run: node scripts/package-lan-app.js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: flick-lan-server-${{ matrix.os }}
+          path: |
+            lan-server/release/*.exe
+            lan-server/release/*.AppImage
+            lan-server/release/*.deb
+            lan-server/release/*.blockmap
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-lan-server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create GitHub Release with Installer Binaries
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: lan-server-v1.0.${{ github.run_number }}
+          name: "Flick LAN Infrastructure Server v1.0.${{ github.run_number }}"
+          files: |
+            release-artifacts/flick-lan-server-windows-latest/*.exe
+            release-artifacts/flick-lan-server-ubuntu-latest/*.AppImage
+            release-artifacts/flick-lan-server-ubuntu-latest/*.deb
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

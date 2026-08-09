@@ -54,7 +54,14 @@ try {
     console.warn('⚠️ Frontend build directory dist/ does not exist!');
   }
 
-  console.log('[4/4] Package setup complete! Run electron-builder or npm --prefix lan-server run package.');
+  // 4. Run electron-builder to generate installer executable binaries (EXE/AppImage/DMG)
+  console.log('[4/4] Generating LAN Server desktop executables (release artifacts)...');
+  execSync('npx electron-builder --config electron-builder.yml', { cwd: path.join(rootDir, 'lan-server'), stdio: 'inherit' });
+
+  console.log('===================================================');
+  console.log('✓ SUCCESS: LAN Server desktop application bundled!');
+  console.log('  Artifacts located in: lan-server/release/');
+  console.log('===================================================');
 } catch (error) {
   console.error('❌ Failed to package LAN application:', error);
   process.exit(1);

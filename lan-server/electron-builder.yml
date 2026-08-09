@@ -1,6 +1,7 @@
 appId: com.faratech.flick.lanserver
 productName: Flick LAN Server
 copyright: Copyright © 2026 Flick Network
+electronVersion: 34.0.0
 
 directories:
   output: release
@@ -71,6 +72,8 @@ dmg:
 
 # Linux Configuration
 linux:
+  desktopName: Flick-LAN-Server
+  maintainer: Faratech <boboyaga78@gmail.com>
   target:
     - target: AppImage
       arch:
