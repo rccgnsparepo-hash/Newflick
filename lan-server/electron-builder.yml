@@ -24,7 +24,7 @@ win:
     - target: portable
       arch:
         - x64
-  icon: ../public/icon.png
+  icon: ../public/icon.ico
   requestedExecutionLevel: asInvoker
 
 nsis:
@@ -56,6 +56,8 @@ dmg:
   artifactName: Flick-LAN-Server-macOS-${version}.${ext}
 
 linux:
+  executableName: flick-lan-server
+  desktopName: flick-lan-server
   target:
     - target: AppImage
       arch:

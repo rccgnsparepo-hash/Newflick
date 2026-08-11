@@ -85,6 +85,8 @@ export interface FeedSectionProps {
   onClearDeepLink?: () => void;
   deepLinkedGroupId?: string | null;
   onClearDeepLinkedGroup?: () => void;
+  selectedCampus?: string;
+  setSelectedCampus?: (campus: string) => void;
 }
 
 export default function FeedSection({
@@ -94,7 +96,9 @@ export default function FeedSection({
   deepLinkedPeerId = null,
   onClearDeepLink = () => {},
   deepLinkedGroupId = null,
-  onClearDeepLinkedGroup = () => {}
+  onClearDeepLinkedGroup = () => {},
+  selectedCampus: controlledSelectedCampus,
+  setSelectedCampus: controlledSetSelectedCampus
 }: FeedSectionProps = {}) {
   const { profile } = useAuth();
   const operations = useOperations();
@@ -109,9 +113,11 @@ export default function FeedSection({
   const activeTab = controlledActiveTab || localActiveTab;
   const setActiveTab = controlledSetActiveTab || localSetActiveTab;
   const [homeSubView, setHomeSubView] = useState<'feed' | 'network' | 'live'>('feed');
-  const [selectedCampus, setSelectedCampus] = useState<string>(() => {
+  const [localSelectedCampus, localSetSelectedCampus] = useState<string>(() => {
     return localStorage.getItem('flick_selected_campus') || 'Global Feed';
   });
+  const selectedCampus = controlledSelectedCampus !== undefined ? controlledSelectedCampus : localSelectedCampus;
+  const setSelectedCampus = controlledSetSelectedCampus || localSetSelectedCampus;
 
   // State to support collapsible desktop navigation rail/sidebar
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
@@ -266,8 +272,11 @@ export default function FeedSection({
       }
     };
     window.addEventListener('faraflick-back-button', handleBackButton);
+    const handleOpenSearch = () => setIsSearchOpen(true);
+    window.addEventListener('faraflick-open-search', handleOpenSearch);
     return () => {
       window.removeEventListener('faraflick-back-button', handleBackButton);
+      window.removeEventListener('faraflick-open-search', handleOpenSearch);
     };
   }, [zoomImg, activeDiscussionPost, showPostCreator, isRadialOpen]);
 
@@ -1109,326 +1118,91 @@ export default function FeedSection({
   };
 
   return (
-    <div className="w-full h-screen bg-morphic-dark text-[var(--color-text)] flex flex-row relative overflow-hidden font-mono">
-      
-      {/* 
-        PREMIUM MORPHIC NAVIGATION RAIL (Inspired directly by Image 1)
-        We package the interface into elegant separate capsules (Logo/Primary Nav, Profile Card, and Tactical Utility)
-      */}
-      <nav className={`hidden md:flex flex-col justify-between shrink-0 h-full z-50 select-none border-r border-[var(--neon-green-border)]/30 bg-[#0a0a0c] py-6 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] relative ${
-        sidebarExpanded ? 'w-64 px-4' : 'w-20 px-2'
-      }`}>
-        
-        {/* Toggle Collapse Button on right margin */}
-        <button
-          onClick={() => {
-            playGlitchClickSound();
-            triggerVibration('light');
-            const next = !sidebarExpanded;
-            setSidebarExpanded(next);
-            localStorage.setItem('flick_sidebar_expanded', String(next));
-          }}
-          className="absolute -right-3 top-7 w-6 h-6 rounded-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center justify-center text-zinc-400 hover:text-[var(--color-text)] hover:border-red-500/50 transition cursor-pointer shadow-md z-[60]"
-          title={sidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
-        >
-          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-500 ${sidebarExpanded ? 'rotate-180 text-red-500' : 'text-[var(--neon-green)]'}`} />
-        </button>
-
-        {/* TOP BLOCK: LOGO & IDENTITY PROFILE CAPSULE */}
-        <div className="w-full space-y-6">
-          {/* Cyber Logo Capsule */}
-          <div className={`flex items-center gap-3 bg-[var(--color-surface)] rounded-2xl border border-[var(--neon-green-border)] p-2 shadow-sm ${
-            sidebarExpanded ? 'px-3 py-2.5' : 'justify-center'
-          }`}>
-            <div className="w-9 h-9 border border-[var(--neon-green)] flex items-center justify-center font-serif text-sm font-black bg-[var(--color-surface)] text-[var(--neon-green)] shadow-[1px_1px_0px_var(--neon-green)] rounded-full animate-pulse shrink-0">
-              F
-            </div>
-            {sidebarExpanded && (
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-mono font-black text-[var(--color-text)] block tracking-widest leading-none">FLICK NODE</span>
-                <span className="text-[6.5px] font-mono text-zinc-500 uppercase tracking-widest block mt-0.5">CSC UNIVERSITY</span>
-              </div>
-            )}
-          </div>
-
-          {/* User Profile Card Capsule */}
-          <button
-            onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('profile'); }}
-            className={`w-full bg-[var(--color-surface)]/90 border transition-all duration-300 flex items-center shadow-md cursor-pointer hover:border-red-500/30 ${
-              activeTab === 'profile' 
-                ? 'border-red-500/30 bg-[#1e1416]/40 shadow-[0_0_12px_rgba(239,68,68,0.15)]' 
-                : 'border-[var(--neon-green-border)]/60 hover:bg-[var(--color-background)]'
-            } ${
-              sidebarExpanded ? 'p-3 rounded-2xl gap-3' : 'py-3 rounded-[24px] flex-col justify-center gap-1.5'
-            }`}
-            title="Configure Node Profile"
-          >
-            <div className="relative shrink-0">
-              <img
-                src={profile?.photoURL}
-                alt={profile?.displayName}
-                className={`rounded-full object-cover border ${
-                  activeTab === 'profile' ? 'border-red-500' : 'border-[var(--neon-green-border)]'
-                } ${sidebarExpanded ? 'w-9 h-9' : 'w-8 h-8'}`}
-                referrerPolicy="no-referrer"
-              />
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border border-black rounded-full animate-pulse" />
-            </div>
-            
-            {sidebarExpanded ? (
-              <div className="text-left min-w-0 flex-1">
-                <h5 className="text-[10.5px] font-mono font-black text-[var(--color-text)] truncate uppercase leading-tight">
-                  {profile?.displayName || 'OPERATOR'}
-                </h5>
-                <span className="text-[6.5px] font-mono text-red-400 uppercase tracking-wider block font-bold mt-0.5">
-                  LEVEL 300 // DEAN LIST
-                </span>
-              </div>
-            ) : (
-              <span className="text-[6.5px] font-mono uppercase tracking-widest font-extrabold text-zinc-400">
-                PROFILE
-              </span>
-            )}
-          </button>
-
-          {/* MIDDLE BLOCK: NAVIGATION GROUPS */}
-          <div className="space-y-5 pt-2">
-            
-            {/* Section 1: CONDUIT CORE */}
-            <div className="space-y-2">
-              {sidebarExpanded && (
-                <span className="text-[7px] text-zinc-600 font-mono font-black uppercase tracking-widest px-2 block">
-                  CONDUIT CORE
-                </span>
-              )}
-              
-              <div className="space-y-1 relative">
-                
-                {/* Home Tab */}
-                <button
-                  onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('home'); }}
-                  className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
-                    activeTab === 'home' 
-                      ? 'text-[var(--neon-green)]' 
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
-                  } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-                  title="Campus Feed"
-                >
-                  {activeTab === 'home' && (
-                    <motion.div 
-                      layoutId="activeTabGlow"
-                      className="absolute inset-0 bg-[var(--neon-green)]/10 border-l-2 border-[var(--neon-green)] rounded-xl pointer-events-none"
-                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    />
-                  )}
-                  <School className="w-4.5 h-4.5 shrink-0 z-10" />
-                  {sidebarExpanded && (
-                    <span className="text-[10px] font-mono font-bold tracking-wider z-10 uppercase">CAMPUS CHRONICLES</span>
-                  )}
-                </button>
-
-                {/* Search Action (Interactive trigger) */}
-                <button
-                  onClick={() => { playGlitchClickSound(); triggerVibration('light'); setIsSearchOpen(true); }}
-                  className={`relative flex items-center w-full text-zinc-500 hover:text-[var(--neon-green)] hover:bg-[var(--color-background)]/50 transition-all duration-200 cursor-pointer rounded-xl ${
-                    sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
-                  }`}
-                  title="Search Campus Registry"
-                >
-                  <Search className="w-4.5 h-4.5 shrink-0" />
-                  {sidebarExpanded && (
-                    <span className="text-[10px] font-mono font-bold tracking-wider uppercase">SEARCH REGISTRY</span>
-                  )}
-                </button>
-
-                {/* News Tab */}
-                <button
-                  onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('news'); }}
-                  className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
-                    activeTab === 'news' 
-                      ? 'text-[var(--neon-green)]' 
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
-                  } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-                  title="Campus Radio"
-                >
-                  {activeTab === 'news' && (
-                    <motion.div 
-                      layoutId="activeTabGlow"
-                      className="absolute inset-0 bg-[var(--neon-green)]/10 border-l-2 border-[var(--neon-green)] rounded-xl pointer-events-none"
-                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    />
-                  )}
-                  <Radio className="w-4.5 h-4.5 shrink-0 z-10" />
-                  {sidebarExpanded && (
-                    <span className="text-[10px] font-mono font-bold tracking-wider z-10 uppercase">CONCORD SIGNAL</span>
-                  )}
-                </button>
-
-              </div>
-            </div>
-
-                {/* Workspace Tab */}
-                <button
-                  onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('workspace'); }}
-                  className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
-                    activeTab === 'workspace'
-                       ? 'text-[var(--neon-green)]'
-                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
-                  } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-                  title="Google Workspace"
-                >
-                  {activeTab === 'workspace' && (
-                    <motion.div 
-                      layoutId="activeTabGlow"
-                      className="absolute inset-0 bg-[var(--neon-green)]/10 border-l-2 border-[var(--neon-green)] rounded-xl pointer-events-none"
-                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    />
-                  )}
-                  <Briefcase className="w-4.5 h-4.5 shrink-0 z-10" />
-                  {sidebarExpanded && (
-                    <span className="text-[10px] font-mono font-bold tracking-wider z-10 uppercase">WORKSPACE HUB</span>
-                  )}
-                </button>
-            {/* Section 2: TACTICAL PIPELINES */}
-            <div className="space-y-2">
-              {sidebarExpanded && (
-                <span className="text-[7px] text-zinc-600 font-mono font-black uppercase tracking-widest px-2 block">
-                  TACTICAL PIPELINES
-                </span>
-              )}
-              
-              <div className="space-y-1">
-                
-                {/* Chat Tab */}
-                <button
-                  onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('chat'); }}
-                  className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
-                    activeTab === 'chat' 
-                      ? 'text-[var(--neon-green)]' 
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-[var(--color-background)]/50'
-                  } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-                  title="Secured Chats"
-                >
-                  {activeTab === 'chat' && (
-                    <motion.div 
-                      layoutId="activeTabGlow"
-                      className="absolute inset-0 bg-[var(--neon-green)]/10 border-l-2 border-[var(--neon-green)] rounded-xl pointer-events-none"
-                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    />
-                  )}
-                  <div className="relative shrink-0 z-10">
-                    <MessageSquare className="w-4.5 h-4.5" />
-                    {unreadE2EECount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-[var(--color-text)] font-mono font-black text-[6.5px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-black animate-pulse">
-                        {unreadE2EECount}
-                      </span>
-                    )}
-                  </div>
-                  {sidebarExpanded && (
-                    <div className="flex-1 flex items-center justify-between z-10 min-w-0">
-                      <span className="text-[10px] font-mono font-bold tracking-wider uppercase truncate">SECURED CHATS</span>
-                      {unreadE2EECount > 0 && (
-                        <span className="px-1.5 py-0.5 bg-red-600/20 text-red-400 border border-red-500/30 text-[7px] font-mono font-black rounded uppercase animate-pulse">
-                          {unreadE2EECount} NEW
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </button>
-
-                {/* Match Tab */}
-                <button
-                  onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('match'); }}
-                  className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group ${
-                    activeTab === 'match' 
-                      ? 'text-pink-500' 
-                      : 'text-zinc-500 hover:text-pink-400 hover:bg-[var(--color-background)]/50'
-                  } ${sidebarExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-                  title="Peer Matching"
-                >
-                  {activeTab === 'match' && (
-                    <motion.div 
-                      layoutId="activeTabGlow"
-                      className="absolute inset-0 bg-pink-500/10 border-l-2 border-pink-500/50 rounded-xl pointer-events-none"
-                      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    />
-                  )}
-                  <Sparkles className="w-4.5 h-4.5 shrink-0 z-10 text-pink-500" />
-                  {sidebarExpanded && (
-                    <span className="text-[10px] font-mono font-bold tracking-wider z-10 uppercase text-pink-500">PEER MATCHER</span>
-                  )}
-                </button>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* BOTTOM BLOCK: UTILITIES & SOUND CONTROLLER */}
-        <div className="w-full space-y-4">
-          
-          <div className={`bg-[var(--color-surface)]/90 border border-[var(--neon-green-border)] rounded-2xl p-1.5 flex shadow-inner relative ${
-            sidebarExpanded ? 'flex-row items-center justify-between px-3 py-2' : 'flex-col items-center gap-2.5'
-          }`}>
-            {sidebarExpanded && (
-              <span className="text-[8.5px] text-zinc-500 font-mono font-black uppercase">AUDIO TUNNEL</span>
-            )}
-
-            {/* Custom Sound ON/OFF slider */}
-            <div 
-              onClick={handleToggleSound}
-              className="w-11 h-6 bg-[var(--color-background)] rounded-full p-0.5 border border-[var(--neon-green-border)] cursor-pointer relative transition-colors duration-200 select-none"
-              title="Toggle Audio Terminal"
-            >
-              <div 
-                className={`w-4 h-4 rounded-full absolute top-0.5 transition-all duration-200 flex items-center justify-center text-[5.5px] font-black ${
-                  soundMuted 
-                    ? 'left-0.5 bg-zinc-850 text-zinc-500' 
-                    : 'left-6 bg-red-600 text-[var(--color-text)] shadow-[0_0_8px_#ef4444]'
-                }`}
-              >
-                {soundMuted ? 'OFF' : 'ON'}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Dump Button */}
-          <button
-            onClick={handleQuickTacticalDownload}
-            className={`w-full bg-gradient-to-b from-red-600 to-rose-750 text-[var(--color-text)] flex items-center justify-center shadow-[0_4px_12px_rgba(225,29,72,0.35)] hover:shadow-[0_6px_18px_rgba(225,29,72,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer border border-red-500/20 ${
-              sidebarExpanded ? 'px-4 py-3 rounded-xl gap-2 text-[10px] font-mono font-bold uppercase tracking-wider' : 'h-11 w-11 rounded-full'
-            }`}
-            title="Execute Network Diagnostics"
-          >
-            <ChevronRight className={`w-4.5 h-4.5 text-[var(--color-text)] shrink-0 transform rotate-90`} />
-            {sidebarExpanded && <span>SYSTEM DUMP</span>}
-          </button>
-
-        </div>
-      </nav>
-
-      {/* RIGHT SIDE MAIN CONTAINER - MORPHIC LAYOUT PARADIGM */}
-      <div className="flex-1 h-full flex flex-col min-w-0 overflow-hidden relative bg-morphic-dark p-0 md:pl-3 md:pr-6 md:py-6">
-        
-        {/* Curved Connection Morph Junctions */}
-        <div className="morphic-junction-tr hidden md:block" />
-        <div className="morphic-junction-br hidden md:block" />
-
-        {/* Dynamic, fully curved interactive desktop/tablet window frame */}
-        <div className="flex-1 w-full h-full flex flex-col min-w-0 bg-[var(--color-surface)] rounded-none md:rounded-[36px] border border-zinc-850/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden relative retro-cyber-grid">
-          
-          {/* Responsive Main Layout Container */}
-          <div className="flex-1 flex flex-col md:flex-row min-h-0 w-full overflow-hidden">
-        
-        {/* Left Column: Main views */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden relative">
-          {/* Main Tab Views Switcher Wrapper */}
-          <div className="flex-1 w-full h-full relative">
+    <div className="w-full h-full flex flex-col relative overflow-hidden font-mono">
+      {/* Main Tab Views Switcher Wrapper */}
+      <div className="flex-1 w-full h-full relative overflow-hidden">
         
         {/* ==================== HOME TAB VIEW ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-4 py-3 pb-24 md:pb-0 space-y-5 ${activeTab === 'home' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
-          <div className="max-w-xl md:max-w-2xl mx-auto w-full space-y-5 pb-12">
+        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-3 md:px-6 py-4 pb-24 md:pb-6 space-y-6 ${activeTab === 'home' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+          <div className="max-w-[720px] mx-auto w-full space-y-6 pb-16 pt-1">
+            
+            {/* TOP DASHBOARD HEADER BAR (Reference Design) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 border-b border-slate-100">
+              <div className="flex items-center justify-between w-full sm:w-auto">
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight font-sans">
+                  Dashboard
+                </h1>
+                
+                {/* Mobile Create Button */}
+                <button
+                  onClick={() => {
+                    playGlitchClickSound();
+                    setShowPostCreator(true);
+                  }}
+                  className="sm:hidden w-10 h-10 bg-slate-900 hover:bg-[#f9553a] text-white rounded-full flex items-center justify-center transition cursor-pointer shadow-md"
+                  title="Create Post"
+                >
+                  <Plus className="w-5 h-5 font-bold" />
+                </button>
+              </div>
+
+              {/* Center Search Bar */}
+              <div className="relative w-full sm:max-w-xs">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search campus signals..."
+                  className="w-full bg-[#f2f3f5] focus:bg-white text-slate-900 text-xs font-semibold rounded-full pl-9 pr-4 py-2.5 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#f9553a] transition-all shadow-inner placeholder-slate-400"
+                />
+              </div>
+
+              {/* Right Top Action Bar (Desktop) */}
+              <div className="hidden sm:flex items-center space-x-3 shrink-0">
+                <button
+                  onClick={() => {
+                    playGlitchClickSound();
+                    setShowPostCreator(true);
+                  }}
+                  className="w-10 h-10 bg-slate-900 hover:bg-[#f9553a] text-white rounded-full flex items-center justify-center transition cursor-pointer shadow-md"
+                  title="Create Post"
+                >
+                  <Plus className="w-5 h-5 font-bold" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    playGlitchClickSound();
+                    setIsNotifOpen(!isNotifOpen);
+                  }}
+                  className="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-full flex items-center justify-center transition relative cursor-pointer"
+                  title="Notifications"
+                >
+                  <Bell className="w-4.5 h-4.5 text-slate-700" />
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#f9553a] rounded-full ring-2 ring-white animate-ping" />
+                  )}
+                </button>
+
+                {profile && (
+                  <div 
+                    onClick={() => setActiveTab('profile')}
+                    className="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 rounded-full p-1 pr-3 cursor-pointer transition"
+                  >
+                    <img 
+                      src={profile.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
+                      alt={profile.displayName || 'User'} 
+                      className="w-8 h-8 rounded-full object-cover ring-2 ring-[#f9553a]"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span className="text-xs font-extrabold text-slate-900 max-w-[90px] truncate">
+                      {profile.displayName ? profile.displayName.split(' ')[0] : 'Student'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
             {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
             <div className="sticky -top-3.5 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
               <button
@@ -2127,54 +1901,6 @@ export default function FeedSection({
         </div>
 
         </div>
-        </div>
-
-        {/* Right Column: Desktop Sidebar */}
-        {activeTab !== 'chat' && (
-          <div className="hidden md:flex w-80 shrink-0 flex-col bg-[var(--color-surface)] border-l border-[var(--neon-green-border)]/80 p-5 space-y-6 overflow-y-auto font-mono">
-            {/* User profile card */}
-            <div className="p-4 bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center space-x-3 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.1)]">
-              <img src={profile?.photoURL} className="w-10 h-10 border border-[var(--neon-green)]/35 object-cover shrink-0" referrerPolicy="no-referrer" />
-              <div className="min-w-0 flex-1 font-mono">
-                <h3 className="text-[10px] font-black text-[var(--color-text)] uppercase truncate">{profile?.displayName}</h3>
-                <p className="text-[8px] text-zinc-500 truncate lowercase mt-0.5">{profile?.email}</p>
-                <div className="flex items-center gap-1 mt-1 text-[7.5px] text-[var(--neon-green)] font-black">
-                  <span className="w-1.5 h-1.5 bg-[var(--neon-green)] rounded-full animate-ping"></span>
-                  <span>TUNNEL SECURED</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Stats or Campus Ticker */}
-            <div className="space-y-2">
-              <h4 className="text-[8px] font-mono font-black text-zinc-500 uppercase tracking-widest border-l-2 border-[var(--neon-green)] pl-1.5">
-                ACTIVE GATEWAY
-              </h4>
-              <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] space-y-2 text-[9.5px] text-zinc-400">
-                <div className="flex items-center justify-between">
-                  <span>📍 GATEWAY LOCATION</span>
-                  <span className="text-[var(--neon-green)] font-black uppercase">{selectedCampus}</span>
-                </div>
-                <div className="flex items-center justify-between text-[8.5px]">
-                  <span>📶 PIPELINE SPEED</span>
-                  <span className="text-emerald-400 font-bold">0.02 MS // LIVE</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Guidelines or Info Panel */}
-            <div className="p-4 bg-[var(--color-surface)] border border-[var(--neon-green-border)] space-y-2">
-              <h4 className="text-[9px] font-black text-[var(--neon-green)] uppercase">
-                Flick Campus Hub
-              </h4>
-              <p className="text-[9.5px] text-zinc-400 leading-relaxed font-sans normal-case">
-                Welcome to the upgraded Flick desktop workspace. Enjoy the expanded layout where you can seamlessly view peer stories, broadcast campus chronicles, and message friends.
-              </p>
-            </div>
-          </div>
-        )}
-
-      </div>
 
       {/* =================================== SECTION 6 — FLOATING COMPOSE BUTTON WITH SPRING RADIAL MENU =================================== */}
       {activeTab === 'home' && (
@@ -2235,9 +1961,6 @@ export default function FeedSection({
           </button>
         </div>
       )}
-
-        </div> {/* Closes new morphic rounded frame window */}
-      </div> {/* Closes new right side container */}
 
       {/* =================================== SEARCH MODAL =================================== */}
       <AnimatePresence>

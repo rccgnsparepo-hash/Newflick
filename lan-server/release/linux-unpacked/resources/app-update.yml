@@ -1,0 +1,4 @@
+owner: Faratech
+repo: Newflick
+provider: github
+updaterCacheDirName: flick-lan-server-updater

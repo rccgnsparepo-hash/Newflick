@@ -497,103 +497,22 @@ header.bg-\[\#050505\]\/85,
 .bg-\[\#121212\]\/90,
 .bg-black\/60,
 .bg-black\/80,
-.bg-black\/45,
-.bg-black\/70,
-.bg-black\/75 {
-  background-color: var(--color-surface) !important;
-  border-radius: var(--border-radius-card) !important;
-  border-color: var(--neon-green-border) !important;
-  box-shadow: var(--shadow-card) !important;
-  backdrop-filter: blur(var(--backdrop-blur-card)) !important;
-  transition: var(--theme-transition);
-}
-
-/* Text color overrides */
-.text-\[\#f4f4f5\],
-.text-zinc-100,
-.text-zinc-200,
-.text-white {
-  color: var(--color-text) !important;
-}
-
-.text-zinc-400,
-.text-zinc-300 {
-  color: var(--color-text) !important;
-  opacity: 0.8 !important;
-}
-
-.text-zinc-500,
-.text-zinc-600 {
-  color: var(--color-text) !important;
-  opacity: 0.6 !important;
+/* Text color overrides for dark mode fallback */
+.dark .text-zinc-100,
+.dark .text-zinc-200 {
+  color: var(--color-text);
 }
 
 /* Input Fields */
 input,
 textarea,
-.glass-input,
-.bg-zinc-950.border-zinc-800 {
-  background-color: var(--color-surface) !important;
-  color: var(--color-text) !important;
-  border-radius: var(--border-radius-button) !important;
-  border-color: var(--neon-green-border) !important;
-  box-shadow: var(--shadow-button) !important;
+.glass-input {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--border-radius-button);
 }
 
-/* Border overrides */
-.border-\[var\(--neon-green\)\],
-.border-\[var\(--neon-green\)\]\/20,
-.border-\[var\(--neon-green\)\]\/30,
-.border-\[var\(--neon-green\)\]\/35,
-.border-\[var\(--neon-green\)\]\/40,
-.border-\[var\(--neon-green\)\]\/70,
-.border-zinc-800,
-.border-zinc-90 {
-  border-color: var(--neon-green-border) !important;
-  border-width: var(--border-width-card) !important;
-  border-radius: var(--border-radius-card) !important;
-}
-
-/* Buttons overrides */
-button.brutalist-button-green,
-.brutalist-button-green,
-button.px-3.py-2.border {
-  background-color: var(--color-primary) !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
-  border-radius: var(--border-radius-button) !important;
-  box-shadow: var(--shadow-button) !important;
-  border-width: var(--border-width-button, 2px) !important;
-}
-
-[data-color-scheme="light"] button.brutalist-button-green,
-[data-color-scheme="light"] .brutalist-button-green {
-  color: #1a1a1a !important;
-}
-
-/* Layout rounding overrides */
-.rounded-none,
-.rounded-sm,
-.rounded-md,
-.rounded-lg,
-.rounded-xl,
-.rounded-2xl {
-  border-radius: var(--border-radius-card) !important;
-}
-
-
-
-
-
-[class*="bg-[#"],
-[class*="bg-zinc-9"],
-[class*="bg-black"],
-[class*="bg-zinc-8"],
-[class*="bg-zinc-950"] {
-  background-color: var(--color-surface) !important;
-}
-
-body,
-[class~="bg-[#050505]"] {
-  background-color: var(--color-background) !important;
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
 }

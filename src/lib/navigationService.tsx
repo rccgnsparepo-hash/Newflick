@@ -3,8 +3,10 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 // ==========================================
 // 1. Navigation Types & Interfaces
 // ==========================================
+export type TabType = 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace';
+
 export interface NavigationState {
-  tab: 'home' | 'match' | 'chat' | 'news' | 'profile';
+  tab: TabType;
   chatPeerId: string | null;
   chatGroupId: string | null;
   profileId: string | null;
@@ -12,8 +14,8 @@ export interface NavigationState {
 
 export interface NavigationContextType {
   // Navigation State
-  activeTab: 'home' | 'match' | 'chat' | 'news' | 'profile';
-  setActiveTab: (tab: 'home' | 'match' | 'chat' | 'news' | 'profile') => void;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
   deepLinkedPeerId: string | null;
   setDeepLinkedPeerId: (id: string | null) => void;
   deepLinkedGroupId: string | null;
@@ -58,7 +60,7 @@ export function useNavigation() {
 // ==========================================
 export const CustomNavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Main Navigation States with local storage fallbacks to protect against process death
-  const [activeTab, setLocalActiveTab] = useState<'home' | 'match' | 'chat' | 'news' | 'profile'>(() => {
+  const [activeTab, setLocalActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('faraflick_active_tab');
       return (saved as any) || 'home';
