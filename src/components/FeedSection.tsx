@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import LazyImage from './LazyImage';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1114,13 +1115,13 @@ export default function FeedSection({
   };
 
   return (
-    <div className="w-full h-full flex flex-col relative font-mono overflow-y-auto">
+    <div className="w-full h-full min-h-0 flex flex-col relative font-mono overflow-hidden">
       
       {/* Main Tab Views Container */}
-      <div className="flex-1 w-full h-full relative">
+      <div className="flex-1 min-h-0 w-full h-full relative overflow-hidden">
         
         {/* ==================== HOME TAB VIEW ==================== */}
-        <div className={`w-full flex flex-col transition-all duration-300 ease-out px-2 sm:px-4 py-4 space-y-5 ${activeTab === 'home' || activeTab === 'feed' ? 'block' : 'hidden'}`}>
+        <div className={`w-full h-full overflow-y-auto flex flex-col transition-all duration-300 ease-out px-2 sm:px-4 py-4 space-y-5 ${activeTab === 'home' || activeTab === 'feed' ? 'block' : 'hidden'}`}>
           <div className="max-w-[630px] mx-auto w-full space-y-5 pb-12">
             {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
             <div className="sticky top-0 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
@@ -1495,7 +1496,7 @@ export default function FeedSection({
                             onClick={() => setZoomImg(post.imageUrl)}
                             className="rounded-lg overflow-hidden border border-zinc-950 cursor-zoom-in max-h-80"
                           >
-                            <img 
+                            <LazyImage 
                               src={post.imageUrl} 
                               alt="Campus feed attachment" 
                               className="w-full h-full object-cover hover:opacity-95 transition"
@@ -1778,7 +1779,7 @@ export default function FeedSection({
         </div>
 
         {/* ==================== PROFILE TAB VIEW ==================== */}
-        <div className={`w-full flex flex-col p-2 sm:p-4 ${activeTab === 'profile' ? 'block' : 'hidden'}`}>
+        <div className={`w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 ${activeTab === 'profile' ? 'block' : 'hidden'}`}>
           <BentoProfile
             profile={profile}
             firebasePosts={firebasePosts}
@@ -1794,7 +1795,7 @@ export default function FeedSection({
         </div>
 
         {/* ==================== SECURE CRYPTO CHATS TAB ==================== */}
-        <div className={`w-full h-[calc(100vh-6rem)] flex flex-col bg-[var(--color-surface)] ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
+        <div className={`w-full h-full min-h-0 flex flex-col bg-[var(--color-surface)] ${activeTab === 'chat' ? 'flex' : 'hidden'}`}>
           <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
             <ChatSection 
               deepLinkedPeerId={deepLinkedPeerId} 
@@ -1806,14 +1807,14 @@ export default function FeedSection({
         </div>
 
         {/* ==================== WORKSPACE HUB TAB ==================== */}
-        <div className={`w-full h-full flex flex-col p-2 sm:p-4 ${activeTab === 'workspace' ? 'block' : 'hidden'}`}>
-          <div className="flex-1 overflow-hidden flex flex-col">
+        <div className={`w-full h-full min-h-0 flex flex-col p-2 sm:p-4 ${activeTab === 'workspace' ? 'flex' : 'hidden'}`}>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <WorkspaceHub />
           </div>
         </div>
 
         {/* ==================== CAMPUS NEWS WIRE TAB ==================== */}
-        <div className={`w-full flex flex-col p-2 sm:p-4 ${activeTab === 'news' ? 'block' : 'hidden'}`}>
+        <div className={`w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 ${activeTab === 'news' ? 'block' : 'hidden'}`}>
           <div className="flex-1 flex flex-col">
             <SecureNewsFlow />
           </div>

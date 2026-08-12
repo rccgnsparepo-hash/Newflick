@@ -827,7 +827,7 @@ function Dashboard() {
       />
 
       {/* Genuine Multi-Column Responsive App Shell Layout */}
-      <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-row min-h-0 relative overflow-hidden">
+      <div className="flex-1 min-h-0 w-full max-w-full flex flex-row relative overflow-hidden">
         
         {/* Left Navigation Rail (Desktop & Tablet) */}
         <DesktopSidebar
@@ -839,7 +839,7 @@ function Dashboard() {
         />
 
         {/* Center Content Column (Main Feed / Messaging / Profile / Workspace) */}
-        <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative pb-20 md:pb-0 scrollbar-thin">
+        <main className="flex-1 min-h-0 flex flex-col min-w-0 h-full relative overflow-hidden">
           <FeedSection 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 

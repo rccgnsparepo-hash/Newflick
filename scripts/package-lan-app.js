@@ -56,7 +56,7 @@ try {
 
   // 4. Run electron-builder to generate installer executable binaries (EXE/AppImage/DMG)
   console.log('[4/4] Generating LAN Server desktop executables (release artifacts)...');
-  execSync('npx electron-builder --config electron-builder.yml', { cwd: path.join(rootDir, 'lan-server'), stdio: 'inherit' });
+  execSync('npx electron-builder --project . --config electron-builder.yml', { cwd: path.join(rootDir, 'lan-server'), stdio: 'inherit' });
 
   console.log('===================================================');
   console.log('✓ SUCCESS: LAN Server desktop application bundled!');

@@ -32,12 +32,14 @@ jobs:
         run: |
           npm pkg set repository.type="git"
           npm pkg set repository.url="https://github.com/${{ github.repository }}.git"
+          cd lan-server && npm pkg set repository.type="git" && npm pkg set repository.url="https://github.com/${{ github.repository }}.git"
 
       - name: Install Root Dependencies
         run: npm ci || npm install --legacy-peer-deps
 
       - name: Install LAN Server Dependencies
-        run: cd lan-server && (npm ci || npm install --legacy-peer-deps)
+        working-directory: lan-server
+        run: npm ci || npm install --legacy-peer-deps
 
       - name: Package LAN Server Executable
         shell: bash
@@ -76,6 +78,7 @@ jobs:
             release-artifacts/flick-lan-server-windows-latest/*.exe
             release-artifacts/flick-lan-server-ubuntu-latest/*.AppImage
             release-artifacts/flick-lan-server-ubuntu-latest/*.deb
+          fail_on_unmatched_files: false
           draft: false
           prerelease: false
         env:

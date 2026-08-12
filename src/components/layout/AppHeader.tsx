@@ -72,7 +72,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <header className="border-b-2 border-[var(--neon-green)]/30 sticky top-0 z-50 bg-[var(--color-background)]/85 backdrop-blur-md font-mono">
+    <header className="border-b-2 border-[var(--neon-green)]/30 shrink-0 h-20 z-40 bg-[var(--color-background)]/90 backdrop-blur-md font-mono relative">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
         
         {/* Logo and branding */}
@@ -86,10 +86,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               F
             </div>
             <div>
-              <h1 className="font-serif font-black text-xs sm:text-sm text-[var(--color-text)] tracking-tight leading-none uppercase glitch-hover">
+              <h1 className="font-serif font-black text-sm sm:text-base text-[var(--color-text)] tracking-tight leading-none uppercase glitch-hover">
                 FARA FLICK
               </h1>
-              <p className="hidden xs:block text-[7px] uppercase tracking-widest font-mono font-bold text-[var(--neon-green)] mt-1 opacity-90 group-hover/logo:text-red-500 transition-colors">
+              <p className="hidden xs:block text-[9px] uppercase tracking-widest font-mono font-bold text-[var(--neon-green)] mt-1 opacity-90 group-hover/logo:text-red-500 transition-colors">
                 E2E SECURE NET // PORTAL_A
               </p>
             </div>
@@ -97,11 +97,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
 
         {/* Credentials & System Monitors - Desktop */}
-        <div className="hidden md:flex items-center space-x-2.5">
+        <div className="flex items-center space-x-2.5">
           <ConnectionStatusBadge />
 
           <div 
-            className={`flex items-center space-x-1.5 px-2 py-1 border font-mono text-[9px] uppercase tracking-wider font-bold transition-all select-none ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 border font-mono text-xs uppercase tracking-wider font-bold transition-all select-none ${
               !isOnline 
                 ? 'border-red-500 bg-red-955/20 text-red-500 animate-pulse'
                 : isSlow
@@ -116,12 +116,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           >
             {!isOnline ? (
               <>
-                <WifiOff className="w-3.5 h-3.5 text-red-500 animate-bounce" />
+                <WifiOff className="w-4 h-4 text-red-500 animate-bounce" />
                 <span className="hidden xs:inline">TUNNEL BLOCKED</span>
               </>
             ) : (
               <>
-                <Wifi className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+                <Wifi className="w-4 h-4 text-[var(--neon-green)]" />
                 <span className="hidden xs:inline">
                   {isSlow ? 'TUNNEL SLOW' : 'TUNNEL LIVE'}
                 </span>
@@ -130,7 +130,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </div>
 
           <div 
-            className={`flex items-center space-x-1.5 px-2 py-1 border font-mono text-[9px] uppercase tracking-wider font-bold transition-all select-none ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 border font-mono text-xs uppercase tracking-wider font-bold transition-all select-none ${
               (batteryLevel !== null && batteryLevel <= 0.20)
                 ? 'border-red-500 bg-red-955/20 text-red-500 animate-pulse' 
                 : 'border-[var(--neon-green)]/20 bg-[var(--color-surface)] text-[var(--neon-green)]'
@@ -138,12 +138,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             title={batteryLevel !== null ? (isCharging ? "Battery is Charging" : `Battery level: ${Math.round(batteryLevel * 100)}%`) : "Connected to Grid Power"}
           >
             {isCharging ? (
-              <BatteryCharging className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+              <BatteryCharging className="w-4 h-4 text-[var(--neon-green)]" />
             ) : (
-              <Battery className={`w-3.5 h-3.5 ${(batteryLevel !== null && batteryLevel <= 0.20) ? 'text-red-500 animate-bounce' : 'text-[var(--neon-green)]'}`} />
+              <Battery className={`w-4 h-4 ${(batteryLevel !== null && batteryLevel <= 0.20) ? 'text-red-500 animate-bounce' : 'text-[var(--neon-green)]'}`} />
             )}
             <span>{batteryLevel !== null ? `${Math.round(batteryLevel * 100)}%` : 'GRID'}</span>
-            {isCharging && <span className="text-[7.5px] text-[var(--neon-green)] font-mono font-black">[CHRG]</span>}
+            {isCharging && <span className="text-[9px] text-[var(--neon-green)] font-mono font-black">[CHRG]</span>}
           </div>
 
           {/* Notifications Dropdown */}
@@ -252,7 +252,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
 
         {/* Mobile Indicator & Menu Toggle */}
-        <div className="flex md:hidden items-center space-x-2.5">
+        <div className="hidden items-center space-x-2.5">
           {unreadE2EECount > 0 && (
             <span className="bg-red-600 text-[var(--color-text)] px-2 py-1 leading-none text-[8.5px] font-black border border-red-500 animate-pulse tracking-tight font-mono">
               {unreadE2EECount} SECURE
