@@ -85,8 +85,6 @@ export interface FeedSectionProps {
   onClearDeepLink?: () => void;
   deepLinkedGroupId?: string | null;
   onClearDeepLinkedGroup?: () => void;
-  selectedCampus?: string;
-  setSelectedCampus?: (campus: string) => void;
 }
 
 export default function FeedSection({
@@ -96,9 +94,7 @@ export default function FeedSection({
   deepLinkedPeerId = null,
   onClearDeepLink = () => {},
   deepLinkedGroupId = null,
-  onClearDeepLinkedGroup = () => {},
-  selectedCampus: controlledSelectedCampus,
-  setSelectedCampus: controlledSetSelectedCampus
+  onClearDeepLinkedGroup = () => {}
 }: FeedSectionProps = {}) {
   const { profile } = useAuth();
   const operations = useOperations();
@@ -113,11 +109,9 @@ export default function FeedSection({
   const activeTab = controlledActiveTab || localActiveTab;
   const setActiveTab = controlledSetActiveTab || localSetActiveTab;
   const [homeSubView, setHomeSubView] = useState<'feed' | 'network' | 'live'>('feed');
-  const [localSelectedCampus, localSetSelectedCampus] = useState<string>(() => {
+  const [selectedCampus, setSelectedCampus] = useState<string>(() => {
     return localStorage.getItem('flick_selected_campus') || 'Global Feed';
   });
-  const selectedCampus = controlledSelectedCampus !== undefined ? controlledSelectedCampus : localSelectedCampus;
-  const setSelectedCampus = controlledSetSelectedCampus || localSetSelectedCampus;
 
   // State to support collapsible desktop navigation rail/sidebar
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
@@ -232,8 +226,13 @@ export default function FeedSection({
   // Subscribe to comments dynamically when activeDiscussionPost is set
   useEffect(() => {
     const handlePostEvent = () => setShowPostCreator(true);
+    const handleSearchEvent = () => setIsSearchOpen(true);
     window.addEventListener('faraflick-trigger-post', handlePostEvent);
-    return () => window.removeEventListener('faraflick-trigger-post', handlePostEvent);
+    window.addEventListener('faraflick-trigger-search', handleSearchEvent);
+    return () => {
+      window.removeEventListener('faraflick-trigger-post', handlePostEvent);
+      window.removeEventListener('faraflick-trigger-search', handleSearchEvent);
+    };
   }, []);
 
   useEffect(() => {
@@ -272,11 +271,8 @@ export default function FeedSection({
       }
     };
     window.addEventListener('faraflick-back-button', handleBackButton);
-    const handleOpenSearch = () => setIsSearchOpen(true);
-    window.addEventListener('faraflick-open-search', handleOpenSearch);
     return () => {
       window.removeEventListener('faraflick-back-button', handleBackButton);
-      window.removeEventListener('faraflick-open-search', handleOpenSearch);
     };
   }, [zoomImg, activeDiscussionPost, showPostCreator, isRadialOpen]);
 
@@ -1118,93 +1114,16 @@ export default function FeedSection({
   };
 
   return (
-    <div className="w-full h-full flex flex-col relative overflow-hidden font-mono">
-      {/* Main Tab Views Switcher Wrapper */}
-      <div className="flex-1 w-full h-full relative overflow-hidden">
+    <div className="w-full h-full flex flex-col relative font-mono overflow-y-auto">
+      
+      {/* Main Tab Views Container */}
+      <div className="flex-1 w-full h-full relative">
         
         {/* ==================== HOME TAB VIEW ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-3 md:px-6 py-4 pb-24 md:pb-6 space-y-6 ${activeTab === 'home' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
-          <div className="max-w-[720px] mx-auto w-full space-y-6 pb-16 pt-1">
-            
-            {/* TOP DASHBOARD HEADER BAR (Reference Design) */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 border-b border-slate-100">
-              <div className="flex items-center justify-between w-full sm:w-auto">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight font-sans">
-                  Dashboard
-                </h1>
-                
-                {/* Mobile Create Button */}
-                <button
-                  onClick={() => {
-                    playGlitchClickSound();
-                    setShowPostCreator(true);
-                  }}
-                  className="sm:hidden w-10 h-10 bg-slate-900 hover:bg-[#f9553a] text-white rounded-full flex items-center justify-center transition cursor-pointer shadow-md"
-                  title="Create Post"
-                >
-                  <Plus className="w-5 h-5 font-bold" />
-                </button>
-              </div>
-
-              {/* Center Search Bar */}
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search campus signals..."
-                  className="w-full bg-[#f2f3f5] focus:bg-white text-slate-900 text-xs font-semibold rounded-full pl-9 pr-4 py-2.5 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#f9553a] transition-all shadow-inner placeholder-slate-400"
-                />
-              </div>
-
-              {/* Right Top Action Bar (Desktop) */}
-              <div className="hidden sm:flex items-center space-x-3 shrink-0">
-                <button
-                  onClick={() => {
-                    playGlitchClickSound();
-                    setShowPostCreator(true);
-                  }}
-                  className="w-10 h-10 bg-slate-900 hover:bg-[#f9553a] text-white rounded-full flex items-center justify-center transition cursor-pointer shadow-md"
-                  title="Create Post"
-                >
-                  <Plus className="w-5 h-5 font-bold" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    playGlitchClickSound();
-                    setIsNotifOpen(!isNotifOpen);
-                  }}
-                  className="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-full flex items-center justify-center transition relative cursor-pointer"
-                  title="Notifications"
-                >
-                  <Bell className="w-4.5 h-4.5 text-slate-700" />
-                  {notifications.filter(n => !n.read).length > 0 && (
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#f9553a] rounded-full ring-2 ring-white animate-ping" />
-                  )}
-                </button>
-
-                {profile && (
-                  <div 
-                    onClick={() => setActiveTab('profile')}
-                    className="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 rounded-full p-1 pr-3 cursor-pointer transition"
-                  >
-                    <img 
-                      src={profile.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} 
-                      alt={profile.displayName || 'User'} 
-                      className="w-8 h-8 rounded-full object-cover ring-2 ring-[#f9553a]"
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="text-xs font-extrabold text-slate-900 max-w-[90px] truncate">
-                      {profile.displayName ? profile.displayName.split(' ')[0] : 'Student'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+        <div className={`w-full flex flex-col transition-all duration-300 ease-out px-2 sm:px-4 py-4 space-y-5 ${activeTab === 'home' || activeTab === 'feed' ? 'block' : 'hidden'}`}>
+          <div className="max-w-[630px] mx-auto w-full space-y-5 pb-12">
             {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
-            <div className="sticky -top-3.5 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+            <div className="sticky top-0 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
               <button
                 onClick={() => { playGlitchClickSound(); setHomeSubView('feed'); }}
                 className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
@@ -1859,7 +1778,7 @@ export default function FeedSection({
         </div>
 
         {/* ==================== PROFILE TAB VIEW ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-4 py-3 pb-24 md:pb-0 ${activeTab === 'profile' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+        <div className={`w-full flex flex-col p-2 sm:p-4 ${activeTab === 'profile' ? 'block' : 'hidden'}`}>
           <BentoProfile
             profile={profile}
             firebasePosts={firebasePosts}
@@ -1875,7 +1794,7 @@ export default function FeedSection({
         </div>
 
         {/* ==================== SECURE CRYPTO CHATS TAB ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-hidden bg-[var(--color-surface)] ${activeTab === 'chat' ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-95 pointer-events-none'}`}>
+        <div className={`w-full h-[calc(100vh-6rem)] flex flex-col bg-[var(--color-surface)] ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
           <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
             <ChatSection 
               deepLinkedPeerId={deepLinkedPeerId} 
@@ -1887,20 +1806,20 @@ export default function FeedSection({
         </div>
 
         {/* ==================== WORKSPACE HUB TAB ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-hidden p-4 pb-24 md:pb-0 ${activeTab === 'workspace' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+        <div className={`w-full h-full flex flex-col p-2 sm:p-4 ${activeTab === 'workspace' ? 'block' : 'hidden'}`}>
           <div className="flex-1 overflow-hidden flex flex-col">
             <WorkspaceHub />
           </div>
         </div>
 
         {/* ==================== CAMPUS NEWS WIRE TAB ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto pb-24 md:pb-10 px-4 pt-3 ${activeTab === 'news' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
+        <div className={`w-full flex flex-col p-2 sm:p-4 ${activeTab === 'news' ? 'block' : 'hidden'}`}>
           <div className="flex-1 flex flex-col">
             <SecureNewsFlow />
           </div>
         </div>
 
-        </div>
+      </div>
 
       {/* =================================== SECTION 6 — FLOATING COMPOSE BUTTON WITH SPRING RADIAL MENU =================================== */}
       {activeTab === 'home' && (
@@ -2915,78 +2834,6 @@ export default function FeedSection({
           </div>
         </div>
       )}
-
-      {/* =================================== MOBILE NATIVE BOTTOM NAVIGATION BAR =================================== */}
-      <nav className="fixed bottom-0 left-0 right-0 md:hidden z-50 bg-[var(--color-surface)]/95 backdrop-blur-xl border-t border-zinc-800 pb-[env(safe-area-inset-bottom)] pt-1 px-2 flex items-center justify-around shadow-2xl">
-        
-        {/* Feed Tab */}
-        <button
-          onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('home'); }}
-          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
-        >
-          <School className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'home' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
-          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'home' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Feed</span>
-        </button>
-
-        {/* Radio Tab */}
-        <button
-          onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('news'); }}
-          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
-        >
-          <Radio className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'news' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
-          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'news' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Radio</span>
-        </button>
-
-        {/* Workspace Mobile Tab */}
-        <button
-          onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('workspace'); }}
-          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
-        >
-          <Briefcase className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'workspace' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
-          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'workspace' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Hub</span>
-        </button>
-
-        {/* Chats Tab */}
-        <button
-          onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('chat'); }}
-          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
-        >
-          <div className="relative">
-            <MessageSquare className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'chat' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
-            {unreadE2EECount > 0 && (
-              <span className="absolute -top-1 -right-1.5 bg-red-500 text-white font-bold text-[10px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-[var(--color-surface)]">
-                {unreadE2EECount}
-              </span>
-            )}
-          </div>
-          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'chat' ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`}>Chats</span>
-        </button>
-
-        {/* Match Tab */}
-        <button
-          onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('match'); }}
-          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
-        >
-          <Sparkles className={`w-6 h-6 transition-colors duration-200 ${activeTab === 'match' ? 'text-pink-500' : 'text-zinc-500'}`} />
-          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'match' ? 'text-pink-500' : 'text-zinc-500'}`}>Match</span>
-        </button>
-
-        {/* Profile Tab */}
-        <button
-          onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('profile'); }}
-          className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[48px] p-2 rounded-2xl transition-all duration-200 active:scale-95 touch-manipulation tap-highlight-transparent"
-        >
-          <img
-            src={profile?.photoURL}
-            alt=""
-            className={`w-6 h-6 rounded-full object-cover border-2 transition-colors duration-200 ${
-              activeTab === 'profile' ? 'border-red-500' : 'border-transparent'
-            }`}
-            referrerPolicy="no-referrer"
-          />
-          <span className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${activeTab === 'profile' ? 'text-red-500' : 'text-zinc-500'}`}>Node</span>
-        </button>
-      </nav>
     </div>
   );
 }

@@ -12,7 +12,7 @@ export type DesignSystemTheme =
   | 'softui';
 
 export type ColorScheme = 'dark' | 'light' | 'auto' | 'highcontrast';
-export type AccentColor = 'coral' | 'green' | 'purple' | 'white' | 'blue' | 'amber';
+export type AccentColor = 'green' | 'purple' | 'white' | 'blue' | 'amber';
 
 interface ThemeContextType {
   theme: DesignSystemTheme;
@@ -27,15 +27,15 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<DesignSystemTheme>(() => {
-    return (localStorage.getItem('flick_theme_v3') as DesignSystemTheme) || 'softui';
+    return (localStorage.getItem('flick_theme_v3') as DesignSystemTheme) || 'brutalism';
   });
 
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>(() => {
-    return (localStorage.getItem('flick_scheme_v3') as ColorScheme) || 'light';
+    return (localStorage.getItem('flick_scheme_v3') as ColorScheme) || 'dark';
   });
 
   const [accentColor, setAccentColorState] = useState<AccentColor>(() => {
-    return (localStorage.getItem('flick_accent_v3') as AccentColor) || 'coral';
+    return (localStorage.getItem('flick_accent_v3') as AccentColor) || 'green';
   });
 
   const setTheme = (t: DesignSystemTheme) => {
@@ -119,7 +119,6 @@ function applyThemeVariables(theme: DesignSystemTheme, scheme: ColorScheme, acce
 
   // 1. Map Accent colors
   const accentColors: Record<AccentColor, { primary: string; rgb: string; secondary: string; accent: string }> = {
-    coral: { primary: '#f9553a', rgb: '249, 85, 58', secondary: '#fca998', accent: '#ff6b52' },
     green: { primary: '#00ff66', rgb: '0, 255, 102', secondary: '#00ccff', accent: '#ff0055' },
     purple: { primary: '#bd00ff', rgb: '189, 0, 255', secondary: '#ff00aa', accent: '#00f0ff' },
     white: { primary: '#ffffff', rgb: '255, 255, 255', secondary: '#a1a1aa', accent: '#ff0055' },
@@ -127,7 +126,7 @@ function applyThemeVariables(theme: DesignSystemTheme, scheme: ColorScheme, acce
     amber: { primary: '#f59e0b', rgb: '245, 158, 11', secondary: '#10b981', accent: '#ec4899' },
   };
 
-  const colors = accentColors[accent] || accentColors.coral;
+  const colors = accentColors[accent] || accentColors.green;
 
   // Set the default legacy/compatibility color variables
   root.style.setProperty('--neon-green', colors.primary);
@@ -148,16 +147,16 @@ function applyThemeVariables(theme: DesignSystemTheme, scheme: ColorScheme, acce
     root.style.setProperty('--color-text', '#ffffff');
     root.style.setProperty('--border-width-card', '3px');
   } else if (scheme === 'light') {
-    root.style.setProperty('--color-background', '#fcdada');
+    root.style.setProperty('--color-background', theme === 'neumorphism' ? '#e0e2e6' : theme === 'claymorphism' ? '#f0f4f8' : '#f4f4f7');
     root.style.setProperty('--color-surface', '#ffffff');
-    root.style.setProperty('--color-text', '#1e293b');
-    root.style.setProperty('--border-width-card', '0px');
+    root.style.setProperty('--color-text', '#1c1917');
+    root.style.setProperty('--border-width-card', theme === 'minimalism' ? '1px' : '2px');
   } else {
     // Dark mode
-    root.style.setProperty('--color-background', '#181216');
-    root.style.setProperty('--color-surface', '#221b20');
-    root.style.setProperty('--color-text', '#f8fafc');
-    root.style.setProperty('--border-width-card', '0px');
+    root.style.setProperty('--color-background', theme === 'neumorphism' ? '#1e1e24' : theme === 'claymorphism' ? '#1c1e22' : '#050505');
+    root.style.setProperty('--color-surface', theme === 'glassmorphism' ? 'rgba(15, 15, 20, 0.45)' : theme === 'neumorphism' ? '#1e1e24' : '#0d0d0d');
+    root.style.setProperty('--color-text', '#f4f4f5');
+    root.style.setProperty('--border-width-card', theme === 'minimalism' ? '1px' : '2px');
   }
 
   // 3. Map Design System styles

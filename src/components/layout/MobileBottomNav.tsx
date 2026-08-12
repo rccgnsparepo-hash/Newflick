@@ -1,95 +1,107 @@
 import React from 'react';
-import { School, Radio, MessageSquare, Sparkles, User, Briefcase } from 'lucide-react';
-import { TabType } from '../../lib/navigationService';
-import { playGlitchClickSound, triggerVibration } from '../../lib/sounds';
+import { motion } from 'motion/react';
+import { playGlitchClickSound } from '../../lib/sounds';
+import { triggerVibration } from '../../lib/haptics';
+import {
+  School,
+  Radio,
+  MessageSquare,
+  Sparkles,
+  User
+} from 'lucide-react';
 
 interface MobileBottomNavProps {
-  activeTab: TabType;
-  setActiveTab: (tab: TabType) => void;
-  unreadE2EECount: number;
+  activeTab: 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace';
+  setActiveTab: (tab: 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace') => void;
+  unreadE2EECount?: number;
 }
 
-export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
+export default function MobileBottomNav({
   activeTab,
   setActiveTab,
-  unreadE2EECount,
-}) => {
+  unreadE2EECount = 0
+}: MobileBottomNavProps) {
   const tabs = [
     {
-      id: 'home' as TabType,
+      id: 'home' as const,
       label: 'Home',
       icon: School,
+      color: 'text-[var(--neon-green)]'
     },
     {
-      id: 'news' as TabType,
-      label: 'News',
+      id: 'news' as const,
+      label: 'Radio',
       icon: Radio,
+      color: 'text-[var(--neon-green)]'
     },
     {
-      id: 'chat' as TabType,
-      label: 'Chat',
+      id: 'chat' as const,
+      label: 'Tunnels',
       icon: MessageSquare,
-      badge: unreadE2EECount > 0 ? unreadE2EECount : null,
+      color: 'text-[var(--neon-green)]',
+      badge: unreadE2EECount
     },
     {
-      id: 'match' as TabType,
-      label: 'Matcher',
+      id: 'match' as const,
+      label: 'Match',
       icon: Sparkles,
+      color: 'text-pink-500'
     },
     {
-      id: 'workspace' as TabType,
-      label: 'Workspace',
-      icon: Briefcase,
-    },
-    {
-      id: 'profile' as TabType,
+      id: 'profile' as const,
       label: 'Profile',
       icon: User,
-    },
+      color: 'text-[var(--neon-green)]'
+    }
   ];
 
-  const handleTabClick = (tab: TabType) => {
-    playGlitchClickSound();
-    triggerVibration('light');
-    setActiveTab(tab);
-  };
-
   return (
-    <nav className="md:hidden fixed bottom-2 left-2 right-2 z-50 bg-slate-900/90 backdrop-blur-md rounded-3xl h-16 flex items-center justify-around px-2 font-sans select-none shadow-2xl border border-white/20 text-white">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0c]/95 backdrop-blur-lg border-t border-[var(--neon-green-border)]/40 px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.8)]">
+      <div className="flex items-center justify-around max-w-md mx-auto">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
 
-        return (
-          <button
-            key={tab.id}
-            onClick={() => handleTabClick(tab.id)}
-            className={`flex flex-col items-center justify-center flex-1 h-full py-1 relative transition-all cursor-pointer ${
-              isActive 
-                ? 'text-[#f9553a] font-extrabold' 
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            {/* Active Pill indicator */}
-            {isActive && (
-              <span className="absolute top-1 w-8 h-1 bg-[#f9553a] rounded-full shadow-sm" />
-            )}
-
-            <div className="relative shrink-0 mb-0.5 mt-1">
-              <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
-              {tab.badge && (
-                <span className="absolute -top-1.5 -right-2 bg-[#f9553a] text-white font-black text-[8px] w-4 h-4 rounded-full flex items-center justify-center border border-slate-900">
-                  {tab.badge}
-                </span>
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                playGlitchClickSound();
+                triggerVibration('light');
+                setActiveTab(tab.id);
+              }}
+              className={`relative flex flex-col items-center justify-center py-1 px-3 min-w-[56px] min-h-[44px] cursor-pointer rounded-xl transition-all duration-200 ${
+                isActive
+                  ? 'text-[var(--color-text)]'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="mobileActiveTabGlow"
+                  className="absolute inset-0 bg-[var(--neon-green)]/15 rounded-xl border border-[var(--neon-green-border)]/50 pointer-events-none"
+                  transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                />
               )}
-            </div>
 
-            <span className="text-[9px] font-bold tracking-tight uppercase truncate max-w-[56px]">
-              {tab.label}
-            </span>
-          </button>
-        );
-      })}
+              <div className="relative shrink-0 z-10">
+                <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 ' + tab.color : ''}`} />
+                {!!tab.badge && tab.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-red-600 text-white font-mono font-black text-[7px] w-4 h-4 rounded-full flex items-center justify-center border border-black animate-pulse">
+                    {tab.badge}
+                  </span>
+                )}
+              </div>
+
+              <span className={`text-[9px] font-mono font-bold tracking-tight mt-0.5 z-10 uppercase ${
+                isActive ? tab.color : 'text-zinc-500'
+              }`}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
-};
+}

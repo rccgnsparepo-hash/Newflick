@@ -248,33 +248,3 @@ export function playIncomingMessageSound(senderId?: string, isGroup?: boolean) {
     playGroupNotificationSound('direct');
   }
 }
-
-/**
- * Trigger haptic feedback/vibration if supported by the browser or device
- */
-export function triggerVibration(pattern: 'light' | 'medium' | 'heavy' | number | number[] = 'light') {
-  if (typeof window === 'undefined' || !('navigator' in window) || !('vibrate' in navigator)) return;
-  try {
-    if (typeof pattern === 'number' || Array.isArray(pattern)) {
-      navigator.vibrate(pattern);
-    } else if (pattern === 'light') {
-      navigator.vibrate(10);
-    } else if (pattern === 'medium') {
-      navigator.vibrate(25);
-    } else if (pattern === 'heavy') {
-      navigator.vibrate([35, 20, 35]);
-    }
-  } catch (e) {
-    // Ignore vibration errors on non-supported desktop browser environments
-  }
-}
-
-export function triggerEventVibration(event: 'message' | 'call' | 'like' | 'click' = 'click') {
-  if (event === 'message') {
-    triggerVibration('heavy');
-  } else if (event === 'call') {
-    triggerVibration([100, 50, 100, 50, 100]);
-  } else {
-    triggerVibration('light');
-  }
-}

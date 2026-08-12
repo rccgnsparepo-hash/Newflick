@@ -7,7 +7,10 @@ import { useScrollLock } from './hooks/useScrollLock';
 import AuthScreen from './components/AuthScreen';
 import ChatSection from './components/ChatSection';
 import FeedSection from './components/FeedSection';
-import { AppShell } from './components/layout/AppShell';
+import DesktopSidebar from './components/layout/DesktopSidebar';
+import RightSidebar from './components/layout/RightSidebar';
+import MobileBottomNav from './components/layout/MobileBottomNav';
+import { AppHeader } from './components/layout/AppHeader';
 import SecureNewsFlow from './components/SecureNewsFlow';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
@@ -266,22 +269,6 @@ function Dashboard() {
     };
   }, [profile]);
   const { isOnline, connectionType, isSlow } = useConnectivity();
-  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
-  const [soundMuted, setSoundMuted] = useState(() => {
-    return localStorage.getItem('flick_sound_enabled') === 'false';
-  });
-  const handleToggleSound = () => {
-    const next = !soundMuted;
-    setSoundMuted(next);
-    localStorage.setItem('flick_sound_enabled', next ? 'false' : 'true');
-  };
-  const [selectedCampus, setSelectedCampus] = useState<string>(() => {
-    return localStorage.getItem('flick_selected_campus') || 'Global Feed';
-  });
-  const handleCampusChange = (campus: string) => {
-    setSelectedCampus(campus);
-    localStorage.setItem('flick_selected_campus', campus);
-  };
   const [deepLinkedPostId, setDeepLinkedPostId] = useState<string | null>(null);
   const [deepLinkedStoryId, setDeepLinkedStoryId] = useState<string | null>(null);
   const [deepLinkedNewsId, setDeepLinkedNewsId] = useState<string | null>(null);
@@ -684,7 +671,6 @@ function Dashboard() {
     if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToUsers((allUsers) => {
       usersRef.current = allUsers;
-      setRegisteredUsers(allUsers);
       allUsers.forEach((u) => {
         if (u.uid === profile.uid) return;
         
@@ -814,48 +800,73 @@ function Dashboard() {
     return <AuthScreen />;
   }
 
-  const unreadE2EECount = notifications.filter(n => n.type === 'message' && !n.read).length;
-  const unreadNotifCount = notifications.filter(n => !n.read).length;
+  const unreadE2EECount = notifications.filter(n => n.type === 'message').length;
 
   return (
-    <div className="w-full h-screen bg-[var(--color-background)] text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black overflow-hidden relative">
-      <AppShell
-        activeTab={activeTab as any}
-        setActiveTab={setActiveTab as any}
-        unreadE2EECount={unreadE2EECount}
-        unreadNotifCount={unreadNotifCount}
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
+        {/* Main Responsive App Header */}
+      <AppHeader
         profile={profile}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        unreadE2EECount={unreadE2EECount}
+        notifications={notifications}
         isOnline={isOnline}
-        logout={logout}
+        isSlow={isSlow}
+        connectionType={connectionType}
+        batteryLevel={batteryLevel}
+        isCharging={isCharging}
+        setShowCinematicIntro={setShowCinematicIntro}
         setIsSettingsOpen={setIsSettingsOpen}
         setIsShortcutsOpen={setIsShortcutsOpen}
-        setIsFeedbackOpen={setIsFeedbackOpen}
-        setShowCinematicIntro={setShowCinematicIntro}
-        onOpenSearch={() => {
-          window.dispatchEvent(new CustomEvent('faraflick-open-search'));
-        }}
-        onToggleNotifications={() => setShowNotifDropdown(!showNotifDropdown)}
-        soundMuted={soundMuted}
-        onToggleSound={handleToggleSound}
-        selectedCampus={selectedCampus}
-        onCampusChange={handleCampusChange}
-        registeredUsers={registeredUsers}
-        setDeepLinkedPeerId={setDeepLinkedPeerId}
-      >
-        <FeedSection 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          unreadE2EECount={unreadE2EECount}
-          deepLinkedPeerId={deepLinkedPeerId}
-          onClearDeepLink={() => setDeepLinkedPeerId(null)}
-          deepLinkedGroupId={deepLinkedGroupId}
-          onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
-          selectedCampus={selectedCampus}
-          setSelectedCampus={handleCampusChange}
-        />
-      </AppShell>
+        handleNotificationClick={handleNotificationClick}
+        handleClearNotification={handleClearNotification}
+        logout={logout}
+        playGlitchClickSound={playGlitchClickSound}
+        triggerVibration={triggerVibration}
+      />
 
-      {/* Exquisite bottom navigation placeholder removed to avoid covering inputs. Sticky Top horizontal nav bar replaces it securely. */}
+      {/* Genuine Multi-Column Responsive App Shell Layout */}
+      <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-row min-h-0 relative overflow-hidden">
+        
+        {/* Left Navigation Rail (Desktop & Tablet) */}
+        <DesktopSidebar
+          activeTab={activeTab === 'feed' ? 'home' : activeTab}
+          setActiveTab={(t) => setActiveTab(t === 'home' ? 'feed' : t)}
+          unreadE2EECount={unreadE2EECount}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
+        />
+
+        {/* Center Content Column (Main Feed / Messaging / Profile / Workspace) */}
+        <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative pb-20 md:pb-0 scrollbar-thin">
+          <FeedSection 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            unreadE2EECount={unreadE2EECount}
+            deepLinkedPeerId={deepLinkedPeerId}
+            onClearDeepLink={() => setDeepLinkedPeerId(null)}
+            deepLinkedGroupId={deepLinkedGroupId}
+            onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
+          />
+        </main>
+
+        {/* Right Sidebar (Desktop >= 1200px) */}
+        <RightSidebar
+          onOpenChatWithUser={(userId) => {
+            setDeepLinkedPeerId(userId);
+            setActiveTab('chat');
+          }}
+        />
+
+      </div>
+
+      {/* Mobile Bottom Navigation (< 768px) */}
+      <MobileBottomNav
+        activeTab={activeTab === 'feed' ? 'home' : activeTab}
+        setActiveTab={(t) => setActiveTab(t === 'home' ? 'feed' : t)}
+        unreadE2EECount={unreadE2EECount}
+      />
 
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
 

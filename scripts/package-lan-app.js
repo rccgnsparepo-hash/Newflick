@@ -31,57 +31,6 @@ function copyRecursiveSync(src, dest) {
 }
 
 try {
-  // 0. Ensure valid PNG and ICO icon assets exist for cross-platform desktop builds
-  console.log('[0/4] Verifying LAN desktop icon assets...');
-  try {
-    const pngPath = path.join(rootDir, 'public', 'icon.png');
-    const icoPath = path.join(rootDir, 'public', 'icon.ico');
-    let needsGen = false;
-
-    if (!fs.existsSync(pngPath) || !fs.existsSync(icoPath)) {
-      needsGen = true;
-    } else {
-      const pngHeader = fs.readFileSync(pngPath).subarray(0, 8).toString('hex');
-      if (pngHeader !== '89504e470d0a1a0a') {
-        needsGen = true;
-      }
-    }
-
-    if (needsGen) {
-      console.log('Generating valid PNG and ICO icons from PWA logo...');
-      const sharpModule = await import('sharp');
-      const sharp = sharpModule.default || sharpModule;
-      const logoPath = path.join(rootDir, 'public', 'flick_pwa_logo.jpg');
-      
-      const png512 = await sharp(logoPath).resize(512, 512, { fit: 'cover' }).png().toBuffer();
-      fs.writeFileSync(pngPath, png512);
-
-      const png256 = await sharp(logoPath).resize(256, 256, { fit: 'cover' }).png().toBuffer();
-      const header = Buffer.alloc(6);
-      header.writeUInt16LE(0, 0);
-      header.writeUInt16LE(1, 2);
-      header.writeUInt16LE(1, 4);
-
-      const entry = Buffer.alloc(16);
-      entry.writeUInt8(0, 0);
-      entry.writeUInt8(0, 1);
-      entry.writeUInt8(0, 2);
-      entry.writeUInt8(0, 3);
-      entry.writeUInt16LE(1, 4);
-      entry.writeUInt16LE(32, 6);
-      entry.writeUInt32LE(png256.length, 8);
-      entry.writeUInt32LE(22, 12);
-
-      const icoBuf = Buffer.concat([header, entry, png256]);
-      fs.writeFileSync(icoPath, icoBuf);
-      console.log('✓ Successfully generated public/icon.png and public/icon.ico');
-    } else {
-      console.log('✓ Valid PNG and ICO icons present.');
-    }
-  } catch (err) {
-    console.warn('⚠️ Icon verification warning:', err.message);
-  }
-
   // 1. Build Vite frontend app
   console.log('[1/4] Building Vite frontend Web App...');
   execSync('npx vite build', { cwd: rootDir, stdio: 'inherit' });

@@ -187,7 +187,6 @@ export function SettingsAccessibilityTab({
         </label>
         <div className="grid grid-cols-5 gap-2">
           {([
-            { id: 'coral', name: 'Coral Morphic' },
             { id: 'green', name: 'Neon Green' },
             { id: 'purple', name: 'Cyber Purple' },
             { id: 'white', name: 'Monochrome' },
@@ -201,7 +200,7 @@ export function SettingsAccessibilityTab({
                 setAccentColor(ac.id);
                 // Maintain full compatibility with legacy code
                 const legacyMapping: Record<AccentColor, BrutalistTheme> = {
-                  coral: 'green', green: 'green', purple: 'purple', white: 'white', blue: 'purple', amber: 'green'
+                  green: 'green', purple: 'purple', white: 'white', blue: 'purple', amber: 'green'
                 };
                 setSelectedTheme(legacyMapping[ac.id]);
                 applyTheme(legacyMapping[ac.id]);
