@@ -91,7 +91,9 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
 
       const baseUrl = getBackendUrl();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => {
+        controller.abort(new Error("Bootstrap configuration request timed out after 8000ms"));
+      }, 8000);
 
       let response: Response;
       try {
@@ -101,7 +103,7 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       }
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch bootstrap config: ${response.status}`);
+        throw new Error(`Failed to fetch bootstrap config: HTTP ${response.status}`);
       }
       bootstrapConfig = await response.json();
       
@@ -114,8 +116,11 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       }
       
       return bootstrapConfig as BootstrapConfig;
-    } catch (err) {
-      console.error('[Bootstrap] Failed to initialize from backend. Falling back to VITE_ env variables if available:', err?.message || err);
+    } catch (err: any) {
+      const isAbortError = err?.name === 'AbortError' || (err?.message && (err.message.includes('aborted') || err.message.includes('timed out')));
+      const errorDetail = isAbortError ? "Backend request timed out or was aborted" : (err?.message || String(err));
+      
+      console.warn(`[Bootstrap] Info: Dynamic backend config load bypassed (${errorDetail}). Initializing client with local fallback configuration.`);
       
       const env = (import.meta as any).env || {};
       const viteProjectId = env.VITE_FIREBASE_PROJECT_ID;

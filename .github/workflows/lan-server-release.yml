@@ -50,6 +50,7 @@ jobs:
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: flick-lan-server-${{ matrix.os }}
           path: |
@@ -57,20 +58,38 @@ jobs:
             lan-server/release/*.AppImage
             lan-server/release/*.deb
             lan-server/release/*.blockmap
+          retention-days: 1
+
+      - name: Publish Direct to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: lan-server-v1.0.${{ github.run_number }}
+          name: "Flick LAN Infrastructure Server v1.0.${{ github.run_number }}"
+          files: |
+            lan-server/release/*.exe
+            lan-server/release/*.AppImage
+            lan-server/release/*.deb
+          fail_on_unmatched_files: false
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create-release:
-    name: Create GitHub Release
+    name: Create GitHub Release Summary
     needs: build-lan-server
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: Download All Build Artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: release-artifacts
 
-      - name: Create GitHub Release with Installer Binaries
+      - name: Ensure GitHub Release Exists
         uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
           tag_name: lan-server-v1.0.${{ github.run_number }}
           name: "Flick LAN Infrastructure Server v1.0.${{ github.run_number }}"

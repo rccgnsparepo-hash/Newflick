@@ -64,6 +64,7 @@ jobs:
         with:
           name: flick-android-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 1
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
