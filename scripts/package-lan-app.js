@@ -31,6 +31,14 @@ function copyRecursiveSync(src, dest) {
 }
 
 try {
+  // 0. Build clean icon assets
+  console.log('[0/4] Verifying and generating clean icon PNG assets...');
+  try {
+    execSync('node scripts/build-icon.js', { cwd: rootDir, stdio: 'inherit' });
+  } catch (iconErr) {
+    console.warn('⚠️ Non-critical: Icon generation failed, proceeding with existing icon:', iconErr.message);
+  }
+
   // 1. Build Vite frontend app
   console.log('[1/4] Building Vite frontend Web App...');
   execSync('npx vite build', { cwd: rootDir, stdio: 'inherit' });

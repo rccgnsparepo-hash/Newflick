@@ -1119,44 +1119,73 @@ export default function FeedSection({
       
       {/* Main Tab Views Container */}
       <div className="flex-1 min-h-0 w-full h-full relative overflow-hidden">
-        
-        {/* ==================== HOME TAB VIEW ==================== */}
-        <div className={`w-full h-full overflow-y-auto flex flex-col transition-all duration-300 ease-out px-2 sm:px-4 py-4 space-y-5 ${activeTab === 'home' || activeTab === 'feed' ? 'block' : 'hidden'}`}>
-          <div className="max-w-[630px] mx-auto w-full space-y-5 pb-12">
-            {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
-            <div className="sticky top-0 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
-              <button
-                onClick={() => { playGlitchClickSound(); setHomeSubView('feed'); }}
-                className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
-                  homeSubView === 'feed'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-[var(--color-text)] font-extrabold shadow-md'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                ✦ Feed Chronicles
-              </button>
-              <button
-                onClick={() => { playGlitchClickSound(); setHomeSubView('live'); }}
-                className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl flex items-center justify-center gap-1 ${
-                  homeSubView === 'live'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-[var(--color-text)] font-extrabold shadow-md'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping shrink-0"></span>
-                <span>📺 Live Arena</span>
-              </button>
-              <button
-                onClick={() => { playGlitchClickSound(); setHomeSubView('network'); }}
-                className={`flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
-                  homeSubView === 'network'
-                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-[var(--color-text)] font-extrabold shadow-md'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                ⚡ Node Cluster Map
-              </button>
-            </div>
+        <AnimatePresence mode="wait" initial={false}>
+          {/* ==================== HOME TAB VIEW ==================== */}
+          {(activeTab === 'home' || activeTab === 'feed') && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0, y: 8, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full h-full overflow-y-auto flex flex-col px-2 sm:px-4 py-4 space-y-5"
+            >
+              <div className="max-w-[630px] mx-auto w-full space-y-5 pb-12">
+                {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
+                <div className="sticky top-0 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+                  <button
+                    onClick={() => { playGlitchClickSound(); setHomeSubView('feed'); }}
+                    className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
+                      homeSubView === 'feed'
+                        ? 'text-[var(--color-text)] font-extrabold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {homeSubView === 'feed' && (
+                      <motion.div
+                        layoutId="homeSubViewActivePill"
+                        className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-700 rounded-xl shadow-md z-0 pointer-events-none"
+                        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                      />
+                    )}
+                    <span className="relative z-10">✦ Feed Chronicles</span>
+                  </button>
+                  <button
+                    onClick={() => { playGlitchClickSound(); setHomeSubView('live'); }}
+                    className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl flex items-center justify-center gap-1 ${
+                      homeSubView === 'live'
+                        ? 'text-[var(--color-text)] font-extrabold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {homeSubView === 'live' && (
+                      <motion.div
+                        layoutId="homeSubViewActivePill"
+                        className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-700 rounded-xl shadow-md z-0 pointer-events-none"
+                        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                      />
+                    )}
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping shrink-0 relative z-10"></span>
+                    <span className="relative z-10">📺 Live Arena</span>
+                  </button>
+                  <button
+                    onClick={() => { playGlitchClickSound(); setHomeSubView('network'); }}
+                    className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
+                      homeSubView === 'network'
+                        ? 'text-[var(--color-text)] font-extrabold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {homeSubView === 'network' && (
+                      <motion.div
+                        layoutId="homeSubViewActivePill"
+                        className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-700 rounded-xl shadow-md z-0 pointer-events-none"
+                        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                      />
+                    )}
+                    <span className="relative z-10">⚡ Node Cluster Map</span>
+                  </button>
+                </div>
 
             {homeSubView === 'network' ? (
               <NodeClusterView 
@@ -1647,178 +1676,225 @@ export default function FeedSection({
       </>
     )}
           </div>
-        </div>
+        </motion.div>
+      )}
 
         {/* ==================== MATCH TAB VIEW ==================== */}
-        <div className={`absolute inset-0 flex flex-col transition-all duration-300 ease-out overflow-y-auto px-4 py-3 pb-24 md:pb-0 ${activeTab === 'match' ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-8 pointer-events-none'}`}>
-          <div className="space-y-5">
-            <span className="text-[9px] uppercase tracking-widest font-mono text-zinc-500 font-black block border-l border-pink-500 pl-1.5">
-              OMEGLE-LIKE CAMPUS MATCHER
-            </span>
+        {activeTab === 'match' && (
+          <motion.div
+            key="match"
+            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full h-full overflow-y-auto flex flex-col px-4 py-3 pb-24 md:pb-0"
+          >
+            <div className="space-y-5">
+              <span className="text-[9px] uppercase tracking-widest font-mono text-zinc-500 font-black block border-l border-pink-500 pl-1.5">
+                OMEGLE-LIKE CAMPUS MATCHER
+              </span>
 
-            {isMatching ? (
-              <div className="py-20 flex flex-col items-center justify-center space-y-6 text-center">
-                <div className="relative w-24 h-24 flex items-center justify-center">
-                  <span className="absolute inset-0 rounded-full bg-pink-500/10 animate-ping"></span>
-                  <span className="absolute inset-4 rounded-full bg-pink-500/20 animate-pulse"></span>
-                  <div className="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center text-[var(--color-text)]">
-                    <Sparkles className="w-6 h-6 animate-spin" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-[var(--color-text)] uppercase font-mono">SEARCHING REMOTE CLASSROOMS...</h3>
-                  <p className="text-[10px] text-zinc-500 font-mono mt-1">ALIGNING ENCRYPTION TUNNEL TO SAME INTERESTS</p>
-                </div>
-                
-                {/* Progress bar */}
-                <div className="w-48 bg-[var(--color-background)] h-1 rounded-full overflow-hidden border border-[var(--neon-green-border)]">
-                  <div className="bg-pink-500 h-full transition-all duration-300" style={{ width: `${matchProgress}%` }}></div>
-                </div>
-              </div>
-            ) : isMatchedActive && matchPartner ? (
-              <div className="space-y-4">
-                {/* Met matched peer panel */}
-                <div className="p-4 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <img src={matchPartner.photoURL} alt="" className="w-10 h-10 rounded-full border border-pink-500 object-cover" />
-                    <div>
-                      <h4 className="text-xs font-mono font-black text-[var(--color-text)]">MATCHED CLASSMATE</h4>
-                      <p className="text-[8px] text-zinc-400 uppercase font-mono tracking-wider">
-                        {matchPartner.displayName} // {matchPartner.school || 'Unilag'}
-                      </p>
+              {isMatching ? (
+                <div className="py-20 flex flex-col items-center justify-center space-y-6 text-center">
+                  <div className="relative w-24 h-24 flex items-center justify-center">
+                    <span className="absolute inset-0 rounded-full bg-pink-500/10 animate-ping"></span>
+                    <span className="absolute inset-4 rounded-full bg-pink-500/20 animate-pulse"></span>
+                    <div className="w-12 h-12 bg-pink-600 rounded-full flex items-center justify-center text-[var(--color-text)]">
+                      <Sparkles className="w-6 h-6 animate-spin" />
                     </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[var(--color-text)] uppercase font-mono">SEARCHING REMOTE CLASSROOMS...</h3>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">ALIGNING ENCRYPTION TUNNEL TO SAME INTERESTS</p>
                   </div>
                   
-                  <button
-                    onClick={handleStartMatching}
-                    className="p-2 bg-pink-600/15 hover:bg-pink-600 text-pink-500 hover:text-[var(--color-text)] border border-pink-500/20 rounded-lg text-[9px] uppercase font-black transition font-mono"
-                  >
-                    [ NEXT MATCH ]
-                  </button>
+                  {/* Progress bar */}
+                  <div className="w-48 bg-[var(--color-background)] h-1 rounded-full overflow-hidden border border-[var(--neon-green-border)]">
+                    <div className="bg-pink-500 h-full transition-all duration-300" style={{ width: `${matchProgress}%` }}></div>
+                  </div>
                 </div>
-
-                {/* Simulated Chat Feed */}
-                <div className="h-80 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-4 overflow-y-auto space-y-3 font-mono text-[11px] flex flex-col justify-end">
-                  {matchMessages.map((m, mi) => (
-                    <div key={mi} className={`flex ${m.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] p-2.5 rounded-lg ${m.sender === 'me' ? 'bg-pink-600 text-[var(--color-text)]' : 'bg-[var(--color-surface)] text-zinc-300'}`}>
-                        {m.text}
+              ) : isMatchedActive && matchPartner ? (
+                <div className="space-y-4">
+                  {/* Met matched peer panel */}
+                  <div className="p-4 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <img src={matchPartner.photoURL} alt="" className="w-10 h-10 rounded-full border border-pink-500 object-cover" />
+                      <div>
+                        <h4 className="text-xs font-mono font-black text-[var(--color-text)]">MATCHED CLASSMATE</h4>
+                        <p className="text-[8px] text-zinc-400 uppercase font-mono tracking-wider">
+                          {matchPartner.displayName} // {matchPartner.school || 'Unilag'}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    
+                    <button
+                      onClick={handleStartMatching}
+                      className="p-2 bg-pink-600/15 hover:bg-pink-600 text-pink-500 hover:text-[var(--color-text)] border border-pink-500/20 rounded-lg text-[9px] uppercase font-black transition font-mono"
+                    >
+                      [ NEXT MATCH ]
+                    </button>
+                  </div>
 
-                {/* Chat action input */}
-                <form onSubmit={handleSendMatchMessage} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={matchInput}
-                    onChange={(e) => setMatchInput(e.target.value)}
-                    placeholder="Type encrypted classmate transmission..."
-                    className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl px-4 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-pink-500 focus:ring-0"
-                  />
+                  {/* Simulated Chat Feed */}
+                  <div className="h-80 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl p-4 overflow-y-auto space-y-3 font-mono text-[11px] flex flex-col justify-end">
+                    {matchMessages.map((m, mi) => (
+                      <div key={mi} className={`flex ${m.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] p-2.5 rounded-lg ${m.sender === 'me' ? 'bg-pink-600 text-[var(--color-text)]' : 'bg-[var(--color-surface)] text-zinc-300'}`}>
+                          {m.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Chat action input */}
+                  <form onSubmit={handleSendMatchMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={matchInput}
+                      onChange={(e) => setMatchInput(e.target.value)}
+                      placeholder="Type encrypted classmate transmission..."
+                      className="flex-1 bg-[var(--color-background)] border border-[var(--neon-green-border)] rounded-xl px-4 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-pink-500 focus:ring-0"
+                    />
+                    <button
+                      type="submit"
+                      className="p-3 bg-pink-600 hover:bg-pink-500 text-[var(--color-text)] rounded-xl transition"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="p-6 border border-[var(--neon-green-border)] bg-[var(--color-background)]/60 rounded-xl space-y-5 text-center">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-pink-500" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-mono font-black text-[var(--color-text)] uppercase">CONNECT TO VERIFIED CAMPUS NODES</h3>
+                    <p className="text-[10px] text-zinc-400">Match with random active students matching your department or community.</p>
+                  </div>
+
+                  {/* Filter configurations */}
+                  <div className="grid grid-cols-2 gap-2 text-left pt-2 font-mono text-[10px]">
+                    <div>
+                      <span className="block text-zinc-500 uppercase mb-1 font-bold">SCHOOL TARGET:</span>
+                      <select
+                        value={matchSchoolFilter}
+                        onChange={(e) => setMatchSchoolFilter(e.target.value)}
+                        className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] focus:outline-none rounded text-[9.5px]"
+                      >
+                        <option value="any">ANY CAMPUS</option>
+                        <option value="University of Lagos">UNILAG</option>
+                        <option value="Covenant University">COVENANT</option>
+                        <option value="Babcock University">BABCOCK</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <span className="block text-zinc-500 uppercase mb-1 font-bold">INTEREST STACK:</span>
+                      <select
+                        value={matchInterestFilter}
+                        onChange={(e) => setMatchInterestFilter(e.target.value)}
+                        className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] focus:outline-none rounded text-[9.5px]"
+                      >
+                        <option value="General Chat">GENERAL STUDY</option>
+                        <option value="CSC301">CSC CODING</option>
+                        <option value="Calculus">CALCULUS COHORT</option>
+                        <option value="Campus Gossip">CAMPUS gossip</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <button
-                    type="submit"
-                    className="p-3 bg-pink-600 hover:bg-pink-500 text-[var(--color-text)] rounded-xl transition"
+                    onClick={handleStartMatching}
+                    className="w-full py-3 bg-pink-600 hover:bg-pink-500 text-[var(--color-text)] font-mono text-xs font-black uppercase rounded-lg transition"
                   >
-                    <Send className="w-4 h-4" />
+                    [ INITIATE SECURE MATCHING ]
                   </button>
-                </form>
-              </div>
-            ) : (
-              <div className="p-6 border border-[var(--neon-green-border)] bg-[var(--color-background)]/60 rounded-xl space-y-5 text-center">
-                <div className="mx-auto w-12 h-12 rounded-full bg-pink-500/10 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-pink-500" />
                 </div>
-                
-                <div className="space-y-1">
-                  <h3 className="text-xs font-mono font-black text-[var(--color-text)] uppercase">CONNECT TO VERIFIED CAMPUS NODES</h3>
-                  <p className="text-[10px] text-zinc-400">Match with random active students matching your department or community.</p>
-                </div>
-
-                {/* Filter configurations */}
-                <div className="grid grid-cols-2 gap-2 text-left pt-2 font-mono text-[10px]">
-                  <div>
-                    <span className="block text-zinc-500 uppercase mb-1 font-bold">SCHOOL TARGET:</span>
-                    <select
-                      value={matchSchoolFilter}
-                      onChange={(e) => setMatchSchoolFilter(e.target.value)}
-                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] focus:outline-none rounded text-[9.5px]"
-                    >
-                      <option value="any">ANY CAMPUS</option>
-                      <option value="University of Lagos">UNILAG</option>
-                      <option value="Covenant University">COVENANT</option>
-                      <option value="Babcock University">BABCOCK</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <span className="block text-zinc-500 uppercase mb-1 font-bold">INTEREST STACK:</span>
-                    <select
-                      value={matchInterestFilter}
-                      onChange={(e) => setMatchInterestFilter(e.target.value)}
-                      className="w-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] p-2 text-[var(--color-text)] focus:outline-none rounded text-[9.5px]"
-                    >
-                      <option value="General Chat">GENERAL STUDY</option>
-                      <option value="CSC301">CSC CODING</option>
-                      <option value="Calculus">CALCULUS COHORT</option>
-                      <option value="Campus Gossip">CAMPUS gossip</option>
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleStartMatching}
-                  className="w-full py-3 bg-pink-600 hover:bg-pink-500 text-[var(--color-text)] font-mono text-xs font-black uppercase rounded-lg transition"
-                >
-                  [ INITIATE SECURE MATCHING ]
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* ==================== PROFILE TAB VIEW ==================== */}
-        <div className={`w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 ${activeTab === 'profile' ? 'block' : 'hidden'}`}>
-          <BentoProfile
-            profile={profile}
-            firebasePosts={firebasePosts}
-            deletePost={deletePost}
-            currentCover={currentCover}
-            setCurrentCover={setCurrentCover}
-            showCoverSelector={showCoverSelector}
-            setShowCoverSelector={setShowCoverSelector}
-            playGlitchClickSound={playGlitchClickSound}
-            triggerVibration={triggerVibration}
-            showBrutalistToast={showBrutalistToast}
-          />
-        </div>
+        {activeTab === 'profile' && (
+          <motion.div
+            key="profile"
+            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4"
+          >
+            <BentoProfile
+              profile={profile}
+              firebasePosts={firebasePosts}
+              deletePost={deletePost}
+              currentCover={currentCover}
+              setCurrentCover={setCurrentCover}
+              showCoverSelector={showCoverSelector}
+              setShowCoverSelector={setShowCoverSelector}
+              playGlitchClickSound={playGlitchClickSound}
+              triggerVibration={triggerVibration}
+              showBrutalistToast={showBrutalistToast}
+            />
+          </motion.div>
+        )}
 
         {/* ==================== SECURE CRYPTO CHATS TAB ==================== */}
-        <div className={`w-full h-full min-h-0 flex flex-col bg-[var(--color-surface)] ${activeTab === 'chat' ? 'flex' : 'hidden'}`}>
-          <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
-            <ChatSection 
-              deepLinkedPeerId={deepLinkedPeerId} 
-              onClearDeepLink={onClearDeepLink} 
-              deepLinkedGroupId={deepLinkedGroupId}
-              onClearDeepLinkedGroup={onClearDeepLinkedGroup}
-            />
-          </div>
-        </div>
+        {activeTab === 'chat' && (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full h-full min-h-0 flex flex-col bg-[var(--color-surface)]"
+          >
+            <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
+              <ChatSection 
+                deepLinkedPeerId={deepLinkedPeerId} 
+                onClearDeepLink={onClearDeepLink} 
+                deepLinkedGroupId={deepLinkedGroupId}
+                onClearDeepLinkedGroup={onClearDeepLinkedGroup}
+              />
+            </div>
+          </motion.div>
+        )}
 
         {/* ==================== WORKSPACE HUB TAB ==================== */}
-        <div className={`w-full h-full min-h-0 flex flex-col p-2 sm:p-4 ${activeTab === 'workspace' ? 'flex' : 'hidden'}`}>
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <WorkspaceHub />
-          </div>
-        </div>
+        {activeTab === 'workspace' && (
+          <motion.div
+            key="workspace"
+            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full h-full min-h-0 flex flex-col p-2 sm:p-4"
+          >
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <WorkspaceHub />
+            </div>
+          </motion.div>
+        )}
 
         {/* ==================== CAMPUS NEWS WIRE TAB ==================== */}
-        <div className={`w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 ${activeTab === 'news' ? 'block' : 'hidden'}`}>
-          <div className="flex-1 flex flex-col">
-            <SecureNewsFlow />
-          </div>
-        </div>
+        {activeTab === 'news' && (
+          <motion.div
+            key="news"
+            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4"
+          >
+            <div className="flex-1 flex flex-col">
+              <SecureNewsFlow />
+            </div>
+          </motion.div>
+        )}
+        </AnimatePresence>
 
       </div>
 
