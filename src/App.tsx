@@ -193,16 +193,19 @@ function Dashboard() {
     if (!isAuthReady || !profile?.uid) return;
 
     const unsubscribeIncoming = subscribeToIncomingCall(profile.uid, (incomingCall) => {
-      if (incomingCall) {
+      if (incomingCall && incomingCall.callerId !== profile.uid) {
         console.log('[Realtime Call] Incoming call detected on Firestore:', incomingCall);
-        setOngoingCall({
-          id: incomingCall.id,
-          type: incomingCall.type,
-          status: incomingCall.status,
-          peerId: incomingCall.callerId,
-          peerName: incomingCall.callerName,
-          peerPhoto: incomingCall.callerPhoto,
-          isIncoming: true
+        setOngoingCall(prev => {
+          if (prev && !prev.isIncoming) return prev;
+          return {
+            id: incomingCall.id,
+            type: incomingCall.type,
+            status: incomingCall.status,
+            peerId: incomingCall.callerId,
+            peerName: incomingCall.callerName,
+            peerPhoto: incomingCall.callerPhoto,
+            isIncoming: true
+          };
         });
 
         // Auto transition status to ringing so caller knows we are being notified

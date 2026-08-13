@@ -3,9 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Volume2, VolumeX, ShieldCheck, 
   Radio, Sparkles, Users, Hand, Share2, Copy, UserPlus, Check, MessageSquare,
-  Minimize2, Maximize2, Wifi, WifiOff, SignalHigh, SignalMedium, SignalLow, Activity
+  Minimize2, Maximize2, Wifi, WifiOff, SignalHigh, SignalMedium, SignalLow, Activity, Lock
 } from 'lucide-react';
-import { playGlitchClickSound, playLikeSound, playSendMessageSound } from '../lib/sounds';
+import { 
+  playGlitchClickSound, playLikeSound, playSendMessageSound,
+  startRingtoneSound, stopRingtoneSound, playCallConnectedSound, playCallEndSound 
+} from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -64,41 +67,32 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   const currentName = call.currentUserName || 'You';
   const currentPhoto = call.currentUserPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120';
 
-  // 1. Status transitions for 1-on-1 vs group
+  // 1. Sync real-time call status
   useEffect(() => {
     if (call.isGroup) {
       setStatus('active');
       return;
     }
-
-    if (call.isIncoming) {
+    if (call.status) {
       setStatus(call.status as any);
-      return;
     }
+  }, [call.status, call.isGroup]);
 
-    let t1: any;
-    let t2: any;
-
-    if (call.status === 'dialing') {
-      t1 = setTimeout(() => {
-        setStatus('ringing');
-        triggerVibration('medium');
-      }, 1500);
-
-      t2 = setTimeout(() => {
-        setStatus('active');
-        triggerVibration('medium');
-        playLikeSound();
-      }, 3500);
-    } else {
-      setStatus(call.status as any);
+  // Audio ringtone & connection sound manager
+  useEffect(() => {
+    if (status === 'dialing' || status === 'ringing') {
+      startRingtoneSound();
+      triggerVibration('heavy');
+    } else if (status === 'active') {
+      stopRingtoneSound();
+      playCallConnectedSound();
+      triggerVibration('medium');
     }
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      stopRingtoneSound();
     };
-  }, [call.status, call.isIncoming, call.isGroup]);
+  }, [status]);
 
   // 2. Real-time Firestore subscription for group call participants
   useEffect(() => {
@@ -363,7 +357,8 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   };
 
   const handleEndCall = () => {
-    playGlitchClickSound();
+    stopRingtoneSound();
+    playCallEndSound();
     triggerVibration('double');
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
@@ -746,110 +741,129 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
       )}
 
       {/* Styled Call Control Rail Operations */}
-      <div className="w-full max-w-2xl bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-4 flex items-center justify-around gap-2 shadow-[4px_4px_0_0_#000000] shrink-0 mt-2">
-        {call.isIncoming && (status === 'dialing' || status === 'ringing') ? (
-          <div className="flex gap-4 w-full">
-            <button
-              onClick={() => {
-                playGlitchClickSound();
-                triggerVibration('double');
-                onEndCall();
-              }}
-              className="flex-1 py-3 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b]"
-            >
-              <PhoneOff className="w-4 h-4" />
-              <span>DECLINE HANDSHAKE</span>
-            </button>
-            <button
-              onClick={() => {
-                playLikeSound();
-                triggerVibration('medium');
-                if (onAcceptCall) onAcceptCall();
-              }}
-              className="flex-1 py-3 bg-[var(--neon-green)] hover:bg-white font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#15803d] animate-pulse"
-            >
-              <Phone className="w-4 h-4" />
-              <span>ACCEPT CHANNEL</span>
-            </button>
+      <div className="w-full max-w-2xl bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-4 flex flex-col items-center justify-center gap-3 shadow-[4px_4px_0_0_#000000] shrink-0 mt-2">
+        {status !== 'active' && (
+          <div className="text-[10px] font-bold text-amber-400 bg-amber-950/40 border border-amber-500/50 px-3 py-1 flex items-center gap-1.5 uppercase tracking-wider">
+            <Lock className="w-3 h-3 text-amber-400" />
+            <span>MEDIA CONTROLS LOCKED UNTIL CALL CONNECTS</span>
           </div>
-        ) : (
-          <>
-            {/* Toggle Microphone Mute option (interacts directly with WebRTC stream audio tracks) */}
-            <button
-              onClick={() => {
-                playGlitchClickSound();
-                setIsMuted(!isMuted);
-              }}
-              className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
-                isMuted 
-                  ? 'bg-rose-950 text-rose-400 border-rose-500 hover:bg-rose-900' 
-                  : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)] hover:bg-[var(--neon-green)]/15'
-              }`}
-              title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
-            >
-              {isMuted ? <MicOff className="w-5 h-5 animate-pulse" /> : <Mic className="w-5 h-5" />}
-            </button>
+        )}
 
-            {/* Raise Hand Toggle for Group Calls */}
-            {call.isGroup && (
+        <div className="w-full flex items-center justify-around gap-2">
+          {call.isIncoming && status !== 'active' ? (
+            <div className="flex gap-4 w-full">
+              <button
+                onClick={handleEndCall}
+                className="flex-1 py-3.5 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b]"
+              >
+                <PhoneOff className="w-4 h-4" />
+                <span>DECLINE CALL</span>
+              </button>
+              <button
+                onClick={() => {
+                  playLikeSound();
+                  triggerVibration('medium');
+                  if (onAcceptCall) onAcceptCall();
+                }}
+                className="flex-1 py-3.5 bg-[var(--neon-green)] hover:bg-white font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#15803d] animate-pulse"
+              >
+                <Phone className="w-4 h-4" />
+                <span>ACCEPT CALL</span>
+              </button>
+            </div>
+          ) : !call.isIncoming && status !== 'active' ? (
+            <div className="flex items-center justify-between gap-3 w-full">
+              <div className="text-xs text-zinc-400 flex items-center gap-2 font-mono">
+                <Radio className="w-4 h-4 text-[var(--neon-green)] animate-pulse" />
+                <span>DIALING {call.peerName.toUpperCase()}...</span>
+              </div>
+              <button
+                onClick={handleEndCall}
+                className="px-6 py-3 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b]"
+              >
+                <PhoneOff className="w-4 h-4" />
+                <span>CANCEL CALL</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Toggle Microphone Mute option */}
               <button
                 onClick={() => {
                   playGlitchClickSound();
-                  setIsHandRaised(!isHandRaised);
+                  setIsMuted(!isMuted);
                 }}
                 className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
-                  isHandRaised 
-                    ? 'bg-amber-400 text-black border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]' 
-                    : 'bg-[var(--color-surface)] text-amber-400 border-amber-500/50 hover:bg-amber-950/30'
+                  isMuted 
+                    ? 'bg-rose-950 text-rose-400 border-rose-500 hover:bg-rose-900' 
+                    : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)] hover:bg-[var(--neon-green)]/15'
                 }`}
-                title={isHandRaised ? "Lower Hand" : "Raise Hand"}
+                title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
               >
-                <Hand className="w-5 h-5" />
+                {isMuted ? <MicOff className="w-5 h-5 animate-pulse" /> : <Mic className="w-5 h-5" />}
               </button>
-            )}
 
-            {/* Speaker / Headphones Toggle */}
-            <button
-              onClick={() => {
-                playGlitchClickSound();
-                setIsSpeakerOn(!isSpeakerOn);
-              }}
-              className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
-                !isSpeakerOn 
-                  ? 'bg-zinc-800 text-zinc-400 border-zinc-700' 
-                  : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/60 hover:bg-[var(--neon-green)]/15'
-              }`}
-              title={isSpeakerOn ? "Speaker Active" : "Headphones Mode"}
-            >
-              {isSpeakerOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-            </button>
+              {/* Raise Hand Toggle for Group Calls */}
+              {call.isGroup && (
+                <button
+                  onClick={() => {
+                    playGlitchClickSound();
+                    setIsHandRaised(!isHandRaised);
+                  }}
+                  className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
+                    isHandRaised 
+                      ? 'bg-amber-400 text-black border-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]' 
+                      : 'bg-[var(--color-surface)] text-amber-400 border-amber-500/50 hover:bg-amber-950/30'
+                  }`}
+                  title={isHandRaised ? "Lower Hand" : "Raise Hand"}
+                >
+                  <Hand className="w-5 h-5" />
+                </button>
+              )}
 
-            {/* Video Camera Toggle (interacts directly with WebRTC stream video tracks) */}
-            <button
-              onClick={() => {
-                playGlitchClickSound();
-                setIsVideoOn(!isVideoOn);
-              }}
-              className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
-                !isVideoOn 
-                  ? 'bg-[#1a1a1a] text-zinc-500 border-zinc-700 hover:bg-neutral-800' 
-                  : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/55 hover:bg-[var(--neon-green)]/15'
-              }`}
-              title={isVideoOn ? "Disable Camera" : "Enable Camera"}
-            >
-              {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-            </button>
+              {/* Speaker / Headphones Toggle */}
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  setIsSpeakerOn(!isSpeakerOn);
+                }}
+                className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
+                  !isSpeakerOn 
+                    ? 'bg-zinc-800 text-zinc-400 border-zinc-700' 
+                    : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/60 hover:bg-[var(--neon-green)]/15'
+                }`}
+                title={isSpeakerOn ? "Speaker Active" : "Headphones Mode"}
+              >
+                {isSpeakerOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              </button>
 
-            {/* Disconnect / End Call */}
-            <button
-              onClick={handleEndCall}
-              className="w-14 h-14 bg-red-600 hover:bg-red-500 text-black border-2 border-black rounded-none flex items-center justify-center transition cursor-pointer hover:scale-105 active:scale-95 shadow-[4px_4px_0_0_#991b1b]"
-              title={call.isGroup ? "Leave Group Audio Channel" : "Disconnect Secured Communications Portal"}
-            >
-              <PhoneOff className="w-6 h-6 stroke-[3]" />
-            </button>
-          </>
-        )}
+              {/* Video Camera Toggle */}
+              <button
+                onClick={() => {
+                  playGlitchClickSound();
+                  setIsVideoOn(!isVideoOn);
+                }}
+                className={`w-12 h-12 rounded-none flex items-center justify-center transition border cursor-pointer ${
+                  !isVideoOn 
+                    ? 'bg-[#1a1a1a] text-zinc-500 border-zinc-700 hover:bg-neutral-800' 
+                    : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/55 hover:bg-[var(--neon-green)]/15'
+                }`}
+                title={isVideoOn ? "Disable Camera" : "Enable Camera"}
+              >
+                {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              </button>
+
+              {/* Disconnect / End Call */}
+              <button
+                onClick={handleEndCall}
+                className="w-14 h-14 bg-red-600 hover:bg-red-500 text-black border-2 border-black rounded-none flex items-center justify-center transition cursor-pointer hover:scale-105 active:scale-95 shadow-[4px_4px_0_0_#991b1b]"
+                title={call.isGroup ? "Leave Group Audio Channel" : "Disconnect Secured Communications Portal"}
+              >
+                <PhoneOff className="w-6 h-6 stroke-[3]" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

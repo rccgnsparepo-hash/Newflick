@@ -1442,7 +1442,7 @@ export async function createActiveCall(
     // Send high-priority call push notification to recipient
     if (!isGroup && receiverId) {
       try {
-        const { sendOneSignalPush, showPushNotification } = await import('./pushNotifications');
+        const { sendOneSignalPush } = await import('./pushNotifications');
         await sendOneSignalPush(
           receiverId,
           `📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`,
@@ -1458,13 +1458,6 @@ export async function createActiveCall(
             senderId: callerId,
             url: `/call/${callId}`
           }
-        );
-        // Local system notification fallback
-        showPushNotification(
-          `📞 Incoming Call from ${callerName}`,
-          `Incoming ${type} call. Tap to join portal channel.`,
-          callerPhoto,
-          `call-${callId}`
         );
       } catch (pushErr) {
         console.warn('[Call Push Dispatch] Notice:', pushErr);
@@ -1567,7 +1560,7 @@ export function subscribeToIncomingCall(userId: string, callback: (call: any | n
   return onSnapshot(q, (snap) => {
     const activeIncoming = snap.docs
       .map(doc => doc.data())
-      .filter(c => c.status !== 'ended')
+      .filter(c => c.status !== 'ended' && c.callerId !== userId)
       .sort((a, b) => {
         const timeA = a.createdAt?.seconds || 0;
         const timeB = b.createdAt?.seconds || 0;

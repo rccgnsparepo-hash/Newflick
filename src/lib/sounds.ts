@@ -248,3 +248,85 @@ export function playIncomingMessageSound(senderId?: string, isGroup?: boolean) {
     playGroupNotificationSound('direct');
   }
 }
+
+let ringtoneInterval: any = null;
+
+export function startRingtoneSound() {
+  if (!isSoundEnabled()) return;
+  stopRingtoneSound();
+
+  const playPulse = () => {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc2.type = 'sine';
+    osc1.frequency.setValueAtTime(440, now);
+    osc2.frequency.setValueAtTime(480, now);
+
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 1.2);
+    osc2.stop(now + 1.2);
+  };
+
+  playPulse();
+  ringtoneInterval = setInterval(playPulse, 2200);
+}
+
+export function stopRingtoneSound() {
+  if (ringtoneInterval) {
+    clearInterval(ringtoneInterval);
+    ringtoneInterval = null;
+  }
+}
+
+export function playCallConnectedSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [523.25, 659.25, 783.99].forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+    gain.gain.setValueAtTime(0.08, now + idx * 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now + idx * 0.1);
+    osc.stop(now + idx * 0.1 + 0.15);
+  });
+}
+
+export function playCallEndSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [440, 349.23, 261.63].forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+    gain.gain.setValueAtTime(0.07, now + idx * 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.18);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now + idx * 0.12);
+    osc.stop(now + idx * 0.12 + 0.18);
+  });
+}
