@@ -36,14 +36,14 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-surface)]/60 backdrop-blur-xs z-[180] flex items-center justify-center p-4">
-          <div className="absolute inset-0" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-2xl z-[180] flex items-center justify-center p-4">
+          <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
           
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 15 }}
-            className="relative bg-[#FAF9F6] dark:bg-[var(--color-background)] border-2 border-black dark:border-[var(--neon-green)] p-6 sm:p-8 rounded-none max-w-lg w-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_var(--neon-green)] overflow-hidden z-10 font-mono text-zinc-900 dark:text-[var(--color-text)]"
+            className="relative glass-panel border border-[var(--glass-border)] p-6 sm:p-8 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden z-10 font-mono text-[var(--color-text)]"
           >
             {/* Corner Decorative Brutalist Tech details */}
             <div className="absolute top-2 left-2 text-[8px] opacity-25 uppercase tracking-widest pointer-events-none select-none">

@@ -1130,9 +1130,9 @@ export default function FeedSection({
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="w-full h-full overflow-y-auto flex flex-col px-2 sm:px-4 py-4 space-y-5"
             >
-              <div className="max-w-[630px] mx-auto w-full space-y-5 pb-12">
+              <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-12">
                 {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
-                <div className="sticky top-0 z-30 flex bg-[var(--color-surface)]/95 backdrop-blur-md border border-zinc-850/65 p-1 rounded-2xl font-mono shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+                <div className="sticky top-0 z-30 flex glass-panel p-1.5 rounded-[20px]">
                   <button
                     onClick={() => { playGlitchClickSound(); setHomeSubView('feed'); }}
                     className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
@@ -1202,7 +1202,7 @@ export default function FeedSection({
             ) : (
               <>
                 {/* =================================== EPHEMERAL CHRONICLES (STORIES) BAR =================================== */}
-                <div id="tour-stories-bar" className="bg-[var(--color-surface)]/40 border border-[var(--neon-green-border)]/60 p-4 rounded-2xl space-y-3">
+                <div id="tour-stories-bar" className="glass-panel p-4 rounded-[20px] space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[8px] font-mono font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span>
@@ -1421,7 +1421,7 @@ export default function FeedSection({
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95, y: -30 }}
                           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                          className="morphic-frame rounded-2xl overflow-hidden relative transition-all duration-350 hover:scale-[1.015] hover:border-zinc-700/40"
+                          className="glass-panel rounded-[20px] overflow-hidden relative transition-all duration-350 hover:scale-[1.01] hover:border-white/20 shadow-xl"
                           onDoubleClick={(e) => handleDoubleTapLike(post.id, e)}
                         >
                       {/* Interactive Heart Burst Layer */}

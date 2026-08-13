@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Shield, Laptop, Cpu } from 'lucide-react';
-import { BrutalistTheme, THEMES } from '../lib/theme';
+import { Eye, Shield, Laptop, Cpu, Type, Sparkles, Check } from 'lucide-react';
+import { BrutalistTheme, APP_FONTS, UIAppFont, applyFont, getSavedFont, applyTheme } from '../lib/theme';
 import { VibrationIntensity } from '../lib/haptics';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
-import { useTheme, DesignSystemTheme, ColorScheme, AccentColor } from '../contexts/ThemeContext';
+import { useTheme, AccentColor } from '../contexts/ThemeContext';
 
 interface AccessibilityTabProps {
   selectedTheme: BrutalistTheme;
@@ -49,12 +49,13 @@ export function SettingsAccessibilityTab({
   setChatLockEnabled,
   chatLockPin,
   setChatLockPin,
-  applyTheme,
+  applyTheme: applyThemeProp,
   isTaskMonitorEnabled,
   setIsTaskMonitorEnabled
 }: AccessibilityTabProps) {
-  const { theme, colorScheme, accentColor, setTheme, setColorScheme, setAccentColor } = useTheme();
+  const { accentColor, setAccentColor } = useTheme();
 
+  const [activeFont, setActiveFont] = useState<UIAppFont>(() => getSavedFont());
   const [isElectron, setIsElectron] = useState(false);
   const [startOnLogin, setStartOnLogin] = useState(false);
   const [desktopLoading, setDesktopLoading] = useState(false);
@@ -97,122 +98,112 @@ export function SettingsAccessibilityTab({
     }
   };
 
+  const handleSelectFont = (fontKey: UIAppFont) => {
+    setActiveFont(fontKey);
+    applyFont(fontKey);
+    playGlitchClickSound();
+    if (vibeEnabled) triggerVibration('light');
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <h3 className="text-xs uppercase tracking-widest font-bold text-[var(--neon-green)] font-mono flex items-center gap-2">
-        <Eye className="w-4 h-4" /> AESTHETICS & HAPTOLOGY SETTINGS
+        <Eye className="w-4 h-4" /> AESTHETICS & TYPOGRAPHY SETTINGS
       </h3>
 
-      {/* Design System Theme Picker */}
-      <div className="space-y-2.5 border-b border-[var(--neon-green-border)] pb-4">
-        <label className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">
-          Aesthetic Design System
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {([
-            { id: 'brutalism', name: 'Brutalism' },
-            { id: 'neobrutalism', name: 'Neo-Brutalism' },
-            { id: 'glassmorphism', name: 'Glassmorphism' },
-            { id: 'neumorphism', name: 'Neumorphism' },
-            { id: 'claymorphism', name: 'Claymorphism' },
-            { id: 'minimalism', name: 'Minimalism' },
-            { id: 'materialyou', name: 'Material You' },
-            { id: 'fluent', name: 'Fluent Design' },
-            { id: 'softui', name: 'Soft UI' }
-          ] as { id: DesignSystemTheme; name: string }[]).map((ds) => (
-            <button
-              key={ds.id}
-              type="button"
-              onClick={() => {
-                setTheme(ds.id);
-                // Also trigger legacy compatibility for components relying on state values
-                const legacyMapping: Record<DesignSystemTheme, BrutalistTheme> = {
-                  brutalism: 'green', neobrutalism: 'green', glassmorphism: 'purple',
-                  neumorphism: 'white', claymorphism: 'purple', minimalism: 'white',
-                  materialyou: 'green', fluent: 'white', softui: 'purple'
-                };
-                setSelectedTheme(legacyMapping[ds.id]);
-                applyTheme(legacyMapping[ds.id]);
-                playGlitchClickSound();
-                if (vibeEnabled) triggerVibration('medium');
-              }}
-              className={`py-2 text-[9px] font-mono uppercase tracking-wider border transition-all cursor-pointer font-black select-none rounded-none ${
-                theme === ds.id
-                  ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)]'
-                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-400 hover:border-zinc-700'
-              }`}
-            >
-              {ds.name}
-            </button>
-          ))}
+      {/* Font Family Selector */}
+      <div className="space-y-3 glass-panel p-4 border border-[var(--glass-border)]">
+        <div className="flex items-center justify-between">
+          <label className="text-xs uppercase tracking-wider font-extrabold text-white font-mono flex items-center gap-2">
+            <Type className="w-4 h-4 text-[var(--neon-green)]" /> Primary Typography Font
+          </label>
+          <span className="text-[10px] font-mono text-emerald-400/80 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+            ACTIVE: {APP_FONTS[activeFont]?.name}
+          </span>
+        </div>
+
+        <p className="text-xs text-zinc-400 font-sans">
+          Select your preferred interface font across chat bubbles, feed cards, and navigation items.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          {(Object.keys(APP_FONTS) as UIAppFont[]).map((fontKey) => {
+            const fontObj = APP_FONTS[fontKey];
+            const isSelected = activeFont === fontKey;
+
+            return (
+              <button
+                key={fontKey}
+                type="button"
+                onClick={() => handleSelectFont(fontKey)}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative ${
+                  isSelected
+                    ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-white shadow-[0_0_12px_rgba(0,255,102,0.15)]'
+                    : 'border-[var(--glass-border)] bg-black/20 text-zinc-300 hover:border-zinc-500'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold font-sans" style={{ fontFamily: fontObj.family }}>
+                    {fontObj.name}
+                  </span>
+                  {isSelected && <Check className="w-4 h-4 text-[var(--neon-green)]" />}
+                </div>
+                <p className="text-[10px] font-sans text-zinc-400 mt-1 leading-snug">
+                  {fontObj.description}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Color Palette Scheme Selector */}
-      <div className="space-y-2.5 border-b border-[var(--neon-green-border)] pb-4">
-        <label className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">
-          Color Scheme Modality
-        </label>
-        <div className="grid grid-cols-4 gap-2">
-          {([
-            { id: 'dark', name: 'Dark Mode' },
-            { id: 'light', name: 'Light Mode' },
-            { id: 'auto', name: 'System Auto' },
-            { id: 'highcontrast', name: 'High Contrast' }
-          ] as { id: ColorScheme; name: string }[]).map((cs) => (
-            <button
-              key={cs.id}
-              type="button"
-              onClick={() => {
-                setColorScheme(cs.id);
-                playGlitchClickSound();
-                if (vibeEnabled) triggerVibration('light');
-              }}
-              className={`py-2 text-[8.5px] font-mono uppercase tracking-wider border transition-all cursor-pointer font-black select-none rounded-none ${
-                colorScheme === cs.id
-                  ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)]'
-                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-400 hover:border-zinc-700'
-              }`}
-            >
-              {cs.name}
-            </button>
-          ))}
+      {/* Design System Theme - Pure Glassmorphism Lock */}
+      <div className="space-y-3 glass-panel p-4 border border-[var(--glass-border)]">
+        <div className="flex items-center justify-between">
+          <label className="text-xs uppercase tracking-wider font-extrabold text-white font-mono flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[var(--neon-green)]" /> Interface Design System
+          </label>
+          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/40 font-bold">
+            PURE GLASSMORPHISM
+          </span>
         </div>
+
+        <p className="text-xs font-sans text-zinc-300 leading-relaxed">
+          The app interface is locked to a high-precision frosted glass theme featuring translucent backdrops, backdrop filters, and subtle ambient glows.
+        </p>
       </div>
 
-      {/* Accent Color Theme selection */}
-      <div className="space-y-2 border-b border-[var(--neon-green-border)] pb-4">
-        <label className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 font-mono block">
-          Dynamic Accent Palette
+      {/* Dynamic Accent Color Palette */}
+      <div className="space-y-3 glass-panel p-4 border border-[var(--glass-border)]">
+        <label className="text-xs uppercase tracking-wider font-extrabold text-white font-mono block">
+          Glass Accent Color Palette
         </label>
-        <div className="grid grid-cols-5 gap-2">
-          {([
-            { id: 'green', name: 'Neon Green' },
-            { id: 'purple', name: 'Cyber Purple' },
-            { id: 'white', name: 'Monochrome' },
-            { id: 'blue', name: 'Digital Blue' },
-            { id: 'amber', name: 'Amber Gold' }
-          ] as { id: AccentColor; name: string }[]).map((ac) => (
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { id: 'green', name: 'Emerald Glass', color: '#00ff66' },
+            { id: 'purple', name: 'Violet Glass', color: '#bd00ff' },
+            { id: 'white', name: 'Ice Glass', color: '#ffffff' }
+          ].map((ac) => (
             <button
               key={ac.id}
               type="button"
               onClick={() => {
-                setAccentColor(ac.id);
-                // Maintain full compatibility with legacy code
-                const legacyMapping: Record<AccentColor, BrutalistTheme> = {
-                  green: 'green', purple: 'purple', white: 'white', blue: 'purple', amber: 'green'
+                setAccentColor(ac.id as AccentColor);
+                const legacyMapping: Record<string, BrutalistTheme> = {
+                  green: 'green', purple: 'purple', white: 'white'
                 };
                 setSelectedTheme(legacyMapping[ac.id]);
                 applyTheme(legacyMapping[ac.id]);
                 playGlitchClickSound();
                 if (vibeEnabled) triggerVibration('light');
               }}
-              className={`py-2 text-[8px] font-mono uppercase tracking-wider border transition-all cursor-pointer font-black select-none rounded-none leading-none ${
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-mono text-xs uppercase font-bold flex items-center justify-center gap-2 ${
                 accentColor === ac.id
-                  ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)]'
-                  : 'border-[var(--neon-green-border)] bg-[var(--color-surface)] text-zinc-400 hover:border-zinc-700'
+                  ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 text-[var(--neon-green)]'
+                  : 'border-[var(--glass-border)] bg-black/20 text-zinc-400 hover:border-zinc-500'
               }`}
             >
+              <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: ac.color }} />
               {ac.name}
             </button>
           ))}
@@ -220,7 +211,7 @@ export function SettingsAccessibilityTab({
       </div>
 
       {/* Real-time Task Monitor toggler */}
-      <div className="flex items-start space-x-3 p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)]">
+      <div className="flex items-start space-x-3 p-3.5 glass-panel border border-[var(--glass-border)]">
         <input
           type="checkbox"
           id="taskMonitorEnabledSub"
@@ -234,13 +225,15 @@ export function SettingsAccessibilityTab({
           className="mt-1 accent-[var(--neon-green)] cursor-pointer"
         />
         <label htmlFor="taskMonitorEnabledSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Enable Real-Time Task Monitor</span>
-          Display floating background transmission and diagnostic monitoring spectrum in bottom-right.
+          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">
+            Enable Real-Time Task Monitor
+          </span>
+          Display floating diagnostic telemetry and network status indicator in the bottom-right corner.
         </label>
       </div>
 
-      {/* Haptic properties checkbox */}
-      <div className="flex items-start space-x-3 p-3 bg-[var(--color-background)] border border-[var(--neon-green-border)]">
+      {/* Haptic feedback toggler */}
+      <div className="flex items-start space-x-3 p-3.5 glass-panel border border-[var(--glass-border)]">
         <input
           type="checkbox"
           id="vibrationHapticsSub"
@@ -248,13 +241,16 @@ export function SettingsAccessibilityTab({
           onChange={(e) => {
             const checked = e.target.checked;
             setVibeEnabled(checked);
-            if (checked) triggerVibration('medium');
+            playGlitchClickSound();
+            if (checked) triggerVibration('heavy');
           }}
           className="mt-1 accent-[var(--neon-green)] cursor-pointer"
         />
         <label htmlFor="vibrationHapticsSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
-          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Physical Vibration Haptics Support</span>
-          Toggle subtle mechanical haptic response for all buttons and likes.
+          <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">
+            Tactile Haptic Feedback
+          </span>
+          Provide subtle haptic vibrations on button taps and key presses (supported mobile devices).
         </label>
       </div>
 

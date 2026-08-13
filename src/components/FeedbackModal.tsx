@@ -48,14 +48,14 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-surface)]/60 backdrop-blur-xs z-[150] flex items-center justify-center p-4">
-          <div className="absolute inset-0" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-2xl z-[150] flex items-center justify-center p-4">
+          <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
           
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 15 }}
-            className="relative bg-[#FAF9F6] dark:bg-[var(--color-background)] border border-black/20 dark:border-[var(--neon-green-border)] p-6 sm:p-8 rounded-none max-w-md w-full shadow-2xl overflow-hidden z-10"
+            className="relative glass-panel border border-[var(--glass-border)] p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden z-10 text-[var(--color-text)]"
           >
             {/* Close */}
             <button

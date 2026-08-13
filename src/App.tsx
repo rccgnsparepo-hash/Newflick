@@ -8,9 +8,10 @@ import AuthScreen from './components/AuthScreen';
 import ChatSection from './components/ChatSection';
 import FeedSection from './components/FeedSection';
 import DesktopSidebar from './components/layout/DesktopSidebar';
-import RightSidebar from './components/layout/RightSidebar';
 import MobileBottomNav from './components/layout/MobileBottomNav';
+import { UnifiedNavigation } from './components/layout/UnifiedNavigation';
 import { AppHeader } from './components/layout/AppHeader';
+import { applyFont, getSavedFont } from './lib/theme';
 import SecureNewsFlow from './components/SecureNewsFlow';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
@@ -123,6 +124,10 @@ function Dashboard() {
     ongoingCall !== null;
 
   useScrollLock(isAnyOverlayOpen);
+
+  useEffect(() => {
+    applyFont(getSavedFont());
+  }, []);
 
   useEffect(() => {
     // Handle Electron Deeplinks and Tray actions
@@ -826,13 +831,11 @@ function Dashboard() {
         triggerVibration={triggerVibration}
       />
 
-      {/* Genuine Multi-Column Responsive App Shell Layout */}
+      {/* Unified Nav-Aware Layout Container */}
       <div className="flex-1 min-h-0 w-full max-w-full flex flex-row relative overflow-hidden">
         
-        {/* Left Navigation Rail (Desktop & Tablet) */}
-        <DesktopSidebar
-          activeTab={activeTab === 'feed' ? 'home' : activeTab}
-          setActiveTab={(t) => setActiveTab(t === 'home' ? 'feed' : t)}
+        {/* Responsive Unified Navigation (Adapts Sidebar vs Mobile Bottom Nav) */}
+        <UnifiedNavigation
           unreadE2EECount={unreadE2EECount}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
@@ -851,22 +854,7 @@ function Dashboard() {
           />
         </main>
 
-        {/* Right Sidebar (Desktop >= 1200px) */}
-        <RightSidebar
-          onOpenChatWithUser={(userId) => {
-            setDeepLinkedPeerId(userId);
-            setActiveTab('chat');
-          }}
-        />
-
       </div>
-
-      {/* Mobile Bottom Navigation (< 768px) */}
-      <MobileBottomNav
-        activeTab={activeTab === 'feed' ? 'home' : activeTab}
-        setActiveTab={(t) => setActiveTab(t === 'home' ? 'feed' : t)}
-        unreadE2EECount={unreadE2EECount}
-      />
 
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
 

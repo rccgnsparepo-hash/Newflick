@@ -3,16 +3,16 @@ import { motion } from 'motion/react';
 import { playGlitchClickSound } from '../../lib/sounds';
 import { triggerVibration } from '../../lib/haptics';
 import {
-  School,
-  Radio,
+  Home as HomeIcon,
   MessageSquare,
   Sparkles,
+  Trophy,
   User
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
-  activeTab: 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace';
-  setActiveTab: (tab: 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace') => void;
+  activeTab: 'home' | 'match' | 'chat' | 'news' | 'profile' | 'workspace' | 'stories';
+  setActiveTab: (tab: any) => void;
   unreadE2EECount?: number;
 }
 
@@ -25,27 +25,21 @@ export default function MobileBottomNav({
     {
       id: 'home' as const,
       label: 'Home',
-      icon: School,
-      color: 'text-[var(--neon-green)]'
-    },
-    {
-      id: 'news' as const,
-      label: 'Radio',
-      icon: Radio,
+      icon: HomeIcon,
       color: 'text-[var(--neon-green)]'
     },
     {
       id: 'chat' as const,
-      label: 'Tunnels',
+      label: 'Chats',
       icon: MessageSquare,
       color: 'text-[var(--neon-green)]',
       badge: unreadE2EECount
     },
     {
-      id: 'match' as const,
-      label: 'Match',
-      icon: Sparkles,
-      color: 'text-pink-500'
+      id: 'news' as const,
+      label: 'Flick News',
+      icon: Trophy,
+      color: 'text-emerald-400'
     },
     {
       id: 'profile' as const,
@@ -56,7 +50,7 @@ export default function MobileBottomNav({
   ];
 
   return (
-    <nav className="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0c]/95 backdrop-blur-lg border-t border-[var(--neon-green-border)]/40 px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.8)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0c]/95 backdrop-blur-lg border-t border-[var(--neon-green-border)]/40 px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.8)] md:hidden">
       <div className="flex items-center justify-around max-w-md mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -105,3 +99,4 @@ export default function MobileBottomNav({
     </nav>
   );
 }
+

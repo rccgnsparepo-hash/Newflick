@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode } from 'lucide-react';
+import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { showBrutalistToast } from '../lib/toast';
@@ -16,6 +16,9 @@ import { SettingsAccessibilityTab } from './SettingsAccessibilityTab';
 import { SettingsOtherTabs } from './SettingsOtherTabs';
 import { SettingsQrKeyExchangeTab } from './SettingsQrKeyExchangeTab';
 import { SettingsStoragePurgeTab } from './SettingsStoragePurgeTab';
+import { SettingsSecurityTab } from './SettingsSecurityTab';
+import { SettingsPrivacyTab } from './SettingsPrivacyTab';
+import { SettingsAboutTab } from './SettingsAboutTab';
 import { UserProfile } from '../types';
 import { getSavedTheme, applyTheme, BrutalistTheme, THEMES } from '../lib/theme';
 import { isVibrationEnabled, setVibrationEnabled, triggerVibration, getVibrationIntensity, setVibrationIntensity, VibrationIntensity } from '../lib/haptics';
@@ -54,7 +57,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'accessibility' | 'qr' | 'storage' | 'friends' | 'help' | 'quantum'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'privacy' | 'security' | 'notifications' | 'accessibility' | 'storage' | 'about'>('account');
   const [eduModeEnabled, setEduModeEnabled] = useState<boolean>(() => localStorage.getItem('flick_edu_mode') === 'true');
   const [newsFeedStyle, setNewsFeedStyle] = useState<'vapor' | 'brutalist' | 'silicon'>(() => {
     return (localStorage.getItem('flick_news_style') as 'vapor' | 'brutalist' | 'silicon') || 'brutalist';
@@ -425,7 +428,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-surface)]/95 backdrop-blur-md z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-2xl z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
 
           <motion.div
@@ -433,7 +436,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 12 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="bg-[var(--color-background)] border-2 border-[var(--neon-green)]/70 w-full max-w-4xl relative z-10 shadow-[6px_6px_0px_#000000] p-6 sm:p-8 rounded-none overflow-y-auto max-h-[92vh] text-[var(--color-text)]"
+            className="glass-panel border border-[var(--glass-border)] w-full max-w-4xl relative z-10 shadow-2xl p-6 sm:p-8 rounded-2xl overflow-y-auto max-h-[92vh] text-[var(--color-text)]"
           >
             {/* Headline block */}
             <div className="flex items-center justify-between border-b border-[var(--neon-green)]/35 pb-4 mb-6">
@@ -463,14 +466,13 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                 {/* Left Panel - Tab Sidebar links switcher */}
                 <div className="md:col-span-4 flex flex-col gap-1.5 border-b md:border-b-0 md:border-r border-[var(--neon-green)]/20 pb-4 md:pb-0 md:pr-4">
                   {[
-                    { id: 'account', label: 'Identity Account', icon: User },
-                    { id: 'qr', label: 'QR Key Exchange', icon: QrCode },
-                    { id: 'storage', label: 'Storage & Purge', icon: HardDrive },
-                    { id: 'notifications', label: 'Notifications Hub', icon: Bell },
-                    { id: 'accessibility', label: 'Accessibility & UI', icon: Eye },
-                    { id: 'friends', label: 'Add Flick Friend', icon: UserPlus },
-                    { id: 'help', label: 'Support & Tickets', icon: HelpCircle },
-                    { id: 'quantum', label: 'Quantum Signatures', icon: Terminal },
+                    { id: 'account', label: 'Account', icon: User },
+                    { id: 'privacy', label: 'Privacy', icon: Eye },
+                    { id: 'security', label: 'Security', icon: Shield },
+                    { id: 'notifications', label: 'Notifications', icon: Bell },
+                    { id: 'accessibility', label: 'Appearance', icon: Layout },
+                    { id: 'storage', label: 'Storage', icon: HardDrive },
+                    { id: 'about', label: 'About', icon: Info },
                   ].map((tab) => {
                     const TabIcon = tab.icon;
                     const isSelected = activeTab === tab.id;
@@ -486,7 +488,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                         className={`flex items-center gap-3 px-3 py-2.5 text-xs font-mono uppercase tracking-wide text-left border transition-all cursor-pointer ${
                           isSelected
                             ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-[var(--neon-green)] [box-shadow:2px_2px_0px_var(--neon-green)] font-extrabold'
-                            : 'border-zinc-90 w-black text-zinc-400 hover:border-zinc-805 hover:text-[var(--color-text)]'
+                            : 'border-zinc-900 bg-black text-zinc-400 hover:border-zinc-700 hover:text-[var(--color-text)]'
                         }`}
                       >
                         <TabIcon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[var(--neon-green)]' : 'text-zinc-500'}`} />
@@ -522,18 +524,27 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                       </motion.div>
                     )}
 
-                    {activeTab === 'qr' && (
+                    {activeTab === 'privacy' && (
                       <motion.div
-                        key="tab-panel-qr"
+                        key="tab-panel-privacy"
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.15 }}
                       >
-                        <SettingsQrKeyExchangeTab
-                          profile={profile}
-                          onCloseModal={onClose}
-                        />
+                        <SettingsPrivacyTab userId={profile.uid} />
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'security' && (
+                      <motion.div
+                        key="tab-panel-security"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <SettingsSecurityTab userId={profile.uid} />
                       </motion.div>
                     )}
 
@@ -616,38 +627,15 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                       </motion.div>
                     )}
 
-                    {['friends', 'help', 'quantum'].includes(activeTab) && (
+                    {activeTab === 'about' && (
                       <motion.div
-                        key={`tab-panel-${activeTab}`}
+                        key="tab-panel-about"
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.15 }}
                       >
-                        <SettingsOtherTabs
-                          activeTab={activeTab as any}
-                          autoDownloadOnCellular={autoDownloadOnCellular}
-                          setAutoDownloadOnCellular={setAutoDownloadOnCellular}
-                          cacheCleanupRetention={cacheCleanupRetention}
-                          setCacheCleanupRetention={setCacheCleanupRetention}
-                          newsFeedStyle={newsFeedStyle}
-                          setNewsFeedStyle={setNewsFeedStyle}
-                          eduModeEnabled={eduModeEnabled}
-                          setEduModeEnabled={setEduModeEnabled}
-                          friendsUserSearchQuery={friendsUserSearchQuery}
-                          setFriendsUserSearchQuery={setFriendsUserSearchQuery}
-                          systemUsers={systemUsers}
-                          helpTicketCategory={helpTicketCategory}
-                          setHelpTicketCategory={setHelpTicketCategory}
-                          helpTicketContent={helpTicketContent}
-                          setHelpTicketContent={setHelpTicketContent}
-                          diagnosticLogs={diagnosticLogs}
-                          setDiagnosticLogs={setDiagnosticLogs}
-                          isSendingCloudTest={isSendingCloudTest}
-                          handleLocalPushSimulation={() => handleSimulatePush(0)}
-                          handleCloudTestCall={handleTriggerCloudPushTest}
-                          profile={profile}
-                        />
+                        <SettingsAboutTab />
                       </motion.div>
                     )}
                   </AnimatePresence>

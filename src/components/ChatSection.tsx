@@ -2896,16 +2896,13 @@ export default function ChatSection({
         {/* Horizontal filter capsules Snapchat-inspired Layout */}
         <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-none select-none border-b border-[var(--neon-green-border)]/40 bg-neutral-950 shrink-0">
           {[
-            { id: 'all', label: 'All 💬' },
-            { id: 'unread', label: 'Unread 🔴' },
-            { id: 'my-ai', label: 'THE FATHER 🔮' },
-            { id: 'groups', label: 'Groups 👥' },
-            { id: 'favorites', label: 'Favorites ⭐' },
-            { id: 'archived', label: 'Archived 📥' },
-            { id: 'muted', label: 'Muted 🔕' },
-            { id: 'business', label: 'Business 🏢' },
-            { id: 'all-nodes', label: 'Directory 🔍' },
-            { id: 'trash', label: 'Trash 🗑️' }
+            { id: 'all', label: 'All' },
+            { id: 'unread', label: 'Unread' },
+            { id: 'groups', label: 'Groups' },
+            { id: 'favorites', label: 'Favorites' },
+            { id: 'archived', label: 'Archived' },
+            { id: 'my-ai', label: 'AI Assistant' },
+            { id: 'all-nodes', label: 'Directory' }
           ].map((pill) => {
             const isActive = filterType === pill.id;
             let badgeCount = 0;

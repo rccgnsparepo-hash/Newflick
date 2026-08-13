@@ -107,7 +107,37 @@ class StandaloneLanApp {
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        webSecurity: true
+      }
+    });
+
+    // Remove window menu bar
+    this.mainWindow.setMenu(null);
+
+    // Hardened WebContents security
+    const webContents = this.mainWindow.webContents;
+    
+    // Prevent zoom shortcuts
+    webContents.setVisualZoomLevelLimits(1, 1);
+    webContents.on('before-input-event', (event, input) => {
+      if ((input.control || input.meta) && (input.key === '=' || input.key === '+' || input.key === '-' || input.key === '0')) {
+        event.preventDefault();
+      }
+    });
+
+    // Handle external links securely
+    webContents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('http:') || url.startsWith('https:')) {
+        shell.openExternal(url);
+      }
+      return { action: 'deny' };
+    });
+
+    webContents.on('will-navigate', (event, url) => {
+      if (!url.startsWith('file://')) {
+        event.preventDefault();
+        shell.openExternal(url);
       }
     });
 

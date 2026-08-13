@@ -140,23 +140,23 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop glass blur */}
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        {/* Full backdrop blur */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-[var(--color-background)]/85 backdrop-blur-md cursor-pointer"
+          className="absolute inset-0 bg-black/75 backdrop-blur-2xl cursor-pointer"
         />
 
-        {/* Modal Brutalist frame */}
+        {/* Modal Glass frame */}
         <motion.div
           initial={{ opacity: 0, scale: 0.93, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.93, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full max-w-2xl bg-[var(--color-surface)] border-2 border-[var(--neon-green)] p-6 md:p-8 shadow-[6px_6px_0px_#000000] z-10 overflow-hidden font-mono text-[var(--color-text)] max-h-[85vh] flex flex-col"
+          className="relative w-full max-w-2xl glass-panel border border-[var(--glass-border)] p-6 md:p-8 shadow-2xl rounded-2xl z-10 overflow-hidden font-mono text-[var(--color-text)] max-h-[85vh] flex flex-col"
         >
           {/* Header coordinates decoration (Brutalism aesthetic) */}
           <div className="flex items-center justify-between border-b-2 border-[var(--neon-green)]/35 pb-4 mb-6 shrink-0">

@@ -147,7 +147,7 @@ export default function DesktopSidebar({
           <div className="space-y-1.5">
             {isEffectiveExpanded && (
               <span className="text-[9px] text-zinc-500 font-mono font-black uppercase tracking-widest px-2 block mb-1.5">
-                CONDUIT CORE
+                NAVIGATION
               </span>
             )}
 
@@ -159,7 +159,7 @@ export default function DesktopSidebar({
                   ? 'text-[var(--neon-green)] font-bold'
                   : 'text-zinc-300 hover:text-white hover:bg-[var(--color-background)]/80'
               } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="Home Feed"
+              title="Home"
             >
               {activeTab === 'home' && (
                 <motion.div
@@ -170,66 +170,11 @@ export default function DesktopSidebar({
               )}
               <School className="w-5 h-5 shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110 text-[var(--neon-green)]" />
               {isEffectiveExpanded && (
-                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10">HOME FEED</span>
+                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10">HOME</span>
               )}
             </button>
 
-            {/* Search Action */}
-            {onOpenSearch && (
-              <button
-                onClick={() => { playGlitchClickSound(); triggerVibration('light'); onOpenSearch(); }}
-                className={`relative flex items-center w-full text-zinc-300 hover:text-[var(--neon-green)] hover:bg-[var(--color-background)]/80 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer rounded-xl group ${
-                  isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
-                }`}
-                title="Search Registry"
-              >
-                <Search className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                {isEffectiveExpanded && (
-                  <span className="text-xs font-mono font-bold tracking-wider uppercase">SEARCH</span>
-                )}
-              </button>
-            )}
-
-            {/* Create Post Action */}
-            {onOpenCreate && (
-              <button
-                onClick={() => { playGlitchClickSound(); triggerVibration('light'); onOpenCreate(); }}
-                className={`relative flex items-center w-full text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer rounded-xl group ${
-                  isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
-                }`}
-                title="Create Post / Story"
-              >
-                <PlusCircle className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" />
-                {isEffectiveExpanded && (
-                  <span className="text-xs font-mono font-bold tracking-wider uppercase">CREATE</span>
-                )}
-              </button>
-            )}
-
-            {/* News / Radio Tab */}
-            <button
-              onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('news'); }}
-              className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group hover:scale-[1.02] active:scale-[0.98] ${
-                activeTab === 'news'
-                  ? 'text-[var(--neon-green)] font-bold'
-                  : 'text-zinc-300 hover:text-white hover:bg-[var(--color-background)]/80'
-              } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="News Wire"
-            >
-              {activeTab === 'news' && (
-                <motion.div
-                  layoutId="desktopSidebarActiveTabGlow"
-                  className="absolute inset-0 bg-[var(--neon-green)]/10 rounded-xl border border-[var(--neon-green)]/40 shadow-[0_0_12px_rgba(0,255,102,0.2)] pointer-events-none z-0"
-                  transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-                />
-              )}
-              <Radio className="w-5 h-5 shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110" />
-              {isEffectiveExpanded && (
-                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10">NEWS WIRE</span>
-              )}
-            </button>
-
-            {/* Messages / Chat Tab */}
+            {/* Chats Tab */}
             <button
               onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('chat'); }}
               className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group hover:scale-[1.02] active:scale-[0.98] ${
@@ -237,7 +182,7 @@ export default function DesktopSidebar({
                   ? 'text-[var(--neon-green)] font-bold'
                   : 'text-zinc-300 hover:text-white hover:bg-[var(--color-background)]/80'
               } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="Secured Messages"
+              title="Chats"
             >
               {activeTab === 'chat' && (
                 <motion.div
@@ -256,7 +201,7 @@ export default function DesktopSidebar({
               </div>
               {isEffectiveExpanded && (
                 <div className="flex-1 flex items-center justify-between min-w-0 relative z-10">
-                  <span className="text-xs font-mono font-bold tracking-wider uppercase truncate">MESSAGES</span>
+                  <span className="text-xs font-mono font-bold tracking-wider uppercase truncate">CHATS</span>
                   {unreadE2EECount > 0 && (
                     <span className="px-2 py-0.5 bg-red-600/20 text-red-400 border border-red-500/30 text-[9px] font-mono font-black rounded uppercase animate-pulse">
                       {unreadE2EECount} NEW
@@ -266,49 +211,49 @@ export default function DesktopSidebar({
               )}
             </button>
 
-            {/* Peer Matcher Tab */}
+            {/* Stories Tab */}
             <button
-              onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('match'); }}
+              onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('stories' as any); }}
               className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group hover:scale-[1.02] active:scale-[0.98] ${
-                activeTab === 'match'
-                  ? 'text-pink-500 font-bold'
-                  : 'text-zinc-300 hover:text-pink-400 hover:bg-[var(--color-background)]/80'
+                (activeTab as string) === 'stories'
+                  ? 'text-amber-400 font-bold'
+                  : 'text-zinc-300 hover:text-amber-300 hover:bg-[var(--color-background)]/80'
               } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="Peer Matcher"
+              title="Stories"
             >
-              {activeTab === 'match' && (
+              {(activeTab as string) === 'stories' && (
                 <motion.div
                   layoutId="desktopSidebarActiveTabGlow"
-                  className="absolute inset-0 bg-pink-500/10 rounded-xl border border-pink-500/40 shadow-[0_0_12px_rgba(236,72,153,0.25)] pointer-events-none z-0"
+                  className="absolute inset-0 bg-amber-500/10 rounded-xl border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)] pointer-events-none z-0"
                   transition={{ type: 'spring', damping: 28, stiffness: 380 }}
                 />
               )}
-              <Sparkles className="w-5 h-5 shrink-0 text-pink-500 relative z-10 transition-transform duration-200 group-hover:scale-110" />
+              <Sparkles className="w-5 h-5 shrink-0 text-amber-400 relative z-10 transition-transform duration-200 group-hover:scale-110" />
               {isEffectiveExpanded && (
-                <span className="text-xs font-mono font-bold tracking-wider uppercase text-pink-500 relative z-10">PEER MATCHER</span>
+                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10 text-amber-400">STORIES</span>
               )}
             </button>
 
-            {/* Workspace Hub Tab */}
+            {/* Arena Tab */}
             <button
-              onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('workspace'); }}
+              onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('news'); }}
               className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group hover:scale-[1.02] active:scale-[0.98] ${
-                activeTab === 'workspace'
-                  ? 'text-[var(--neon-green)] font-bold'
-                  : 'text-zinc-300 hover:text-white hover:bg-[var(--color-background)]/80'
+                activeTab === 'news'
+                  ? 'text-emerald-400 font-bold'
+                  : 'text-zinc-300 hover:text-emerald-300 hover:bg-[var(--color-background)]/80'
               } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="Google Workspace"
+              title="Arena"
             >
-              {activeTab === 'workspace' && (
+              {activeTab === 'news' && (
                 <motion.div
                   layoutId="desktopSidebarActiveTabGlow"
-                  className="absolute inset-0 bg-[var(--neon-green)]/10 rounded-xl border border-[var(--neon-green)]/40 shadow-[0_0_12px_rgba(0,255,102,0.2)] pointer-events-none z-0"
+                  className="absolute inset-0 bg-emerald-500/10 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)] pointer-events-none z-0"
                   transition={{ type: 'spring', damping: 28, stiffness: 380 }}
                 />
               )}
-              <Briefcase className="w-5 h-5 shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110" />
+              <Radio className="w-5 h-5 shrink-0 text-emerald-400 relative z-10 transition-transform duration-200 group-hover:scale-110" />
               {isEffectiveExpanded && (
-                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10">WORKSPACE</span>
+                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10 text-emerald-400">ARENA</span>
               )}
             </button>
 
@@ -320,7 +265,7 @@ export default function DesktopSidebar({
                   ? 'text-[var(--neon-green)] font-bold'
                   : 'text-zinc-300 hover:text-white hover:bg-[var(--color-background)]/80'
               } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="My Profile"
+              title="Profile"
             >
               {activeTab === 'profile' && (
                 <motion.div
@@ -335,6 +280,22 @@ export default function DesktopSidebar({
               )}
             </button>
 
+            {/* Search Action */}
+            {onOpenSearch && (
+              <button
+                onClick={() => { playGlitchClickSound(); triggerVibration('light'); onOpenSearch(); }}
+                className={`relative flex items-center w-full text-zinc-300 hover:text-[var(--neon-green)] hover:bg-[var(--color-background)]/80 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer rounded-xl group ${
+                  isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
+                }`}
+                title="Search"
+              >
+                <Search className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                {isEffectiveExpanded && (
+                  <span className="text-xs font-mono font-bold tracking-wider uppercase">SEARCH</span>
+                )}
+              </button>
+            )}
+
             {/* Settings Trigger */}
             {onOpenSettings && (
               <button
@@ -342,7 +303,7 @@ export default function DesktopSidebar({
                 className={`relative flex items-center w-full text-zinc-300 hover:text-[var(--neon-green)] hover:bg-[var(--color-background)]/80 hover:shadow-[0_0_12px_rgba(0,255,102,0.12)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer rounded-xl group ${
                   isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
                 }`}
-                title="Settings & Preferences"
+                title="Settings"
               >
                 <Sliders className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" />
                 {isEffectiveExpanded && (
