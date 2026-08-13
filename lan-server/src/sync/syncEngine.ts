@@ -15,10 +15,10 @@ export class CloudSyncEngine {
     this.resolver = new ConflictResolver();
   }
 
-  public start() {
-    this.checkCloudConnectivity();
-    this.syncInterval = setInterval(() => {
-      this.checkCloudConnectivity();
+  public async start() {
+    await this.checkCloudConnectivity();
+    this.syncInterval = setInterval(async () => {
+      await this.checkCloudConnectivity();
       if (this.isCloudConnected) {
         this.processPendingSync();
       }
@@ -29,9 +29,21 @@ export class CloudSyncEngine {
     if (this.syncInterval) clearInterval(this.syncInterval);
   }
 
-  public checkCloudConnectivity(): boolean {
-    // Check if internet connection is available
-    this.isCloudConnected = navigator?.onLine ?? true;
+  public async checkCloudConnectivity(): Promise<boolean> {
+    try {
+      if (typeof globalThis !== 'undefined' && 'navigator' in globalThis && (globalThis as any).navigator?.onLine !== undefined) {
+        this.isCloudConnected = Boolean((globalThis as any).navigator.onLine);
+      } else {
+        const dns = require('dns');
+        this.isCloudConnected = await new Promise<boolean>((resolve) => {
+          dns.lookup('google.com', (err: any) => {
+            resolve(!err);
+          });
+        });
+      }
+    } catch {
+      this.isCloudConnected = true;
+    }
     return this.isCloudConnected;
   }
 
