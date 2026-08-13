@@ -1,21 +1,28 @@
-// Fetch status from local server endpoint
+// Fetch status from local server via IPC or REST fallback
 async function refreshDashboardStatus() {
   try {
-    const res = await fetch('http://127.0.0.1:47821/health');
-    if (res.ok) {
-      const data = await res.json();
-      document.getElementById('valServerName').innerText = data.serverName || 'Flick School Server';
-      document.getElementById('valLanIp').innerText = data.ipAddress || '127.0.0.1';
-      document.getElementById('valPort').innerText = data.port || 47821;
-      document.getElementById('valConnectedDevices').innerText = data.connectedClients || 0;
-      document.getElementById('valActiveUsers').innerText = data.activeUsers || 0;
-      document.getElementById('valMediaSize').innerText = `${data.mediaSizeMB || 0} MB`;
-      document.getElementById('valCloudSync').innerText = data.cloudStatus || 'CONNECTED';
+    let data = null;
+    if (window.lanServerAPI && typeof window.lanServerAPI.getServerStatus === 'function') {
+      data = await window.lanServerAPI.getServerStatus();
+    } else {
+      const res = await fetch('http://127.0.0.1:47821/health');
+      if (res.ok) {
+        data = await res.json();
+      }
+    }
+    if (data) {
+      if (document.getElementById('valServerName')) document.getElementById('valServerName').innerText = data.serverName || 'Flick LAN Node';
+      if (document.getElementById('valLanIp')) document.getElementById('valLanIp').innerText = data.ipAddress || '127.0.0.1';
+      if (document.getElementById('valPort')) document.getElementById('valPort').innerText = data.port || 47821;
+      if (document.getElementById('valConnectedDevices')) document.getElementById('valConnectedDevices').innerText = data.connectedClients || 0;
+      if (document.getElementById('valActiveUsers')) document.getElementById('valActiveUsers').innerText = data.activeUsers || 0;
+      if (document.getElementById('valMediaSize')) document.getElementById('valMediaSize').innerText = `${data.mediaSizeMB || 0} MB`;
+      if (document.getElementById('valCloudSync')) document.getElementById('valCloudSync').innerText = data.cloudStatus || 'ONLINE';
 
-      appendLog(`[HEALTH] Polled status - ${data.connectedClients} clients connected.`);
+      appendLog(`[STATUS] Service online on ${data.ipAddress}:${data.port}`);
     }
   } catch (err) {
-    console.warn('Health check retry:', err);
+    console.warn('Dashboard status poll warning:', err);
   }
 }
 

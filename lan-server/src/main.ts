@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Tray, Menu, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { LocalLanServer } from './index';
 import { LanDatabase } from './database/database';
 import { runMigrations } from './database/migrations';
@@ -18,7 +19,7 @@ import { DEFAULT_LAN_PORT } from './shared/types';
 
 class StandaloneLanApp {
   private mainWindow: BrowserWindow | null = null;
-  private localExpressServer!: LocalLanServer;
+  private localExpressServer: LocalLanServer | null = null;
 
   private db!: LanDatabase;
   private repo!: LanRepository;
@@ -76,9 +77,13 @@ class StandaloneLanApp {
     this.discoveryService = new MdnsDiscoveryService(serverName, this.httpServer.getPort());
     this.discoveryService.start();
 
-    // 7. Start Standalone Local Express Fallback Server with static frontend capability
-    this.localExpressServer = new LocalLanServer(47821);
-    await this.localExpressServer.listen();
+    // 7. Optional Secondary Fallback Relay Server on Port 47822
+    try {
+      this.localExpressServer = new LocalLanServer(47822);
+      await this.localExpressServer.listen();
+    } catch (err) {
+      console.warn('[LAN App] Secondary fallback relay server skipped:', err);
+    }
 
     console.log(`[LAN App] Server online at http://${this.discoveryService.getIp()}:${this.httpServer.getPort()}`);
 
@@ -86,41 +91,56 @@ class StandaloneLanApp {
   }
 
   public createSettingsGuiWindow() {
+    const preloadCandidates = [
+      path.join(__dirname, 'main/preload.js'),
+      path.join(__dirname, 'preload.js')
+    ];
+    const preloadPath = preloadCandidates.find((p) => fs.existsSync(p)) || preloadCandidates[0];
+
     this.mainWindow = new BrowserWindow({
       width: 1040,
       height: 760,
       title: 'Flick LAN Infrastructure - Settings & Control Center',
       backgroundColor: '#030712',
       autoHideMenuBar: true,
+      show: true,
       webPreferences: {
-        preload: path.join(__dirname, 'main/preload.js'),
+        preload: preloadPath,
         nodeIntegration: false,
         contextIsolation: true
       }
     });
 
     // Standalone desktop GUI Control Center (No external browser required)
-    const dashboardHtml = path.join(__dirname, 'dashboard/dashboard.html');
+    const dashboardCandidates = [
+      path.join(__dirname, 'dashboard/dashboard.html'),
+      path.join(__dirname, '../src/dashboard/dashboard.html'),
+      path.join(process.cwd(), 'dist/dashboard/dashboard.html'),
+      path.join(process.cwd(), 'src/dashboard/dashboard.html')
+    ];
+    const dashboardHtml = dashboardCandidates.find((p) => fs.existsSync(p)) || dashboardCandidates[0];
     this.mainWindow.loadFile(dashboardHtml);
   }
 
   private registerIpcHandlers() {
     ipcMain.handle('get-server-status', () => {
       return {
-        serverName: this.repo.getSetting('serverName', 'Flick LAN Node'),
-        ipAddress: this.discoveryService.getIp(),
-        port: this.httpServer.getPort(),
-        fallbackPort: 47821,
-        connectedClients: this.wsServer.getConnectedClientsCount(),
-        activeUsers: this.wsServer.getActiveUsersCount(),
+        serverName: this.repo ? this.repo.getSetting('serverName', 'Flick LAN Node') : 'Flick LAN Node',
+        ipAddress: this.discoveryService ? this.discoveryService.getIp() : '127.0.0.1',
+        port: this.httpServer ? this.httpServer.getPort() : 47821,
+        fallbackPort: 47822,
+        connectedClients: this.wsServer ? this.wsServer.getConnectedClientsCount() : 0,
+        activeUsers: this.wsServer ? this.wsServer.getActiveUsersCount() : 0,
         dbSizeMB: 0.8,
-        mediaSizeMB: this.fileStorage.getDirectorySizeMB(),
-        cloudStatus: this.syncEngine.getCloudStatus()
+        mediaSizeMB: this.fileStorage ? this.fileStorage.getDirectorySizeMB() : 0,
+        cloudStatus: this.syncEngine ? this.syncEngine.getCloudStatus() : 'ONLINE'
       };
     });
 
     ipcMain.handle('open-data-folder', () => {
-      shell.openPath(this.db.getDataDir());
+      if (this.db) {
+        shell.openPath(this.db.getDataDir());
+      }
     });
   }
 }
@@ -128,8 +148,21 @@ class StandaloneLanApp {
 const desktopApp = new StandaloneLanApp();
 
 app.whenReady().then(async () => {
-  await desktopApp.init();
+  // Show GUI window immediately on start so the user receives visual feedback right away
   desktopApp.createSettingsGuiWindow();
+
+  try {
+    await desktopApp.init();
+  } catch (err: any) {
+    console.error('[LAN App] Failed to initialize backend services:', err);
+    dialog.showErrorBox(
+      'Flick LAN Server Startup Notice',
+      `Flick LAN Server GUI opened with initialization warning:\n\n${err?.stack || err?.message || err}`
+    );
+  }
+}).catch((err) => {
+  console.error('[LAN App] Fatal startup error:', err);
+  dialog.showErrorBox('Flick LAN Server Fatal Error', String(err));
 });
 
 app.on('window-all-closed', () => {

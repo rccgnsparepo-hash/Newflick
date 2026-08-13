@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { ApiControllers } from '../api/controllers';
 import { createApiRouter } from '../api/routes';
 import { DEFAULT_LAN_PORT } from '../shared/types';
@@ -27,6 +28,29 @@ export class HttpServerManager {
     // Mount API routes
     const router = createApiRouter(controllers);
     this.app.use(router);
+
+    // Serve static public web app frontend
+    const publicCandidates = [
+      path.join(__dirname, '../public'),
+      path.join(__dirname, 'public'),
+      path.join(process.cwd(), 'dist/public'),
+      path.join(process.cwd(), 'public')
+    ];
+    const staticPublicDir = publicCandidates.find((p) => fs.existsSync(p));
+    if (staticPublicDir) {
+      this.app.use(express.static(staticPublicDir));
+      this.app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api') || req.path.startsWith('/media') || req.path === '/health') {
+          return next();
+        }
+        const indexPath = path.join(staticPublicDir, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          res.sendFile(indexPath);
+        } else {
+          next();
+        }
+      });
+    }
   }
 
   public start(): Promise<http.Server> {

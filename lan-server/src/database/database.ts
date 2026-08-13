@@ -10,7 +10,21 @@ export class LanDatabase {
   private engineType: 'better-sqlite3' | 'sqlite3' | 'json-sqlite' = 'json-sqlite';
 
   constructor(customDataDir?: string) {
-    this.dataDir = customDataDir || path.join(process.cwd(), 'lan-server-data');
+    let defaultDataDir = '';
+    try {
+      // In Electron environment, use app.getPath('userData') to guarantee write access
+      const electron = require('electron');
+      const appInst = electron.app || electron.remote?.app;
+      if (appInst && typeof appInst.getPath === 'function') {
+        defaultDataDir = path.join(appInst.getPath('userData'), 'lan-server-data');
+      }
+    } catch {
+      // Standalone Node fallback
+    }
+    if (!defaultDataDir) {
+      defaultDataDir = path.join(process.cwd(), 'lan-server-data');
+    }
+    this.dataDir = customDataDir || defaultDataDir;
     if (!fs.existsSync(this.dataDir)) {
       fs.mkdirSync(this.dataDir, { recursive: true });
     }
