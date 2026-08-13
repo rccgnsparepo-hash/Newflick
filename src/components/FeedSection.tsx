@@ -10,6 +10,7 @@ import LiveSportsHub from './LiveSportsHub';
 import { triggerVibration, triggerEventVibration } from '../lib/haptics';
 import WorkspaceHub from "./WorkspaceHub";
 import { triggerViewProfile } from '../lib/profileTrigger';
+import { refreshScrollTrigger } from '../lib/gsapAnimations';
 import {
   createPost,
   deletePost,
@@ -320,6 +321,10 @@ export default function FeedSection({
       unsubUsers();
     };
   }, [profile]);
+
+  useEffect(() => {
+    refreshScrollTrigger();
+  }, [firebasePosts.length, homeSubView, activeTab]);
 
   // Save campus choice to local storage
   const handleCampusChange = (campus: string) => {
@@ -1421,7 +1426,7 @@ export default function FeedSection({
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95, y: -30 }}
                           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                          className="glass-panel rounded-[20px] overflow-hidden relative transition-all duration-350 hover:scale-[1.01] hover:border-white/20 shadow-xl"
+                          className="glass-panel gsap-scroll-card rounded-[20px] overflow-hidden relative transition-all duration-350 hover:scale-[1.01] hover:border-white/20 shadow-xl"
                           onDoubleClick={(e) => handleDoubleTapLike(post.id, e)}
                         >
                       {/* Interactive Heart Burst Layer */}

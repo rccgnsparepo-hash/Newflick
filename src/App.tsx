@@ -12,6 +12,7 @@ import MobileBottomNav from './components/layout/MobileBottomNav';
 import { UnifiedNavigation } from './components/layout/UnifiedNavigation';
 import { AppHeader } from './components/layout/AppHeader';
 import { applyFont, getSavedFont } from './lib/theme';
+import { initGSAPScrollTriggers, refreshScrollTrigger } from './lib/gsapAnimations';
 import SecureNewsFlow from './components/SecureNewsFlow';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
@@ -38,7 +39,9 @@ import {
   createActiveCall,
   ringActiveCall,
   acceptActiveCall,
-  endActiveCall
+  endActiveCall,
+  joinGroupCall,
+  leaveGroupCall
 } from './lib/services';
 import { InAppNotification } from './types';
 import {
@@ -127,7 +130,12 @@ function Dashboard() {
 
   useEffect(() => {
     applyFont(getSavedFont());
+    initGSAPScrollTriggers();
   }, []);
+
+  useEffect(() => {
+    refreshScrollTrigger();
+  }, [activeTab]);
 
   useEffect(() => {
     // Handle Electron Deeplinks and Tray actions
@@ -239,29 +247,38 @@ function Dashboard() {
         peerName: string;
         peerPhoto: string;
         type: 'voice' | 'video';
+        isGroup?: boolean;
+        groupId?: string;
+        groupName?: string;
       }>;
       if (!profile || !customEvent.detail) return;
 
-      const { peerId, peerName, peerPhoto, type } = customEvent.detail;
-      console.log('[Realtime Call] Initiated outgoing call to:', peerId);
+      const { peerId, peerName, peerPhoto, type, isGroup, groupId, groupName } = customEvent.detail;
+      console.log('[Realtime Call] Initiated outgoing call to:', peerId, isGroup ? '(Group)' : '(Peer)');
 
       try {
         const callId = await createActiveCall(
           profile.uid,
           profile.displayName,
           profile.photoURL,
-          peerId,
-          type
+          isGroup ? (groupId || peerId) : peerId,
+          type,
+          !!isGroup,
+          groupId || peerId,
+          groupName || peerName
         );
 
         setOngoingCall({
           id: callId,
           type,
-          status: 'dialing',
+          status: isGroup ? 'active' : 'dialing',
           peerId,
-          peerName,
+          peerName: groupName || peerName,
           peerPhoto,
-          isIncoming: false
+          isIncoming: false,
+          isGroup: !!isGroup,
+          groupId: groupId || peerId,
+          groupName: groupName || peerName
         });
       } catch (err) {
         console.warn('[Realtime Call] Failed to initiate outgoing call:', err);
@@ -979,16 +996,33 @@ function Dashboard() {
             className="fixed inset-0 z-[99999]"
           >
             <CallOverlay
-              call={ongoingCall}
+              call={{
+                ...ongoingCall,
+                currentUserId: profile?.uid,
+                currentUserName: profile?.displayName,
+                currentUserPhoto: profile?.photoURL
+              }}
               onEndCall={async () => {
                 if (ongoingCall.id) {
-                  await endActiveCall(ongoingCall.id);
+                  if (ongoingCall.isGroup && profile?.uid) {
+                    await leaveGroupCall(ongoingCall.id, profile.uid);
+                  } else {
+                    await endActiveCall(ongoingCall.id);
+                  }
                 }
                 setOngoingCall(null);
               }}
               onAcceptCall={async () => {
                 if (ongoingCall.id) {
-                  await acceptActiveCall(ongoingCall.id);
+                  if (ongoingCall.isGroup && profile) {
+                    await joinGroupCall(ongoingCall.id, {
+                      uid: profile.uid,
+                      name: profile.displayName,
+                      photo: profile.photoURL
+                    });
+                  } else {
+                    await acceptActiveCall(ongoingCall.id);
+                  }
                 }
               }}
             />

@@ -66,6 +66,17 @@ class DeepLinkManager {
         if (parsed) this.queueDeepLink(parsed);
       }
     });
+
+    // Listen for ServiceWorker messages
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e: any) => {
+        if (e.data && e.data.type === 'fara-flick-deeplink-sw' && e.data.detail) {
+          console.log('[DeepLink Manager] Received ServiceWorker deep link message:', e.data.detail);
+          const parsed = this.parsePayload(e.data.detail);
+          if (parsed) this.queueDeepLink(parsed);
+        }
+      });
+    }
   }
 
   /**

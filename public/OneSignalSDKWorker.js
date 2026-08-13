@@ -129,15 +129,41 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const notificationData = event.notification?.data || {};
+
+  let targetUrl = '/';
+  const route = notificationData.route || (notificationData.type === 'message' || notificationData.type === 'call' ? 'chat' : null);
+  const senderId = notificationData.senderId || notificationData.sender_id || notificationData.callerId;
+  const chatId = notificationData.chatId;
+
+  if (route) {
+    const params = new URLSearchParams();
+    params.set('route', route);
+    if (senderId) params.set('senderId', senderId);
+    if (chatId) params.set('chatId', chatId);
+    targetUrl = '/?' + params.toString();
+  }
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
+        if ('focus' in client) {
+          try {
+            client.postMessage({
+              type: 'fara-flick-deeplink-sw',
+              detail: {
+                route: route || 'chat',
+                senderId: senderId,
+                chatId: chatId,
+                params: notificationData
+              }
+            });
+          } catch (e) {}
           return client.focus();
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow('/');
+        return self.clients.openWindow(targetUrl);
       }
     })
   );

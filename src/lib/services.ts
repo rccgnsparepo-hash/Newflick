@@ -1405,7 +1405,10 @@ export async function createActiveCall(
   callerName: string,
   callerPhoto: string,
   receiverId: string,
-  type: 'voice' | 'video'
+  type: 'voice' | 'video',
+  isGroup: boolean = false,
+  groupId: string = '',
+  groupName: string = ''
 ): Promise<string> {
   const callId = doc(collection(db, 'calls')).id;
   const path = `calls/${callId}`;
@@ -1417,14 +1420,144 @@ export async function createActiveCall(
       callerPhoto,
       receiverId,
       type,
-      status: 'dialing',
+      status: isGroup ? 'active' : 'dialing',
+      isGroup,
+      groupId: groupId || (isGroup ? receiverId : ''),
+      groupName: groupName || (isGroup ? 'Group Audio Channel' : callerName),
+      participants: [
+        {
+          uid: callerId,
+          name: callerName,
+          photo: callerPhoto,
+          isMuted: false,
+          isSpeaking: false,
+          isHandRaised: false,
+          joinedAt: Date.now()
+        }
+      ],
       createdAt: serverTimestamp()
     };
     await setDoc(doc(db, 'calls', callId), rawData);
+
+    // Send high-priority call push notification to recipient
+    if (!isGroup && receiverId) {
+      try {
+        const { sendOneSignalPush, showPushNotification } = await import('./pushNotifications');
+        await sendOneSignalPush(
+          receiverId,
+          `📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`,
+          `Incoming call from ${callerName}. Tap to answer!`,
+          {
+            type: 'call',
+            callId,
+            callerId,
+            callerName,
+            callerPhoto,
+            callType: type,
+            route: 'chat',
+            senderId: callerId,
+            url: `/call/${callId}`
+          }
+        );
+        // Local system notification fallback
+        showPushNotification(
+          `📞 Incoming Call from ${callerName}`,
+          `Incoming ${type} call. Tap to join portal channel.`,
+          callerPhoto,
+          `call-${callId}`
+        );
+      } catch (pushErr) {
+        console.warn('[Call Push Dispatch] Notice:', pushErr);
+      }
+    }
+
     return callId;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
+  }
+}
+
+export async function joinGroupCall(
+  callId: string,
+  user: { uid: string; name: string; photo: string }
+): Promise<void> {
+  const path = `calls/${callId}`;
+  try {
+    const callRef = doc(db, 'calls', callId);
+    const snap = await getDoc(callRef);
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+    const existingParticipants: any[] = data.participants || [];
+    
+    if (!existingParticipants.some(p => p.uid === user.uid)) {
+      const updated = [
+        ...existingParticipants,
+        {
+          uid: user.uid,
+          name: user.name,
+          photo: user.photo,
+          isMuted: false,
+          isSpeaking: false,
+          isHandRaised: false,
+          joinedAt: Date.now()
+        }
+      ];
+      await updateDoc(callRef, { participants: updated, status: 'active' });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function leaveGroupCall(
+  callId: string,
+  uid: string
+): Promise<void> {
+  const path = `calls/${callId}`;
+  try {
+    const callRef = doc(db, 'calls', callId);
+    const snap = await getDoc(callRef);
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+    const existingParticipants: any[] = data.participants || [];
+    const updated = existingParticipants.filter(p => p.uid !== uid);
+
+    if (updated.length === 0) {
+      await updateDoc(callRef, { status: 'ended', participants: [], endedAt: serverTimestamp() });
+    } else {
+      await updateDoc(callRef, { participants: updated });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function updateGroupParticipantState(
+  callId: string,
+  uid: string,
+  updates: { isMuted?: boolean; isSpeaking?: boolean; isHandRaised?: boolean }
+): Promise<void> {
+  const path = `calls/${callId}`;
+  try {
+    const callRef = doc(db, 'calls', callId);
+    const snap = await getDoc(callRef);
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+    const existingParticipants: any[] = data.participants || [];
+    const updated = existingParticipants.map(p => {
+      if (p.uid === uid) {
+        return { ...p, ...updates };
+      }
+      return p;
+    });
+
+    await updateDoc(callRef, { participants: updated });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 

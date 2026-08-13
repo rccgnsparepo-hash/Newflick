@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToUsers } from '../lib/services';
+import { refreshScrollTrigger } from '../lib/gsapAnimations';
 
 interface BentoProfileProps {
   profile: any;
@@ -74,6 +75,10 @@ export default function BentoProfile({
     });
     return () => unsub();
   }, [profile?.uid]);
+
+  useEffect(() => {
+    refreshScrollTrigger();
+  }, [activeTab, userFlicks.length]);
 
   const handleToggleFollow = (targetUid: string, targetName: string) => {
     playGlitchClickSound();
@@ -254,7 +259,7 @@ export default function BentoProfile({
             </div>
           ) : (
             userFlicks.map((post) => (
-              <div key={post.id} className="glass-panel p-5 space-y-4">
+              <div key={post.id} className="glass-panel gsap-scroll-card p-5 space-y-4">
                 {/* Author Info & Actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">

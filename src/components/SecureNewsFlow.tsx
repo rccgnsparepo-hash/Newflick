@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Terminal, Shield, ArrowRight, RefreshCw, Radio, Tag, Clock, Globe, Filter, ExternalLink, Columns, BookOpen, AlertTriangle, Send, ShieldCheck } from 'lucide-react';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { showPushNotification } from '../lib/pushNotifications';
+import { refreshScrollTrigger } from '../lib/gsapAnimations';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -275,6 +276,10 @@ export default function SecureNewsFlow() {
     }, 6000);
     return () => clearInterval(timer);
   }, [items.length]);
+
+  useEffect(() => {
+    refreshScrollTrigger();
+  }, [items.length, selectedCategory]);
 
   const triggerRefreshFeeds = () => {
     playGlitchClickSound();
@@ -556,7 +561,7 @@ export default function SecureNewsFlow() {
                       playGlitchClickSound();
                       setActiveDossier(news);
                     }}
-                    className={`p-5 bg-[#0e0e0e] hover:bg-[var(--color-surface)] border transition-all cursor-pointer flex flex-col justify-between ${
+                    className={`p-5 glass-panel gsap-scroll-card hover:bg-[var(--color-surface)] border transition-all cursor-pointer flex flex-col justify-between ${
                       isCritical 
                         ? 'border-red-500/40 hover:border-red-500 shadow-[3px_3px_0px_rgba(239,68,68,0.15)]' 
                         : 'border-[var(--neon-green)]/20 hover:border-[var(--neon-green)] shadow-[3px_3px_0px_rgba(0,0,0,0.6)]'

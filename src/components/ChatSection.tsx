@@ -29,6 +29,7 @@ import QRCodeGenerator from 'qrcode';
 import jsQR from 'jsqr';
 import { playSendMessageSound, playReceiveMessageSound, playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { decryptE2EEMessage, encryptE2EEMessage } from '../lib/crypto';
+import { refreshScrollTrigger } from '../lib/gsapAnimations';
 import { 
   ShieldCheck, Send, Key, Lock, AlertTriangle, MessageSquare, Flame, Check, CheckCheck, 
   Smile, Paperclip, Mic, Square, Trash, Play, Pause, ZoomIn, CornerUpLeft, Eye, VolumeX, Volume2,
@@ -4300,6 +4301,34 @@ export default function ChatSection({
               {/* Dedicated local message tunnels controls & search bar */}
               <div className="flex items-center gap-2 max-w-lg shrink-0 pl-1.5 font-mono">
                 
+                {/* Group Audio Call Toggle Trigger */}
+                {currentChat.isGroup && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playGlitchClickSound();
+                      triggerVibration('medium');
+                      window.dispatchEvent(new CustomEvent('faraflick-initiate-call', {
+                        detail: {
+                          peerId: currentChat.id,
+                          peerName: currentChat.name,
+                          peerPhoto: currentChat.avatarUrl || "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120",
+                          type: 'voice',
+                          isGroup: true,
+                          groupId: currentChat.id,
+                          groupName: currentChat.name
+                        }
+                      }));
+                    }}
+                    className="p-1.5 px-2.5 border border-purple-500/50 bg-purple-950/30 text-purple-300 hover:bg-purple-900/50 hover:border-purple-400 transition uppercase font-bold text-[9px] cursor-pointer flex items-center gap-1.5 shrink-0 rounded-md shadow-sm active:scale-95"
+                    title="Initiate Group Audio Call (WebRTC Mesh)"
+                  >
+                    <Users className="w-3.5 h-3.5 text-purple-400" />
+                    <Phone className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                    <span className="hidden sm:inline font-mono tracking-wider text-[9px]">GROUP CALL</span>
+                  </button>
+                )}
+
                 {/* Voice Call Trigger */}
                 {!currentChat.isGroup && selectedPeer && (
                   <button
