@@ -67,15 +67,35 @@ class DeepLinkManager {
       }
     });
 
-    // Listen for ServiceWorker messages
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', (e: any) => {
-        if (e.data && e.data.type === 'fara-flick-deeplink-sw' && e.data.detail) {
-          console.log('[DeepLink Manager] Received ServiceWorker deep link message:', e.data.detail);
-          const parsed = this.parsePayload(e.data.detail);
-          if (parsed) this.queueDeepLink(parsed);
-        }
-      });
+    // Check window URL hash on load
+    this.checkWindowHash();
+
+    // Listen for window hash and popstate changes
+    window.addEventListener('hashchange', () => this.checkWindowHash());
+    window.addEventListener('popstate', () => this.checkWindowHash());
+  }
+
+  private checkWindowHash() {
+    if (typeof window === 'undefined') return;
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (!hash) return;
+
+      const [routePart, paramPart] = hash.split('/');
+      const route = routePart?.toLowerCase();
+
+      if (route) {
+        const payload: DeepLinkPayload = {
+          route: route === 'calls' ? 'call-history' : route,
+          senderId: paramPart || undefined,
+          params: paramPart ? { id: paramPart } : undefined,
+          id: `hash-${hash}-${Date.now()}`
+        };
+        console.log('[DeepLink Manager] Hash deep link detected:', payload);
+        this.queueDeepLink(payload);
+      }
+    } catch (e) {
+      console.warn('[DeepLink Manager] Error reading window hash:', e);
     }
   }
 
@@ -146,11 +166,30 @@ class DeepLinkManager {
           route = 'chat';
         } else if (type === 'like' || type === 'feed') {
           route = 'feed';
+        } else if (type === 'call') {
+          route = 'call';
+        }
+      }
+
+      // If call payload detected, dispatch high-priority custom incoming-call event
+      if (type === 'call' || rawData.callId) {
+        route = 'call';
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('faraflick-incoming-call', {
+            detail: {
+              id: rawData.callId || rawData.id,
+              callerId: rawData.callerId || rawData.senderId,
+              callerName: rawData.callerName || 'Peer',
+              callerPhoto: rawData.callerPhoto || '',
+              type: rawData.callType || 'voice',
+              status: 'dialing'
+            }
+          }));
         }
       }
 
       // If still empty but we have a senderId, default route to chat
-      const senderId = rawData.senderId || rawData.sender_id;
+      const senderId = rawData.senderId || rawData.sender_id || rawData.callerId;
       if (!route && senderId) {
         route = 'chat';
       }

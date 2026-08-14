@@ -316,6 +316,19 @@ export async function registerCapacitorPushNotifications(uid: string) {
         if (data) {
           addPushDebugLog('payload', 'Extracted click-through routing parameters', data);
           
+          if (data.type === 'call' || data.callId) {
+            window.dispatchEvent(new CustomEvent('faraflick-incoming-call', {
+              detail: {
+                id: data.callId,
+                callerId: data.callerId || data.senderId,
+                callerName: data.callerName || 'Peer',
+                callerPhoto: data.callerPhoto || '',
+                type: data.callType || 'voice',
+                status: 'dialing'
+              }
+            }));
+          }
+
           const customEvent = new CustomEvent('fara-flick-deeplink', { detail: data });
           window.dispatchEvent(customEvent);
 
@@ -323,6 +336,24 @@ export async function registerCapacitorPushNotifications(uid: string) {
           if (parsed) {
             deepLinkManager.queueDeepLink(parsed);
           }
+        }
+      });
+
+      // Intercept foreground notification to pop up call screen immediately
+      OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: any) => {
+        const data = event.notification?.additionalData;
+        console.log('[OneSignal] Foreground notification received:', data);
+        if (data && (data.type === 'call' || data.callId)) {
+          window.dispatchEvent(new CustomEvent('faraflick-incoming-call', {
+            detail: {
+              id: data.callId,
+              callerId: data.callerId || data.senderId,
+              callerName: data.callerName || 'Peer',
+              callerPhoto: data.callerPhoto || '',
+              type: data.callType || 'voice',
+              status: 'dialing'
+            }
+          }));
         }
       });
     }

@@ -15,7 +15,8 @@ import {
   Sliders,
   User,
   PlusCircle,
-  Bell
+  Bell,
+  Phone
 } from 'lucide-react';
 
 interface DesktopSidebarProps {
@@ -25,6 +26,7 @@ interface DesktopSidebarProps {
   onOpenSearch?: () => void;
   onOpenSettings?: () => void;
   onOpenCreate?: () => void;
+  onOpenCallHistory?: () => void;
 }
 
 export default function DesktopSidebar({
@@ -33,7 +35,8 @@ export default function DesktopSidebar({
   unreadE2EECount = 0,
   onOpenSearch,
   onOpenSettings,
-  onOpenCreate
+  onOpenCreate,
+  onOpenCallHistory
 }: DesktopSidebarProps) {
   const { profile } = useAuth();
 
@@ -277,6 +280,25 @@ export default function DesktopSidebar({
               <User className="w-5 h-5 shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110" />
               {isEffectiveExpanded && (
                 <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10">PROFILE</span>
+              )}
+            </button>
+
+            {/* Call Logs Trigger */}
+            <button
+              onClick={() => {
+                playGlitchClickSound();
+                triggerVibration('light');
+                if (onOpenCallHistory) onOpenCallHistory();
+                else window.dispatchEvent(new CustomEvent('faraflick-open-call-history'));
+              }}
+              className={`relative flex items-center w-full text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer rounded-xl group ${
+                isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'
+              }`}
+              title="Call History & Logs"
+            >
+              <Phone className="w-5 h-5 shrink-0 text-emerald-400 transition-transform duration-200 group-hover:scale-110" />
+              {isEffectiveExpanded && (
+                <span className="text-xs font-mono font-bold tracking-wider uppercase text-emerald-400">CALL LOGS</span>
               )}
             </button>
 

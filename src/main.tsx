@@ -1,9 +1,8 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import './index.css';
+import App from './App';
 import { initBootstrap } from './lib/bootstrap';
-
-
 
 const originalConsoleError = console.error;
 console.error = function(...args) {
@@ -50,14 +49,24 @@ window.addEventListener('unhandledrejection', (e) => {
   }
 });
 
-// Initialize bootstrap configuration before loading the App
-// This ensures environment variables are fetched dynamically (e.g., for Electron)
-initBootstrap().then(() => {
-  import('./App.tsx').then(({ default: App }) => {
-    createRoot(document.getElementById('root')!).render(
+// Async bootstrap initialization before rendering
+async function start() {
+  try {
+    await initBootstrap();
+  } catch (err) {
+    console.warn('[Bootstrap] Background sync warning:', err);
+  }
+
+  // Mount application root
+  const rootElement = document.getElementById('root');
+  if (rootElement) {
+    createRoot(rootElement).render(
       <StrictMode>
         <App />
       </StrictMode>,
     );
-  });
-});
+  }
+}
+
+start();
+

@@ -1,3 +1,5 @@
+import { reinitializeFirebaseWithConfig } from './firebase';
+
 export interface BootstrapConfig {
   firebaseConfig: {
     projectId: string;
@@ -113,6 +115,7 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       // Keep legacy config compatibility for firebase.ts
       if (bootstrapConfig?.firebaseConfig) {
         (window as any).__FIREBASE_CONFIG__ = bootstrapConfig.firebaseConfig;
+        reinitializeFirebaseWithConfig(bootstrapConfig.firebaseConfig);
       }
       
       return bootstrapConfig as BootstrapConfig;
@@ -161,8 +164,35 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
 }
 
 export function getBootstrapConfig(): BootstrapConfig {
-  if (!bootstrapConfig) {
-    throw new Error("Bootstrap configuration not initialized. Call initBootstrap() first.");
+  if (bootstrapConfig) return bootstrapConfig;
+  
+  const env = (import.meta as any).env || {};
+  const viteProjectId = env.VITE_FIREBASE_PROJECT_ID;
+  const viteApiKey = env.VITE_FIREBASE_API_KEY;
+
+  let fallbackConfig: any = (window as any).__FIREBASE_CONFIG__ || null;
+  if (!fallbackConfig && viteProjectId && viteApiKey) {
+    fallbackConfig = {
+      projectId: viteProjectId,
+      apiKey: viteApiKey,
+      appId: env.VITE_FIREBASE_APP_ID || "",
+      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || `${viteProjectId}.firebaseapp.com`,
+      firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2",
+      storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || `${viteProjectId}.appspot.com`,
+      messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+      measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || ""
+    };
   }
-  return bootstrapConfig;
+
+  return {
+    firebaseConfig: fallbackConfig,
+    version: "1.0.0",
+    features: {
+      enableE2EE: true,
+      enablePushNotifications: false,
+    },
+    publicApiUrls: {
+      backendUrl: getBackendUrl(),
+    },
+  };
 }

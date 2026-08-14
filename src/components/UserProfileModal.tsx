@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Shield, Activity, FileText, Mail, Key, Sparkles, AlertTriangle } from 'lucide-react';
+import { X, Shield, Activity, FileText, Mail, Key, Sparkles, AlertTriangle, UserPlus, UserCheck, Users, Phone, Video } from 'lucide-react';
 import { UserProfile, Post } from '../types';
-import { getUserProfile, getDeterministicChatId } from '../lib/services';
+import { getUserProfile, getDeterministicChatId, subscribeToUserFollowers, followUser, unfollowUser } from '../lib/services';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { playGlitchClickSound } from '../lib/sounds';
+import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
+import { triggerVibration } from '../lib/haptics';
+import { showBrutalistToast } from '../lib/toast';
 import { useAuth } from '../contexts/AuthContext';
 
 interface UserProfileModalProps {
   uid: string | null;
   onClose: () => void;
+  onInitiateCall?: (targetUser: { uid: string; name: string; photo?: string }, type: 'voice' | 'video') => void;
 }
 
-export default function UserProfileModal({ uid, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({ uid, onClose, onInitiateCall }: UserProfileModalProps) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -23,9 +26,55 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
   const [isInCall, setIsInCall] = useState(false);
   const [activeCallDetails, setActiveCallDetails] = useState<any>(null);
 
+  // Real-time follower state
+  const [followersList, setFollowersList] = useState<any[]>([]);
+  const [followingList, setFollowingList] = useState<any[]>([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isSubmittingFollow, setIsSubmittingFollow] = useState(false);
+
   const { profile: myProfile, isAuthReady } = useAuth();
   const [chatData, setChatData] = useState<any | null>(null);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
+
+  // Subscribe to real-time follower/following lists
+  useEffect(() => {
+    if (!uid) return;
+    const unsub = subscribeToUserFollowers(uid, (data) => {
+      setFollowersList(data.followers);
+      setFollowingList(data.following);
+      if (myProfile?.uid) {
+        setIsFollowing(data.followers.includes(myProfile.uid));
+      }
+    });
+    return () => unsub();
+  }, [uid, myProfile?.uid]);
+
+  const handleToggleFollow = async () => {
+    if (!uid || !myProfile?.uid || isSubmittingFollow) return;
+    setIsSubmittingFollow(true);
+    playLikeSound();
+    triggerVibration('medium');
+
+    try {
+      if (isFollowing) {
+        await unfollowUser(myProfile.uid, uid);
+        setIsFollowing(false);
+        showBrutalistToast('UNFOLLOWED', `Removed @${profile?.displayName || 'user'} from mesh network`, 'info');
+      } else {
+        await followUser(
+          myProfile.uid,
+          uid,
+          myProfile.displayName || myProfile.username || 'Operator'
+        );
+        setIsFollowing(true);
+        showBrutalistToast('FLICKER ADDED', `Now following @${profile?.displayName || 'user'}`, 'success');
+      }
+    } catch (err) {
+      console.warn("Failed to toggle follow status:", err);
+    } finally {
+      setIsSubmittingFollow(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthReady || !uid || !myProfile?.uid) return;
@@ -307,6 +356,68 @@ export default function UserProfileModal({ uid, onClose }: UserProfileModalProps
                       "{profile.bio}"
                     </p>
                   )}
+
+                  {/* Social Followers & Call Action Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <div className="flex items-center gap-3 text-[10px] font-mono bg-black/40 px-3 py-1.5 border border-zinc-800">
+                      <span className="text-zinc-400">
+                        <strong className="text-[var(--neon-green)] font-bold">{followersList.length}</strong> Followers
+                      </span>
+                      <span className="text-zinc-600">•</span>
+                      <span className="text-zinc-400">
+                        <strong className="text-white font-bold">{followingList.length}</strong> Following
+                      </span>
+                    </div>
+
+                    {uid !== myProfile?.uid && (
+                      <button
+                        type="button"
+                        onClick={handleToggleFollow}
+                        disabled={isSubmittingFollow}
+                        className={`px-3 py-1.5 text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer border ${
+                          isFollowing
+                            ? 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
+                            : 'bg-[var(--neon-green)] text-black border-black hover:bg-white'
+                        }`}
+                      >
+                        {isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                        <span>{isFollowing ? 'Following' : 'Follow Node'}</span>
+                      </button>
+                    )}
+
+                    {onInitiateCall && uid !== myProfile?.uid && (
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playLikeSound();
+                            triggerVibration('medium');
+                            onClose();
+                            onInitiateCall({ uid, name: profile.displayName, photo: profile.photoURL }, 'voice');
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-400 text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                          title="Establish Audio Call"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Voice</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playLikeSound();
+                            triggerVibration('medium');
+                            onClose();
+                            onInitiateCall({ uid, name: profile.displayName, photo: profile.photoURL }, 'video');
+                          }}
+                          className="px-2.5 py-1.5 bg-purple-950/60 hover:bg-purple-900 border border-purple-500/50 text-purple-300 text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                          title="Establish Video Call"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          <span>Video</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 text-[9px] text-zinc-400">
                     <div className="flex items-center gap-2">

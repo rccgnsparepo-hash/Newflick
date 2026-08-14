@@ -11,11 +11,16 @@ export const UserProfileSchema = z.object({
   publicKey: z.string().min(1).max(4096),
   updatedAt: z.any(), // Firestore FieldValue or Timestamp
   bio: z.string().max(500).optional(),
+  coverURL: z.string().optional(),
   soundEnabled: z.boolean().optional(),
   notifSocialFeed: z.boolean().optional(),
   notifMessagesAll: z.boolean().optional(),
   notifMessagesFrom: z.array(z.string().min(1).max(128)).optional(),
-  lastSeen: z.any().optional()
+  lastSeen: z.any().optional(),
+  followers: z.array(z.string()).optional(),
+  following: z.array(z.string()).optional(),
+  followersCount: z.number().optional(),
+  followingCount: z.number().optional()
 });
 
 export const PrivateUserInfoSchema = z.object({

@@ -19,6 +19,10 @@ export interface UserProfile {
   globalKeyPassword?: string; // Backed up human-readable Recovery/Sync Passkey
   oneSignalSubscriptionId?: string;
   oneSignalId?: string;
+  followers?: string[];
+  following?: string[];
+  followersCount?: number;
+  followingCount?: number;
 }
 
 export interface PrivateUserInfo {
@@ -156,4 +160,25 @@ export interface Story {
   hashtags?: string[];
   gradientPreset?: string;
 }
+
+export interface CallLogItem {
+  id: string;
+  callerId: string;
+  callerName: string;
+  callerPhoto?: string;
+  receiverId: string;
+  receiverName?: string;
+  receiverPhoto?: string;
+  type: 'voice' | 'video';
+  status: 'active' | 'ended' | 'dialing' | 'ringing';
+  endReason?: 'completed' | 'declined' | 'missed' | 'quick_replied' | 'cancelled';
+  quickReplyText?: string;
+  durationSeconds?: number;
+  isGroup?: boolean;
+  groupId?: string;
+  groupName?: string;
+  createdAt: any;
+  endedAt?: any;
+}
+
 

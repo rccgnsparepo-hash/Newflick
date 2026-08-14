@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import gsap from 'gsap';
 import { 
   Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Volume2, VolumeX, ShieldCheck, 
   Radio, Sparkles, Users, Hand, Share2, Copy, UserPlus, Check, MessageSquare,
-  Minimize2, Maximize2, Wifi, WifiOff, SignalHigh, SignalMedium, SignalLow, Activity, Lock
+  Minimize2, Maximize2, Wifi, WifiOff, SignalHigh, SignalMedium, SignalLow, Activity, Lock,
+  Eye, EyeOff, Send, X, ShieldAlert, Sparkle, AlertCircle
 } from 'lucide-react';
 import { 
   playGlitchClickSound, playLikeSound, playSendMessageSound,
   startRingtoneSound, stopRingtoneSound, playCallConnectedSound, playCallEndSound 
 } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
+import { showBrutalistToast } from '../lib/toast';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { updateGroupParticipantState, leaveGroupCall, joinGroupCall } from '../lib/services';
+import { updateGroupParticipantState, leaveGroupCall, joinGroupCall, sendQuickReplyAndEndCall, endActiveCall } from '../lib/services';
 
 export interface CallState {
   id?: string;
@@ -48,6 +51,17 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   const [copiedLink, setCopiedLink] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // Privacy Mode (persisted in localStorage)
+  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(() => {
+    return localStorage.getItem('flick_call_privacy_mode') === 'true';
+  });
+  const [isIdentityRevealed, setIsIdentityRevealed] = useState(false);
+
+  // Quick Reply Drawer / Popover
+  const [showQuickReplySheet, setShowQuickReplySheet] = useState(false);
+  const [customReplyMessage, setCustomReplyMessage] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
   // WebRTC Signal & Latency Monitor
   const [latencyMs, setLatencyMs] = useState(38);
   const [signalQuality, setSignalQuality] = useState<'excellent' | 'good' | 'poor'>('excellent');
@@ -63,9 +77,61 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
+  // GSAP animation refs
+  const overlayStageRef = useRef<HTMLDivElement | null>(null);
+  const acceptBtnRef = useRef<HTMLButtonElement | null>(null);
+  const widgetBoxRef = useRef<HTMLDivElement | null>(null);
+
   const currentUid = call.currentUserId || 'me';
   const currentName = call.currentUserName || 'You';
   const currentPhoto = call.currentUserPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120';
+
+  // GSAP: Modal Entrance Animation
+  useEffect(() => {
+    if (overlayStageRef.current && !isMinimized) {
+      gsap.fromTo(
+        overlayStageRef.current,
+        { opacity: 0, scale: 0.96, y: 30 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'power3.out' }
+      );
+    }
+  }, [isMinimized]);
+
+  // GSAP: Minimized Fade-Scale Transition
+  useEffect(() => {
+    if (isMinimized && widgetBoxRef.current) {
+      gsap.fromTo(
+        widgetBoxRef.current,
+        { opacity: 0, scale: 0.75, y: 40 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: 'back.out(1.4)' }
+      );
+    }
+  }, [isMinimized]);
+
+  // GSAP: Incoming Call Accept Button Shake Loop
+  useEffect(() => {
+    if (acceptBtnRef.current && call.isIncoming && status !== 'active') {
+      const shakeTween = gsap.to(acceptBtnRef.current, {
+        keyframes: [
+          { x: -5, rotation: -2 },
+          { x: 5, rotation: 2 },
+          { x: -4, rotation: -1.5 },
+          { x: 4, rotation: 1.5 },
+          { x: -2, rotation: -0.5 },
+          { x: 2, rotation: 0.5 },
+          { x: 0, rotation: 0 }
+        ],
+        duration: 0.8,
+        repeat: -1,
+        repeatDelay: 1.4,
+        ease: 'power2.inOut'
+      });
+
+      return () => {
+        shakeTween.kill();
+      };
+    }
+  }, [call.isIncoming, status]);
 
   // 1. Sync real-time call status
   useEffect(() => {
@@ -119,232 +185,171 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
 
   // Ensure current user is in participants list for group calls
   useEffect(() => {
-    if (call.isGroup && participants.length === 0) {
-      setParticipants([
-        {
-          uid: currentUid,
-          name: currentName,
-          photo: currentPhoto,
-          isMuted: false,
-          isSpeaking: false,
-          isHandRaised: false,
-          joinedAt: Date.now()
-        },
-        {
-          uid: call.peerId || 'peer-1',
-          name: call.peerName || 'Peer Node',
-          photo: call.peerPhoto || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
-          isMuted: false,
-          isSpeaking: true,
-          isHandRaised: false,
-          joinedAt: Date.now() - 10000
+    if (call.isGroup && call.id && currentUid) {
+      joinGroupCall(call.id, {
+        uid: currentUid,
+        name: currentName,
+        photo: currentPhoto
+      }).catch(() => {});
+    }
+  }, [call.id, call.isGroup, currentUid]);
+
+  // Sync mute and hand raise state in group call
+  useEffect(() => {
+    if (call.isGroup && call.id && currentUid) {
+      updateGroupParticipantState(call.id, currentUid, {
+        isMuted,
+        isHandRaised,
+        isSpeaking: isLocalSpeaking
+      }).catch(() => {});
+    }
+  }, [isMuted, isHandRaised, isLocalSpeaking, call.id, call.isGroup, currentUid]);
+
+  // 3. WebRTC Stats & Network Latency Monitor
+  useEffect(() => {
+    const latencyInterval = setInterval(() => {
+      // Simulate realistic adaptive network round-trip ping
+      const jitter = Math.floor(Math.random() * 14) - 7;
+      setLatencyMs((prev) => {
+        const next = Math.max(18, Math.min(180, prev + jitter));
+        if (next < 60) setSignalQuality('excellent');
+        else if (next < 110) setSignalQuality('good');
+        else setSignalQuality('poor');
+        return next;
+      });
+    }, 2800);
+
+    return () => clearInterval(latencyInterval);
+  }, []);
+
+  // 4. Local Media Stream Setup (Microphone & Camera)
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let isCancelled = false;
+
+    async function initMedia() {
+      try {
+        const constraints: MediaStreamConstraints = {
+          audio: true,
+          video: call.type === 'video' ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (isCancelled) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
         }
-      ]);
-    }
-  }, [call.isGroup, participants.length, currentUid, currentName, currentPhoto, call.peerId, call.peerName, call.peerPhoto]);
 
-  // 3. Real-time call duration stopwatch timer (updates every second once status === 'active')
-  useEffect(() => {
-    if (status !== 'active') return;
-    const interval = setInterval(() => {
-      setSeconds((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [status]);
+        setLocalStream(stream);
 
-  // 4. WebRTC Signal Strength & Latency Monitor
-  useEffect(() => {
-    if (status !== 'active') return;
+        if (videoRef.current && call.type === 'video') {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
 
-    const interval = setInterval(() => {
-      // Simulate real WebRTC latency statistics check
-      const basePing = 25 + Math.floor(Math.random() * 25);
-      const randomSpike = Math.random() < 0.08 ? Math.floor(Math.random() * 180) : 0;
-      const totalPing = basePing + randomSpike;
+        // Initialize Web Audio API Analyser for live speech detection
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const audioCtx = new AudioCtx();
+          audioContextRef.current = audioCtx;
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          analyserRef.current = analyser;
 
-      setLatencyMs(totalPing);
-      if (totalPing < 100) {
-        setSignalQuality('excellent');
-      } else if (totalPing < 250) {
-        setSignalQuality('good');
-      } else {
-        setSignalQuality('poor');
-      }
-    }, 2500);
+          const source = audioCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
 
-    return () => clearInterval(interval);
-  }, [status]);
-
-  // 5. WebRTC Local Microphone & Camera Stream capturing
-  useEffect(() => {
-    const hasMediaDevices = typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-
-    if (status === 'active' && hasMediaDevices) {
-      navigator.mediaDevices.getUserMedia({ 
-        audio: true, 
-        video: isVideoOn 
-      })
-        .then((stream) => {
-          setLocalStream(stream);
-
-          // Video element bind if video enabled
-          if (videoRef.current && isVideoOn) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play().catch(() => {});
-          }
-          if (miniVideoRef.current && isVideoOn) {
-            miniVideoRef.current.srcObject = stream;
-            miniVideoRef.current.play().catch(() => {});
-          }
-
-          // Audio Context Analyser for real-time speech detection
-          try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContextClass) {
-              const audioCtx = new AudioContextClass();
-              const analyser = audioCtx.createAnalyser();
-              analyser.fftSize = 64;
-              const source = audioCtx.createMediaStreamSource(stream);
-              source.connect(analyser);
-
-              audioContextRef.current = audioCtx;
-              analyserRef.current = analyser;
-
-              const dataArray = new Uint8Array(analyser.frequencyBinCount);
-              const checkVolume = () => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                  sum += dataArray[i];
-                }
-                const average = sum / dataArray.length;
-                const speaking = average > 25 && !isMuted;
-                setIsLocalSpeaking(speaking);
-
-                animFrameRef.current = requestAnimationFrame(checkVolume);
-              };
-
-              checkVolume();
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const checkVoice = () => {
+            if (!analyserRef.current) return;
+            analyserRef.current.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
             }
-          } catch (e) {
-            console.warn('[WebRTC Audio Analyser] AudioContext notice:', e);
-          }
-        })
-        .catch((err) => {
-          console.warn('[WebRTC] Microphone / Camera stream unavailable or permission denied:', err);
-        });
+            const average = sum / dataArray.length;
+            setIsLocalSpeaking(!isMuted && average > 25);
+            animFrameRef.current = requestAnimationFrame(checkVoice);
+          };
+          checkVoice();
+        }
+      } catch (err) {
+        console.warn('[WebRTC] Media device access fallback/demo mode:', err);
+      }
     }
+
+    initMedia();
 
     return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      isCancelled = true;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(() => {});
       }
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
     };
-  }, [status]);
+  }, [call.type]);
 
-  // 6. Direct Mute Button Handler: interacts directly with WebRTC audio tracks
+  // Handle Mute & Camera Toggles on active stream
   useEffect(() => {
     if (localStream) {
       localStream.getAudioTracks().forEach(track => {
         track.enabled = !isMuted;
       });
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = isVideoOn;
+      });
     }
-    if (call.id && currentUid) {
-      updateGroupParticipantState(call.id, currentUid, { isMuted }).catch(() => {});
-    }
-  }, [isMuted, localStream, call.id, currentUid]);
+  }, [isMuted, isVideoOn, localStream]);
 
-  // 7. Direct Camera Toggle Button Handler: interacts directly with WebRTC video tracks
+  // Stopwatch duration timer for active calls
   useEffect(() => {
-    if (localStream) {
-      const videoTracks = localStream.getVideoTracks();
-      if (videoTracks.length > 0) {
-        videoTracks.forEach(track => {
-          track.enabled = isVideoOn;
-        });
-      } else if (isVideoOn && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-        // Dynamically request video track if turning camera on during active call
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then((vStream) => {
-            const newVideoTrack = vStream.getVideoTracks()[0];
-            if (newVideoTrack) {
-              localStream.addTrack(newVideoTrack);
-              if (videoRef.current) {
-                videoRef.current.srcObject = localStream;
-                videoRef.current.play().catch(() => {});
-              }
-              if (miniVideoRef.current) {
-                miniVideoRef.current.srcObject = localStream;
-                miniVideoRef.current.play().catch(() => {});
-              }
-            }
-          })
-          .catch((err) => {
-            console.warn('[WebRTC] Could not capture camera stream:', err);
-            setIsVideoOn(false);
-          });
-      }
+    let interval: any;
+    if (status === 'active') {
+      interval = setInterval(() => {
+        setSeconds(prev => prev + 1);
+      }, 1000);
     }
-  }, [isVideoOn, localStream]);
+    return () => clearInterval(interval);
+  }, [status]);
 
-  // 8. Update local hand raised status
+  // Canvas visualizer loop for single call mode
   useEffect(() => {
-    if (call.id && currentUid) {
-      updateGroupParticipantState(call.id, currentUid, { isHandRaised }).catch(() => {});
-    }
-  }, [isHandRaised, call.id, currentUid]);
-
-  // 9. Cyber canvas visualizer generator (Audio spectrum waves)
-  useEffect(() => {
-    if (status !== 'active' || isMinimized) return;
+    if (!canvasRef.current) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let frameId: number;
-    let time = 0;
+    let angle = 0;
 
     const render = () => {
-      ctx.fillStyle = '#050505';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const isGreen = status === 'active';
+      const color = isGreen ? '0, 255, 102' : '239, 68, 68';
 
-      ctx.strokeStyle = '#00ff66';
+      // Waveform matrix
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${color}, 0.45)`;
       ctx.lineWidth = 2;
-      ctx.shadowColor = '#00ff66';
-      ctx.shadowBlur = 8;
-
-      ctx.beginPath();
-      for (let x = 0; x < canvas.width; x += 1) {
-        const amplitude = isLocalSpeaking ? 45 : 18 + Math.sin(time / 5) * 8;
-        const frequency = 0.02 + Math.cos(time / 15) * 0.01;
-        const y = canvas.height / 2 + Math.sin(x * frequency + time / 8) * amplitude;
+      for (let x = 0; x < canvas.width; x += 4) {
+        const y = canvas.height / 2 + Math.sin((x * 0.03) + angle) * (isLocalSpeaking ? 16 : 8);
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
 
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(0, 255, 102, 0.25)';
-      ctx.beginPath();
-      for (let x = 0; x < canvas.width; x += 2) {
-        const y = canvas.height / 2 + Math.cos(x * 0.012 + time / 18) * 35;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
-      time += 1;
+      angle += 0.05;
       frameId = requestAnimationFrame(render);
     };
 
     render();
     return () => cancelAnimationFrame(frameId);
-  }, [status, isLocalSpeaking, isMinimized]);
+  }, [status, isLocalSpeaking]);
 
   const formatTime = (totalSec: number) => {
     const hrs = Math.floor(totalSec / 3600);
@@ -366,7 +371,65 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
     if (call.id && currentUid && call.isGroup) {
       leaveGroupCall(call.id, currentUid).catch(() => {});
     }
+    if (call.id && !call.isGroup) {
+      endActiveCall(call.id, seconds, status === 'active' ? 'completed' : 'cancelled').catch(() => {});
+    }
     onEndCall();
+  };
+
+  // Toggle Privacy Mode
+  const handleTogglePrivacyMode = () => {
+    playGlitchClickSound();
+    triggerVibration('medium');
+    const next = !isPrivacyMode;
+    setIsPrivacyMode(next);
+    localStorage.setItem('flick_call_privacy_mode', String(next));
+    showBrutalistToast(
+      'PRIVACY MODE',
+      next ? 'CALLER IDENTITY OBSCURATION ACTIVE' : 'CALLER IDENTITY REVEALED',
+      next ? 'info' : 'success'
+    );
+  };
+
+  // Quick Reply predefined choices
+  const PREDEFINED_QUICK_REPLIES = [
+    "🚫 Can't talk right now, I'll call you back shortly.",
+    "🔒 In a secure terminal session. Send encrypted message.",
+    "🚗 Currently on the move / driving, ping you soon.",
+    "⏱️ Busy for the next 30 minutes, will reconnect.",
+    "🤝 In a confidential collaborative session."
+  ];
+
+  // Send Quick Reply & Decline
+  const handleSendQuickReply = async (replyText: string) => {
+    if (!replyText.trim() || isSubmittingReply) return;
+    setIsSubmittingReply(true);
+    playSendMessageSound();
+    triggerVibration('heavy');
+
+    try {
+      if (call.id && call.peerId) {
+        await sendQuickReplyAndEndCall({
+          callId: call.id,
+          callerId: call.peerId,
+          currentUserId: currentUid,
+          currentUserName: currentName,
+          replyText: replyText.trim()
+        });
+      }
+      showBrutalistToast('QUICK REPLY DISPATCHED', `Sent: "${replyText.slice(0, 30)}..."`, 'success');
+      stopRingtoneSound();
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+      }
+      onEndCall();
+    } catch (err) {
+      console.warn('[CallOverlay] Failed to dispatch quick reply:', err);
+      onEndCall();
+    } finally {
+      setIsSubmittingReply(false);
+      setShowQuickReplySheet(false);
+    }
   };
 
   const copyCallLink = () => {
@@ -378,15 +441,25 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
+  // Caller privacy obfuscation calculation
+  const isMasked = isPrivacyMode && status !== 'active' && !isIdentityRevealed;
+  const effectivePeerName = isMasked
+    ? 'ENCRYPTED CALLER // #0x7F9A'
+    : (call.isGroup ? (call.groupName || 'Group Audio Conduit') : call.peerName);
+  
+  const effectivePeerPhoto = isMasked
+    ? 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=120'
+    : (call.peerPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120');
+
   // Compile full display participants
   const displayParticipants = call.isGroup 
     ? (participants.length > 0 ? participants : [
         { uid: currentUid, name: currentName, photo: currentPhoto, isMuted, isSpeaking: isLocalSpeaking, isHandRaised },
-        { uid: 'peer-node-1', name: call.peerName, photo: call.peerPhoto, isMuted: false, isSpeaking: true, isHandRaised: false }
+        { uid: 'peer-node-1', name: effectivePeerName, photo: effectivePeerPhoto, isMuted: false, isSpeaking: true, isHandRaised: false }
       ])
     : [
         { uid: currentUid, name: currentName, photo: currentPhoto, isMuted, isSpeaking: isLocalSpeaking, isHandRaised },
-        { uid: call.peerId, name: call.peerName, photo: call.peerPhoto, isMuted: false, isSpeaking: status === 'active', isHandRaised: false }
+        { uid: call.peerId, name: effectivePeerName, photo: effectivePeerPhoto, isMuted: false, isSpeaking: status === 'active', isHandRaised: false }
       ];
 
   // Render Signal Strength Icon based on WebRTC Latency
@@ -409,23 +482,27 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   // --- FLOATING MINIMIZED WIDGET ---
   if (isMinimized) {
     return (
-      <motion.div
-        drag
-        dragConstraints={{ left: -300, right: 300, top: -300, bottom: 300 }}
-        initial={{ scale: 0.8, opacity: 0, y: 50 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="fixed bottom-6 right-6 z-[99999] bg-[#080808] border-2 border-[var(--neon-green)] p-3 shadow-[8px_8px_0_0_#000000] font-mono text-[var(--neon-green)] w-72 flex flex-col space-y-2.5 cursor-grab active:cursor-grabbing select-none"
+      <div
+        ref={widgetBoxRef}
+        className="fixed bottom-6 right-6 z-[99999] bg-[#080808] border-2 border-[var(--neon-green)] p-3.5 shadow-[8px_8px_0_0_#000000] font-mono text-[var(--neon-green)] w-80 flex flex-col space-y-3 cursor-default select-none transition-all duration-300 rounded-none"
       >
         {/* Minimized Header Toolbar */}
         <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
           <div className="flex items-center gap-1.5 truncate">
             <Radio className="w-3.5 h-3.5 text-[var(--neon-green)] animate-pulse shrink-0" />
-            <span className="text-[10px] font-bold tracking-wider text-white truncate max-w-[120px]">
-              {call.isGroup ? (call.groupName || 'Group Call') : call.peerName}
+            <span className="text-[10px] font-bold tracking-wider text-white truncate max-w-[130px]">
+              {effectivePeerName}
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {/* Privacy indicator */}
+            {isPrivacyMode && (
+              <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[8px] font-bold">
+                PRIVACY
+              </span>
+            )}
+
             {/* Signal Indicator */}
             <div className={`px-1.5 py-0.5 border text-[8px] font-bold flex items-center gap-1 ${signalColorClass}`}>
               {renderSignalIcon()}
@@ -450,21 +527,31 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
         <div className="flex items-center gap-3 py-1">
           <div className="relative shrink-0">
             <img
-              src={call.peerPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120'}
-              alt={call.peerName}
-              className="w-10 h-10 rounded-full border-2 border-[var(--neon-green)] object-cover"
+              src={effectivePeerPhoto}
+              alt={effectivePeerName}
+              className="w-11 h-11 border-2 border-[var(--neon-green)] object-cover shadow-sm"
               referrerPolicy="no-referrer"
             />
             {isLocalSpeaking && (
-              <span className="absolute -inset-1 border border-[var(--neon-green)] rounded-full animate-ping" />
+              <span className="absolute -inset-1 border border-[var(--neon-green)] animate-ping" />
+            )}
+            {isMasked && (
+              <span className="absolute bottom-0 right-0 p-0.5 bg-black border border-[var(--neon-green)] text-[8px]">
+                <Lock className="w-2.5 h-2.5 text-amber-400" />
+              </span>
             )}
           </div>
 
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-white tracking-wider">
-              {status === 'active' ? formatTime(seconds) : status.toUpperCase()}
-            </span>
-            <span className="text-[9px] text-zinc-400 truncate flex items-center gap-1">
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white tracking-wider">
+                {status === 'active' ? formatTime(seconds) : status.toUpperCase()}
+              </span>
+              <span className="text-[9px] text-zinc-400 uppercase">
+                {call.type === 'video' ? 'VIDEO' : 'AUDIO'}
+              </span>
+            </div>
+            <span className="text-[9px] text-zinc-400 truncate flex items-center gap-1 mt-0.5">
               {isMuted ? <span className="text-rose-400">MIC MUTED</span> : <span className="text-emerald-400">AUDIO LIVE</span>}
             </span>
           </div>
@@ -477,7 +564,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
               playGlitchClickSound();
               setIsMuted(!isMuted);
             }}
-            className={`p-2 border transition ${
+            className={`p-2 border transition cursor-pointer flex items-center justify-center flex-1 ${
               isMuted ? 'bg-rose-950 text-rose-400 border-rose-500' : 'bg-zinc-900 text-[var(--neon-green)] border-[var(--neon-green)]/50'
             }`}
             title={isMuted ? "Unmute" : "Mute"}
@@ -490,7 +577,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
               playGlitchClickSound();
               setIsVideoOn(!isVideoOn);
             }}
-            className={`p-2 border transition ${
+            className={`p-2 border transition cursor-pointer flex items-center justify-center flex-1 ${
               !isVideoOn ? 'bg-zinc-900 text-zinc-500 border-zinc-700' : 'bg-zinc-900 text-[var(--neon-green)] border-[var(--neon-green)]/50'
             }`}
             title={isVideoOn ? "Disable Video" : "Enable Video"}
@@ -500,20 +587,22 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
 
           <button
             onClick={handleEndCall}
-            className="p-2 bg-rose-600 hover:bg-rose-500 text-black border border-black font-bold flex items-center justify-center transition"
+            className="p-2 bg-rose-600 hover:bg-rose-500 text-black border border-black font-bold flex items-center justify-center transition cursor-pointer flex-1"
             title="Disconnect Call"
           >
-            <PhoneOff className="w-4 h-4" />
+            <PhoneOff className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   // --- FULL SCREEN OVERLAY STAGE ---
   return (
-    <div className="fixed inset-0 bg-[#060606] z-[99999] flex flex-col items-center justify-between p-4 sm:p-8 font-mono text-[var(--neon-green)] selection:bg-[var(--neon-green)] selection:text-black overflow-y-auto">
-      
+    <div
+      ref={overlayStageRef}
+      className="fixed inset-0 bg-[#060606] z-[99999] flex flex-col items-center justify-between p-4 sm:p-8 font-mono text-[var(--neon-green)] selection:bg-[var(--neon-green)] selection:text-black overflow-y-auto"
+    >
       {/* Encryption & Tunnel Header */}
       <div className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-3 border-2 border-[var(--neon-green)] bg-[var(--color-surface)] px-4 py-3 shadow-[4px_4px_0_0_#000000] shrink-0">
         <div className="flex items-center gap-2.5">
@@ -523,7 +612,22 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Privacy Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={handleTogglePrivacyMode}
+            className={`px-2.5 py-1 border text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition cursor-pointer ${
+              isPrivacyMode
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white hover:border-zinc-500'
+            }`}
+            title="Toggle Privacy Mode (Obscures caller ID until accepted)"
+          >
+            {isPrivacyMode ? <EyeOff className="w-3.5 h-3.5 text-amber-400" /> : <Eye className="w-3.5 h-3.5" />}
+            <span>PRIVACY MODE: {isPrivacyMode ? 'ON' : 'OFF'}</span>
+          </button>
+
           {/* WebRTC Signal Strength Monitor Badge */}
           <div className={`px-2.5 py-1 border text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 ${signalColorClass}`}>
             {renderSignalIcon()}
@@ -552,12 +656,11 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
       </div>
 
       {/* Main Calling Stage */}
-      <div className="w-full max-w-5xl flex-1 my-4 flex flex-col items-center justify-center min-h-0">
+      <div className="w-full max-w-5xl flex-1 my-4 flex flex-col items-center justify-center min-h-0 relative">
         
         {/* MULTI-USER GROUP AUDIO GRID */}
         {call.isGroup ? (
           <div className="w-full h-full min-h-[360px] p-4 border-2 border-[var(--neon-green-border)] bg-[var(--color-surface)]/90 shadow-[8px_8px_0_0_#000000] flex flex-col justify-between relative overflow-hidden">
-            
             {/* Background cyber grid */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,102,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,102,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
@@ -588,11 +691,8 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
                 const isUserMuted = isMe ? isMuted : (p.isMuted || false);
 
                 return (
-                  <motion.div
+                  <div
                     key={p.uid}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
                     className={`relative p-4 bg-[#0a0a0a] border-2 transition-all flex flex-col items-center justify-center space-y-3 ${
                       isSpeaking
                         ? 'border-[var(--neon-green)] shadow-[0_0_20px_rgba(0,255,102,0.3)] bg-emerald-950/20'
@@ -668,7 +768,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
                         />
                       ))}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -691,24 +791,51 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
               </div>
             )}
 
-            {/* Peer Avatar */}
+            {/* Peer Avatar & Status Info */}
             {(status !== 'active' || call.type === 'voice') && (
-              <div className="relative flex flex-col items-center z-10 space-y-6">
+              <div className="relative flex flex-col items-center z-10 space-y-5 px-4 text-center">
                 <div className="relative">
-                  <span className={`absolute -inset-4 border-2 border-[var(--neon-green)]/35 rounded-full ${status !== 'active' ? 'animate-ping' : ''}`} />
-                  <span className="absolute -inset-8 border border-[var(--neon-green)]/15 rounded-full animate-pulse" />
+                  <span className={`absolute -inset-4 border-2 border-[var(--neon-green)]/35 rounded-none ${status !== 'active' ? 'animate-ping' : ''}`} />
+                  <span className="absolute -inset-8 border border-[var(--neon-green)]/15 rounded-none animate-pulse" />
                   <img
-                    src={call.peerPhoto}
-                    alt={call.peerName}
-                    className="w-32 h-32 border-4 border-[var(--neon-green)] shadow-lg relative max-w-full object-cover"
+                    src={effectivePeerPhoto}
+                    alt={effectivePeerName}
+                    className={`w-32 h-32 border-4 shadow-lg relative max-w-full object-cover ${
+                      isMasked ? 'border-amber-400 blur-sm' : 'border-[var(--neon-green)]'
+                    }`}
                     referrerPolicy="no-referrer"
                   />
+                  {isMasked && (
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-amber-400 gap-1 border-4 border-amber-400">
+                      <Lock className="w-8 h-8 animate-pulse" />
+                      <span className="text-[8px] font-mono font-black uppercase tracking-widest bg-black px-1">
+                        MASKED
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-center space-y-2">
-                  <h2 className="font-serif text-2xl font-bold italic text-[var(--color-text)] uppercase tracking-tight">
-                    {call.peerName}
-                  </h2>
+                  <div className="flex items-center justify-center gap-2">
+                    <h2 className="font-serif text-2xl font-bold italic text-[var(--color-text)] uppercase tracking-tight">
+                      {effectivePeerName}
+                    </h2>
+                    {isPrivacyMode && status !== 'active' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playGlitchClickSound();
+                          setIsIdentityRevealed(!isIdentityRevealed);
+                        }}
+                        className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 text-[9px] font-bold uppercase flex items-center gap-1 cursor-pointer transition"
+                        title={isIdentityRevealed ? "Obscure caller identity" : "Peek caller identity"}
+                      >
+                        {isIdentityRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        <span>{isIdentityRevealed ? 'HIDE' : 'REVEAL'}</span>
+                      </button>
+                    )}
+                  </div>
+
                   <p className="text-[10px] text-[var(--neon-green)] tracking-widest uppercase animate-pulse">
                     {status === 'dialing' && '⚡ ESTABLISHING SECURE PORTAL CHANNEL...'}
                     {status === 'ringing' && '📞 HANDSHAKE PING SENT // RINGING...'}
@@ -727,6 +854,69 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* QUICK REPLY OVERLAY DRAWER ON INCOMING CALL */}
+        {showQuickReplySheet && (
+          <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md border-2 border-purple-500 p-5 flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-purple-500/40 pb-3">
+              <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
+                <MessageSquare className="w-4 h-4 text-purple-400" />
+                <span>SELECT PREDEFINED ENCRYPTED RESPONSE</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickReplySheet(false)}
+                className="p-1 bg-zinc-900 hover:bg-zinc-800 text-purple-300 border border-purple-500/40 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* List of Predefined Replies */}
+            <div className="space-y-2 my-auto py-2">
+              {PREDEFINED_QUICK_REPLIES.map((reply, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  disabled={isSubmittingReply}
+                  onClick={() => handleSendQuickReply(reply)}
+                  className="w-full text-left p-3 bg-purple-950/30 hover:bg-purple-900/50 border border-purple-500/40 hover:border-purple-400 text-xs font-mono text-purple-200 transition cursor-pointer flex items-center justify-between group active:scale-[0.99]"
+                >
+                  <span className="truncate pr-2">{reply}</span>
+                  <Send className="w-3.5 h-3.5 text-purple-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition shrink-0" />
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Reply Input */}
+            <div className="pt-2 border-t border-purple-500/40">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (customReplyMessage.trim()) {
+                    handleSendQuickReply(customReplyMessage);
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={customReplyMessage}
+                  onChange={(e) => setCustomReplyMessage(e.target.value)}
+                  placeholder="Custom encrypted dispatch..."
+                  className="flex-1 bg-black border border-purple-500/50 px-3 py-2 text-xs text-purple-200 placeholder:text-purple-400/50 focus:outline-none focus:border-purple-400 font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={!customReplyMessage.trim() || isSubmittingReply}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-black font-extrabold text-xs uppercase cursor-pointer disabled:opacity-50 transition border border-black"
+                >
+                  SEND & DECLINE
+                </button>
+              </form>
+            </div>
           </div>
         )}
       </div>
@@ -751,37 +941,56 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
 
         <div className="w-full flex items-center justify-around gap-2">
           {call.isIncoming && status !== 'active' ? (
-            <div className="flex gap-4 w-full">
+            <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full">
+              {/* Decline Call Button */}
               <button
                 onClick={handleEndCall}
-                className="flex-1 py-3.5 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b]"
+                className="flex-1 py-3.5 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b] active:scale-95"
               >
-                <PhoneOff className="w-4 h-4" />
-                <span>DECLINE CALL</span>
+                <PhoneOff className="w-4 h-4 stroke-[2.5]" />
+                <span>DECLINE</span>
               </button>
+
+              {/* Quick Reply Button */}
               <button
+                type="button"
+                onClick={() => {
+                  playGlitchClickSound();
+                  triggerVibration('medium');
+                  setShowQuickReplySheet(!showQuickReplySheet);
+                }}
+                className="py-3.5 px-4 bg-purple-950 hover:bg-purple-900 font-extrabold text-purple-300 hover:text-white text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-purple-500 shadow-[4px_4px_0_0_#6b21a8] active:scale-95 shrink-0"
+                title="Send quick encrypted text reply and decline"
+              >
+                <MessageSquare className="w-4 h-4 text-purple-400" />
+                <span className="hidden sm:inline">QUICK REPLY</span>
+              </button>
+
+              {/* Accept Call Button with GSAP Shake */}
+              <button
+                ref={acceptBtnRef}
                 onClick={() => {
                   playLikeSound();
                   triggerVibration('medium');
                   if (onAcceptCall) onAcceptCall();
                 }}
-                className="flex-1 py-3.5 bg-[var(--neon-green)] hover:bg-white font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#15803d] animate-pulse"
+                className="flex-1 py-3.5 bg-[var(--neon-green)] hover:bg-white font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#15803d] active:scale-95"
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-4 h-4 stroke-[2.5]" />
                 <span>ACCEPT CALL</span>
               </button>
             </div>
           ) : !call.isIncoming && status !== 'active' ? (
             <div className="flex items-center justify-between gap-3 w-full">
-              <div className="text-xs text-zinc-400 flex items-center gap-2 font-mono">
-                <Radio className="w-4 h-4 text-[var(--neon-green)] animate-pulse" />
-                <span>DIALING {call.peerName.toUpperCase()}...</span>
+              <div className="text-xs text-zinc-400 flex items-center gap-2 font-mono truncate">
+                <Radio className="w-4 h-4 text-[var(--neon-green)] animate-pulse shrink-0" />
+                <span className="truncate">DIALING {effectivePeerName.toUpperCase()}...</span>
               </div>
               <button
                 onClick={handleEndCall}
-                className="px-6 py-3 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b]"
+                className="px-6 py-3 bg-red-600 hover:bg-red-500 font-extrabold text-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer transition border border-black shadow-[4px_4px_0_0_#991b1b] shrink-0"
               >
-                <PhoneOff className="w-4 h-4" />
+                <PhoneOff className="w-4 h-4 stroke-[2.5]" />
                 <span>CANCEL CALL</span>
               </button>
             </div>

@@ -14,10 +14,12 @@ import {
   serverTimestamp,
   runTransaction,
   writeBatch,
-  arrayUnion
+  arrayUnion,
+  arrayRemove,
+  increment
 } from 'firebase/firestore';
 import { db, OperationType, handleFirestoreError } from './firebase';
-import { UserProfile, Post, DirectChat, ChatMessage, InAppNotification, MessageReaction, Story } from '../types';
+import { UserProfile, Post, DirectChat, ChatMessage, InAppNotification, MessageReaction, Story, CallLogItem } from '../types';
 import {
   UserProfileSchema,
   PostSchema,
@@ -145,6 +147,98 @@ export function subscribeToUsers(callback: (users: UserProfile[]) => void, onErr
         console.warn("Users list stream error:", parsedErr);
       }
     }
+  });
+}
+
+// --- Realtime Followers & Network Connections Services ---
+
+export async function followUser(
+  currentUserId: string,
+  targetUserId: string,
+  currentUserName?: string
+): Promise<void> {
+  if (currentUserId === targetUserId) return;
+  try {
+    const batch = writeBatch(db);
+    
+    // Add target to current user's following list
+    const currentUserRef = doc(db, 'users', currentUserId);
+    batch.update(currentUserRef, {
+      following: arrayUnion(targetUserId),
+      followingCount: increment(1)
+    });
+
+    // Add current user to target's followers list
+    const targetUserRef = doc(db, 'users', targetUserId);
+    batch.update(targetUserRef, {
+      followers: arrayUnion(currentUserId),
+      followersCount: increment(1)
+    });
+
+    // Send realtime notification
+    const notificationId = doc(collection(db, 'notifications')).id;
+    const notificationRef = doc(db, 'notifications', notificationId);
+    batch.set(notificationRef, {
+      id: notificationId,
+      receiverId: targetUserId,
+      senderId: currentUserId,
+      senderName: currentUserName || 'Operator',
+      type: 'like',
+      title: `⚡ New Flicker Node Connection`,
+      body: `@${currentUserName || 'Operator'} is now following your node`,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${targetUserId}`);
+  }
+}
+
+export async function unfollowUser(
+  currentUserId: string,
+  targetUserId: string
+): Promise<void> {
+  if (currentUserId === targetUserId) return;
+  try {
+    const batch = writeBatch(db);
+
+    const currentUserRef = doc(db, 'users', currentUserId);
+    batch.update(currentUserRef, {
+      following: arrayRemove(targetUserId),
+      followingCount: increment(-1)
+    });
+
+    const targetUserRef = doc(db, 'users', targetUserId);
+    batch.update(targetUserRef, {
+      followers: arrayRemove(currentUserId),
+      followersCount: increment(-1)
+    });
+
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${targetUserId}`);
+  }
+}
+
+export function subscribeToUserFollowers(
+  userId: string,
+  callback: (data: { followers: string[]; following: string[]; followersCount: number; followingCount: number }) => void
+) {
+  const path = `users/${userId}`;
+  return onSnapshot(doc(db, 'users', userId), (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback({
+        followers: Array.isArray(data.followers) ? data.followers : [],
+        following: Array.isArray(data.following) ? data.following : [],
+        followersCount: typeof data.followersCount === 'number' ? Math.max(0, data.followersCount) : (Array.isArray(data.followers) ? data.followers.length : 0),
+        followingCount: typeof data.followingCount === 'number' ? Math.max(0, data.followingCount) : (Array.isArray(data.following) ? data.following.length : 0)
+      });
+    }
+  }, (err) => {
+    console.warn("Followers stream error:", err);
   });
 }
 
@@ -1413,6 +1507,7 @@ export async function createActiveCall(
   const callId = doc(collection(db, 'calls')).id;
   const path = `calls/${callId}`;
   try {
+    const now = Date.now();
     const rawData = {
       id: callId,
       callerId,
@@ -1432,14 +1527,35 @@ export async function createActiveCall(
           isMuted: false,
           isSpeaking: false,
           isHandRaised: false,
-          joinedAt: Date.now()
+          joinedAt: now
         }
       ],
       createdAt: serverTimestamp()
     };
     await setDoc(doc(db, 'calls', callId), rawData);
 
-    // Send high-priority call push notification to recipient
+    // Call backend API in parallel for high-priority push notification and memory relay
+    try {
+      fetch('/api/calls/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callId,
+          callerId,
+          callerName,
+          callerPhoto,
+          receiverId,
+          type,
+          isGroup,
+          groupId,
+          groupName
+        })
+      }).catch(err => console.warn('[Call Initiate API Request Notice]:', err));
+    } catch (e) {
+      console.warn('[Call Initiate API Fetch Notice]:', e);
+    }
+
+    // Direct push notification attempt as fallback
     if (!isGroup && receiverId) {
       try {
         const { sendOneSignalPush } = await import('./pushNotifications');
@@ -1558,12 +1674,18 @@ export function subscribeToIncomingCall(userId: string, callback: (call: any | n
   const path = 'calls';
   const q = query(collection(db, 'calls'), where('receiverId', '==', userId));
   return onSnapshot(q, (snap) => {
+    const now = Date.now();
     const activeIncoming = snap.docs
       .map(doc => doc.data())
-      .filter(c => c.status !== 'ended' && c.callerId !== userId)
+      .filter(c => {
+        if (!c || c.status === 'ended' || c.callerId === userId) return false;
+        const timeMs = c.createdAt?.toMillis ? c.createdAt.toMillis() : (c.createdAt?.seconds ? c.createdAt.seconds * 1000 : (typeof c.createdAt === 'number' ? c.createdAt : now));
+        // Only accept calls within the last 90 seconds
+        return (now - timeMs < 90000) && (c.status === 'dialing' || c.status === 'ringing');
+      })
       .sort((a, b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (typeof a.createdAt === 'number' ? a.createdAt : 0));
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (typeof b.createdAt === 'number' ? b.createdAt : 0));
         return timeB - timeA;
       });
     callback(activeIncoming[0] || null);
@@ -1576,16 +1698,38 @@ export function subscribeToIncomingCall(userId: string, callback: (call: any | n
   });
 }
 
+/**
+ * Direct HTTP fallback poller for active incoming calls (bypasses Firestore snapshot latency)
+ */
+export async function fetchActiveIncomingCall(userId: string): Promise<any | null> {
+  if (!userId) return null;
+  try {
+    const res = await fetch(`/api/calls/incoming/${encodeURIComponent(userId)}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data?.incomingCall || null;
+    }
+  } catch (e) {
+    // Silent fail on network blip
+  }
+  return null;
+}
+
 export function subscribeToOutgoingCall(callerId: string, callback: (call: any | null) => void) {
   const path = 'calls';
   const q = query(collection(db, 'calls'), where('callerId', '==', callerId));
   return onSnapshot(q, (snap) => {
+    const now = Date.now();
     const activeOutgoing = snap.docs
       .map(doc => doc.data())
-      .filter(c => c.status !== 'ended')
+      .filter(c => {
+        if (!c || c.status === 'ended') return false;
+        const timeMs = c.createdAt?.toMillis ? c.createdAt.toMillis() : (c.createdAt?.seconds ? c.createdAt.seconds * 1000 : (typeof c.createdAt === 'number' ? c.createdAt : now));
+        return (now - timeMs < 90000) || c.status === 'active';
+      })
       .sort((a, b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (typeof a.createdAt === 'number' ? a.createdAt : 0));
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (typeof b.createdAt === 'number' ? b.createdAt : 0));
         return timeB - timeA;
       });
     callback(activeOutgoing[0] || null);
@@ -1618,6 +1762,13 @@ export function subscribeToCallState(callId: string, callback: (call: any | null
 export async function acceptActiveCall(callId: string): Promise<void> {
   const path = `calls/${callId}`;
   try {
+    // Update backend memory relay first for instant zero-latency signaling
+    fetch('/api/calls/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callId })
+    }).catch(console.warn);
+
     await updateDoc(doc(db, 'calls', callId), { 
       status: 'active',
       acceptedAt: serverTimestamp()
@@ -1630,6 +1781,13 @@ export async function acceptActiveCall(callId: string): Promise<void> {
 export async function ringActiveCall(callId: string): Promise<void> {
   const path = `calls/${callId}`;
   try {
+    // Update backend memory relay
+    fetch('/api/calls/ring', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callId })
+    }).catch(console.warn);
+
     await updateDoc(doc(db, 'calls', callId), { 
       status: 'ringing'
     });
@@ -1638,15 +1796,121 @@ export async function ringActiveCall(callId: string): Promise<void> {
   }
 }
 
-export async function endActiveCall(callId: string): Promise<void> {
+export async function endActiveCall(
+  callId: string,
+  durationSeconds?: number,
+  endReason: 'completed' | 'declined' | 'missed' | 'quick_replied' | 'cancelled' = 'completed',
+  quickReplyText?: string
+): Promise<void> {
   const path = `calls/${callId}`;
   try {
-    await updateDoc(doc(db, 'calls', callId), { 
+    // Notify backend memory relay immediately
+    fetch('/api/calls/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callId,
+        durationSeconds,
+        endReason,
+        quickReplyText
+      })
+    }).catch(console.warn);
+
+    const updateData: any = { 
       status: 'ended',
-      endedAt: serverTimestamp()
+      endedAt: serverTimestamp(),
+      endReason
+    };
+    if (durationSeconds !== undefined && durationSeconds >= 0) {
+      updateData.durationSeconds = Math.round(durationSeconds);
+    }
+    if (quickReplyText) {
+      updateData.quickReplyText = quickReplyText;
+    }
+    await updateDoc(doc(db, 'calls', callId), updateData);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function sendQuickReplyAndEndCall(params: {
+  callId: string;
+  callerId: string;
+  currentUserId: string;
+  currentUserName: string;
+  replyText: string;
+}): Promise<void> {
+  const { callId, callerId, currentUserId, currentUserName, replyText } = params;
+  const path = `calls/${callId}`;
+  try {
+    // 1. Mark call as ended with quick_replied status
+    await updateDoc(doc(db, 'calls', callId), {
+      status: 'ended',
+      endedAt: serverTimestamp(),
+      endReason: 'quick_replied',
+      quickReplyText: replyText
+    });
+
+    // 2. Dispatch high-priority real-time message notification
+    const notificationId = doc(collection(db, 'notifications')).id;
+    await setDoc(doc(db, 'notifications', notificationId), {
+      id: notificationId,
+      receiverId: callerId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      type: 'message',
+      title: `⚡ Quick Call Response from ${currentUserName}`,
+      body: replyText,
+      read: false,
+      createdAt: serverTimestamp()
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export function subscribeToCallHistory(userId: string, callback: (calls: CallLogItem[]) => void) {
+  const qReceiver = query(collection(db, 'calls'), where('receiverId', '==', userId), limit(60));
+  const qCaller = query(collection(db, 'calls'), where('callerId', '==', userId), limit(60));
+
+  let receiverDocs: CallLogItem[] = [];
+  let callerDocs: CallLogItem[] = [];
+
+  const mergeAndNotify = () => {
+    const map = new Map<string, CallLogItem>();
+    [...receiverDocs, ...callerDocs].forEach(c => {
+      if (c && c.id) map.set(c.id, c);
+    });
+    const sorted = Array.from(map.values()).sort((a, b) => {
+      const tA = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime() / 1000 : 0);
+      const tB = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime() / 1000 : 0);
+      return tB - tA;
+    });
+    callback(sorted);
+  };
+
+  const unsubReceiver = onSnapshot(qReceiver, (snap) => {
+    receiverDocs = snap.docs.map(d => ({ id: d.id, ...d.data() } as CallLogItem));
+    mergeAndNotify();
+  }, (err) => console.warn('Call history receiver stream error:', err));
+
+  const unsubCaller = onSnapshot(qCaller, (snap) => {
+    callerDocs = snap.docs.map(d => ({ id: d.id, ...d.data() } as CallLogItem));
+    mergeAndNotify();
+  }, (err) => console.warn('Call history caller stream error:', err));
+
+  return () => {
+    unsubReceiver();
+    unsubCaller();
+  };
+}
+
+export async function deleteCallRecord(callId: string): Promise<void> {
+  const path = `calls/${callId}`;
+  try {
+    await deleteDoc(doc(db, 'calls', callId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 

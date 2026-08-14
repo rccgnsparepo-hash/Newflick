@@ -23,6 +23,7 @@ import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import HorizontalTicker from './components/HorizontalTicker';
 import { ConnectionStatusBadge } from './components/ConnectionStatusBadge';
 import UserProfileModal from './components/UserProfileModal';
+import CallHistoryModal from './components/CallHistoryModal';
 import LiveNewsScheduler from './components/LiveNewsScheduler';
 import BrutalistNotificationBanner from './components/BrutalistNotificationBanner';
 import CallOverlay from './components/CallOverlay';
@@ -36,6 +37,7 @@ import {
   subscribeToUsers,
   subscribeToIncomingCall,
   subscribeToCallState,
+  fetchActiveIncomingCall,
   createActiveCall,
   ringActiveCall,
   acceptActiveCall,
@@ -114,6 +116,7 @@ function Dashboard() {
 
   const [ongoingCall, setOngoingCall] = useState<any | null>(null);
   const [showCinematicIntro, setShowCinematicIntro] = useState(false);
+  const [isCallHistoryOpen, setIsCallHistoryOpen] = useState(false);
 
   // Programmatically lock scrolling when any overlay/modal/sheet is open, preserving vertical scroll offsets
   const isAnyOverlayOpen = 
@@ -124,6 +127,7 @@ function Dashboard() {
     showOnboarding || 
     showCinematicIntro ||
     isTourOpen || 
+    isCallHistoryOpen ||
     ongoingCall !== null;
 
   useScrollLock(isAnyOverlayOpen);
@@ -175,50 +179,115 @@ function Dashboard() {
     const handleTriggerCinematic = () => {
       setShowCinematicIntro(true);
     };
+    const handleOpenCallHistory = () => {
+      setIsCallHistoryOpen(true);
+    };
     window.addEventListener('faraflick-view-profile', handleViewProfileEvent);
     window.addEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
     window.addEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
+    window.addEventListener('faraflick-open-call-history', handleOpenCallHistory);
     return () => {
       window.removeEventListener('faraflick-view-profile', handleViewProfileEvent);
       window.removeEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
       window.removeEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
+      window.removeEventListener('faraflick-open-call-history', handleOpenCallHistory);
     };
   }, []);
 
   const { profile, logout, localPrivateKey, loading, isAuthReady } = useAuth();
   const { triggerInAppNotification } = useNotificationSystem();
 
-  // Subscribe to incoming call requests
+  // Helper to handle and display incoming call across Web, Electron, and Mobile
+  const handleIncomingCallData = (incomingCall: any) => {
+    if (!incomingCall || !profile || incomingCall.callerId === profile.uid || incomingCall.status === 'ended') return;
+
+    console.log('[Realtime Call] Incoming call active:', incomingCall);
+    setOngoingCall(prev => {
+      if (prev && !prev.isIncoming) return prev;
+      return {
+        id: incomingCall.id,
+        type: incomingCall.type || 'voice',
+        status: incomingCall.status || 'dialing',
+        peerId: incomingCall.callerId,
+        peerName: incomingCall.callerName || 'Peer',
+        peerPhoto: incomingCall.callerPhoto || '',
+        isIncoming: true
+      };
+    });
+
+    // Notify caller that our device is ringing
+    if (incomingCall.status === 'dialing') {
+      ringActiveCall(incomingCall.id);
+    }
+
+    // Electron desktop notification & window focus
+    const uWindow = window as any;
+    if (uWindow.electron?.ipcRenderer?.send) {
+      uWindow.electron.ipcRenderer.send('incoming-call', {
+        callerName: incomingCall.callerName,
+        callType: incomingCall.type,
+        callId: incomingCall.id
+      });
+    } else if (uWindow.ipcRenderer?.send) {
+      uWindow.ipcRenderer.send('incoming-call', {
+        callerName: incomingCall.callerName,
+        callType: incomingCall.type,
+        callId: incomingCall.id
+      });
+    }
+  };
+
+  // Subscribe to incoming call requests via Firestore snapshot
   useEffect(() => {
     if (!isAuthReady || !profile?.uid) return;
 
     const unsubscribeIncoming = subscribeToIncomingCall(profile.uid, (incomingCall) => {
       if (incomingCall && incomingCall.callerId !== profile.uid) {
-        console.log('[Realtime Call] Incoming call detected on Firestore:', incomingCall);
-        setOngoingCall(prev => {
-          if (prev && !prev.isIncoming) return prev;
-          return {
-            id: incomingCall.id,
-            type: incomingCall.type,
-            status: incomingCall.status,
-            peerId: incomingCall.callerId,
-            peerName: incomingCall.callerName,
-            peerPhoto: incomingCall.callerPhoto,
-            isIncoming: true
-          };
-        });
-
-        // Auto transition status to ringing so caller knows we are being notified
-        if (incomingCall.status === 'dialing') {
-          ringActiveCall(incomingCall.id);
-        }
+        handleIncomingCallData(incomingCall);
       } else {
         setOngoingCall(prev => (prev && prev.isIncoming ? null : prev));
       }
     });
 
     return () => unsubscribeIncoming();
-  }, [profile?.uid]);
+  }, [profile?.uid, isAuthReady]);
+
+  // Background heartbeat poller for zero-latency incoming call sync (Web/PWA/APK fallback)
+  useEffect(() => {
+    if (!isAuthReady || !profile?.uid) return;
+
+    const interval = setInterval(async () => {
+      // Only poll when not currently in an active call
+      if (!ongoingCall) {
+        try {
+          const incoming = await fetchActiveIncomingCall(profile.uid);
+          if (incoming && incoming.callerId !== profile.uid && incoming.status !== 'ended') {
+            handleIncomingCallData(incoming);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [profile?.uid, isAuthReady, !!ongoingCall]);
+
+  // Listen to incoming call events dispatched by Push click or Deep link
+  useEffect(() => {
+    const handleIncomingCallEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        console.log('[Realtime Call] Window event incoming call received:', customEvent.detail);
+        handleIncomingCallData(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('faraflick-incoming-call', handleIncomingCallEvent);
+    return () => {
+      window.removeEventListener('faraflick-incoming-call', handleIncomingCallEvent);
+    };
+  }, [profile]);
 
   // Sync handshakes in real-time
   useEffect(() => {
@@ -415,6 +484,24 @@ function Dashboard() {
       } else if (route === 'settings') {
         setIsSettingsOpen(true);
         setIsMobileMenuOpen(false);
+      } else if (route === 'call-history' || route === 'calls') {
+        setIsCallHistoryOpen(true);
+        setIsMobileMenuOpen(false);
+        setIsSettingsOpen(false);
+      } else if (route === 'call') {
+        if (targetId) {
+          const targetUser = usersRef.current?.find(u => u.uid === targetId);
+          if (targetUser && profile) {
+            window.dispatchEvent(new CustomEvent('faraflick-initiate-call', {
+              detail: {
+                peerId: targetUser.uid,
+                peerName: targetUser.displayName,
+                peerPhoto: targetUser.photoURL,
+                type: (payload.params?.type === 'video' ? 'video' : 'voice') as 'voice' | 'video'
+              }
+            }));
+          }
+        }
       }
     });
     return unsubscribe;
@@ -859,6 +946,7 @@ function Dashboard() {
           unreadE2EECount={unreadE2EECount}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
+          onOpenCallHistory={() => setIsCallHistoryOpen(true)}
         />
 
         {/* Center Content Column (Main Feed / Messaging / Profile / Workspace) */}
@@ -887,7 +975,42 @@ function Dashboard() {
         onTestPush={(payload) => triggerPushNotification(payload)}
       />
 
-      <UserProfileModal uid={viewedProfileId} onClose={() => setViewedProfileId(null)} />
+      <UserProfileModal 
+        uid={viewedProfileId} 
+        onClose={() => setViewedProfileId(null)} 
+        onInitiateCall={(targetUser, type) => {
+          window.dispatchEvent(new CustomEvent('faraflick-initiate-call', {
+            detail: {
+              peerId: targetUser.uid,
+              peerName: targetUser.name,
+              peerPhoto: targetUser.photo || '',
+              type: type
+            }
+          }));
+        }}
+      />
+
+      <CallHistoryModal
+        isOpen={isCallHistoryOpen}
+        onClose={() => setIsCallHistoryOpen(false)}
+        currentUserId={profile?.uid || ''}
+        currentUserName={profile?.displayName || ''}
+        currentUserPhoto={profile?.photoURL}
+        onInitiateCall={(targetUser, type) => {
+          window.dispatchEvent(new CustomEvent('faraflick-initiate-call', {
+            detail: {
+              peerId: targetUser.uid,
+              peerName: targetUser.name,
+              peerPhoto: targetUser.photo || '',
+              type: type
+            }
+          }));
+        }}
+        onOpenChat={(targetUserId) => {
+          setDeepLinkedPeerId(targetUserId);
+          setActiveTab('chat');
+        }}
+      />
 
       <CinematicIntroModal 
         isOpen={showCinematicIntro} 

@@ -23,36 +23,34 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
-    // Conversations collection
-    match /conversations/{conversationId} {
-      allow read: if isSignedIn() && (resource == null || request.auth.uid in resource.data.participants);
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
-      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
-      allow delete: if isSignedIn() && request.auth.uid in resource.data.participants;
+    // Chats collection & subcollections (messages, typingStates, message_reactions)
+    match /chats/{chatId} {
+      allow read, write: if isSignedIn();
+      match /{allSubpaths=**} {
+        allow read, write: if isSignedIn();
+      }
     }
 
-    // Direct Chats / Messages
-    match /messages/{messageId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.senderId == request.auth.uid || request.auth.uid in resource.data.participants);
-      allow delete: if isSignedIn() && resource.data.senderId == request.auth.uid;
-    }
-
-    // Feed Posts
+    // Feed Posts & subcollections (comments, likes, post_reactions)
     match /posts/{postId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isSignedIn();
       allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      match /{allSubpaths=**} {
+        allow read, write: if isSignedIn();
+      }
     }
 
-    // Stories
+    // Stories & subcollections
     match /stories/{storyId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn();
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      match /{allSubpaths=**} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Notifications
@@ -62,11 +60,15 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // Feedback submissions
+    match /feedbacks/{feedbackId} {
+      allow read, write: if isSignedIn();
+    }
+
     // User Devices (Session Management)
     match /user_devices/{deviceId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     // Security Logs
@@ -85,4 +87,5 @@ service cloud.firestore {
     }
   }
 }
+
 

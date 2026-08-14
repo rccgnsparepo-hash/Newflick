@@ -11,26 +11,30 @@ try {
   console.warn("Failed to set Firestore log level:", e);
 }
 
+const DEFAULT_FIREBASE_CONFIG = {
+  projectId: "gen-lang-client-0982710068",
+  appId: "1:894267205842:web:2b954f0529e7da032c250b",
+  apiKey: "AIzaSyCJSgmRQ2Mwf5rN8ao2buNm56U-M_ZY2I8",
+  authDomain: "gen-lang-client-0982710068.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2",
+  storageBucket: "gen-lang-client-0982710068.firebasestorage.app",
+  messagingSenderId: "894267205842",
+  measurementId: ""
+};
+
 let config: any = null;
 
 if (typeof window !== 'undefined') {
   try {
-    // The bootstrap config is fetched asynchronously in main.tsx before App is loaded
-    // This allows us to use it synchronously here
     const bootstrap = getBootstrapConfig();
     config = bootstrap.firebaseConfig;
   } catch (err) {
-    // Fallback if accessed before bootstrap (should not happen with new architecture)
     config = (window as any).__FIREBASE_CONFIG__ || null;
   }
 }
 
-// Fallback to avoid crashes if backend is temporarily unreachable
-if (!config) {
-  config = {
-    projectId: "gen-lang-client-0982710068",
-    firestoreDatabaseId: "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2"
-  };
+if (!config || !config.apiKey) {
+  config = DEFAULT_FIREBASE_CONFIG;
 }
 
 export let app: any = null;
@@ -58,6 +62,37 @@ try {
 } catch (err: any) {
   firebaseInitError = err.message || String(err);
   console.warn("[Firebase Client] Fatal initialization error:", err);
+}
+
+export function reinitializeFirebaseWithConfig(newConfig: any): boolean {
+  if (!newConfig || !newConfig.apiKey) return false;
+  try {
+    if (!app) {
+      app = initializeApp(newConfig);
+    }
+    if (!db) {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+      }, newConfig.firestoreDatabaseId || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2");
+    }
+    if (!auth) {
+      auth = getAuth(app);
+    }
+    if (!rtdb) {
+      const rtdbUrl = newConfig.databaseURL || `https://${newConfig.projectId || 'gen-lang-client-0982710068'}-default-rtdb.firebaseio.com`;
+      rtdb = getDatabase(app, rtdbUrl);
+    }
+    isFirebaseConfigured = true;
+    firebaseInitError = null;
+    console.log("[Firebase Client] Re-initialized successfully with dynamic config.");
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('faraflick-firebase-initialized', { detail: newConfig }));
+    }
+    return true;
+  } catch (err: any) {
+    console.warn("[Firebase Client] Dynamic initialization error:", err);
+    return false;
+  }
 }
 
 // Verification tracking types

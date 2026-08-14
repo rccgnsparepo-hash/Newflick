@@ -3590,7 +3590,8 @@ export default function ChatSection({
             })
           ) : (
             /* Render unified active conversations (chats & groups) */
-            filteredActiveTunnels.filter(chat => {
+            <AnimatePresence initial={false}>
+            {filteredActiveTunnels.filter(chat => {
               const peerId = chat.participantIds.find(id => id !== profile?.uid);
               const peer = users.find(u => u.uid === peerId);
               const unreadCount = notifications.filter(n => 
@@ -3717,8 +3718,13 @@ export default function ChatSection({
                 const timeString = chat.lastMessageAt ? formatLastSeen(chat.lastMessageAt) : '';
 
                 return (
-                  <div
+                  <motion.div
                     key={chat.id}
+                    layout="position"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
                     onClick={handleChatClick}
                     className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-[var(--neon-green-border)]/30 cursor-pointer relative group/item ${
                       isSelected 
@@ -3869,7 +3875,7 @@ export default function ChatSection({
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               } else {
                 // Direct Chat Item
@@ -3897,8 +3903,13 @@ export default function ChatSection({
                 const timeString = chat.lastMessageAt ? formatLastSeen(chat.lastMessageAt) : '';
 
                 return (
-                  <div
+                  <motion.div
                     key={chat.id}
+                    layout="position"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
                     onClick={handleChatClick}
                     className={`w-full flex items-center space-x-3.5 p-3.5 text-left transition duration-150 border-b border-[var(--neon-green-border)]/30 cursor-pointer relative group/item ${
                       isSelected 
@@ -4082,10 +4093,11 @@ export default function ChatSection({
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               }
-            })
+            })}
+            </AnimatePresence>
           )}
           {filterType !== 'all-nodes' && filteredActiveTunnels.length === 0 && (
             <div className="p-8 text-center text-zinc-555 select-none">
@@ -4573,14 +4585,21 @@ export default function ChatSection({
                         return (
                           <motion.div
                             key={msg.id || index}
-                            initial={{ opacity: 0, scale: 0.6, y: 30, filter: "blur(6px)" }}
-                            animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
-                            exit={{ opacity: 0, scale: 0.85, y: -20, filter: "blur(4px)" }}
+                            layout="position"
+                            initial={{ opacity: 0, scale: 0.95, y: 12, x: isMe ? 8 : -8 }}
+                            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                            exit={{ 
+                              opacity: 0, 
+                              scale: 0.92, 
+                              y: -8, 
+                              x: isMe ? 8 : -8, 
+                              transition: { duration: 0.18, ease: "easeOut" } 
+                            }}
                             transition={{ 
                               type: "spring",
-                              damping: 18,
-                              stiffness: 160,
-                              mass: 0.8
+                              damping: 24,
+                              stiffness: 280,
+                              mass: 0.6
                             }}
                             className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full relative ${isGrouped ? 'mt-1' : 'mt-4'}`}
                           >

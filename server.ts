@@ -359,6 +359,163 @@ async function startServer() {
     }, (error) => {
       console.warn("[Backend Push Dispatcher] News subscription warning/error:", error.message || error);
     });
+
+    // 4. Listen to calls collection for real-time incoming call push triggers
+    onSnapshot(query(collection(db, 'calls'), orderBy('createdAt', 'desc'), limit(15)), async (snapshot) => {
+      if (!initialLoadComplete) return;
+
+      for (const change of snapshot.docChanges()) {
+        if (change.type === 'added' || change.type === 'modified') {
+          const callData = change.doc.data() as any;
+          if (callData && callData.id) {
+            const createdAtMs = callData.createdAt?.toMillis ? callData.createdAt.toMillis() : (callData.createdAt?.seconds ? callData.createdAt.seconds * 1000 : (typeof callData.createdAt === 'number' ? callData.createdAt : Date.now()));
+            const isFresh = Date.now() - createdAtMs < 90000;
+
+            if (isFresh && (callData.status === 'dialing' || callData.status === 'ringing')) {
+              const record: ActiveCallRecord = {
+                id: callData.id,
+                callerId: callData.callerId,
+                callerName: callData.callerName || 'Anonymous Peer',
+                callerPhoto: callData.callerPhoto || '',
+                receiverId: callData.receiverId,
+                type: callData.type || 'voice',
+                status: callData.status,
+                isGroup: !!callData.isGroup,
+                groupId: callData.groupId,
+                groupName: callData.groupName,
+                createdAt: createdAtMs,
+                updatedAt: Date.now()
+              };
+              activeCallsCache.set(callData.id, record);
+
+              if (change.type === 'added') {
+                console.log(`[Backend Push Dispatcher] New live call detected in Firestore for recipient ${callData.receiverId} from ${callData.callerName}`);
+                dispatchCallPushNotification(record).catch(console.warn);
+              }
+            } else if (callData.status === 'ended') {
+              activeCallsCache.delete(callData.id);
+            }
+          }
+        }
+      }
+    }, (error) => {
+      console.warn("[Backend Push Dispatcher] Calls subscription warning/error:", error.message || error);
+    });
+  }
+
+  // --- In-Memory Active Calls Cache & Relay ---
+  interface ActiveCallRecord {
+    id: string;
+    callerId: string;
+    callerName: string;
+    callerPhoto: string;
+    receiverId: string;
+    type: 'voice' | 'video';
+    status: 'dialing' | 'ringing' | 'active' | 'ended';
+    isGroup?: boolean;
+    groupId?: string;
+    groupName?: string;
+    createdAt: number;
+    updatedAt: number;
+  }
+
+  const activeCallsCache = new Map<string, ActiveCallRecord>();
+
+  // Periodically scrub stale/ended calls
+  setInterval(() => {
+    const now = Date.now();
+    for (const [id, call] of activeCallsCache.entries()) {
+      if (now - call.createdAt > 300000 || call.status === 'ended') {
+        activeCallsCache.delete(id);
+      }
+    }
+  }, 15000);
+
+  // Helper to dispatch ultra-high priority push notifications to recipients across Web, APK, and Desktop
+  async function dispatchCallPushNotification(call: ActiveCallRecord) {
+    if (call.isGroup || !call.receiverId) return;
+
+    try {
+      const recipientId = call.receiverId;
+      let playerIds: string[] = [];
+
+      if (db) {
+        try {
+          const userSnap = await getDoc(doc(db, 'users', recipientId));
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
+            if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
+            if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
+              playerIds.push(...userData.oneSignalSubscriptionIds);
+            }
+          }
+        } catch (e) {
+          console.warn("[Backend Call Push] User lookup notice:", e);
+        }
+      }
+
+      playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
+
+      const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
+      const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
+
+      const payload: any = {
+        app_id: ONESIGNAL_APP_ID,
+        headings: { en: `📞 Incoming ${call.type === 'video' ? 'Video' : 'Voice'} Call` },
+        contents: { en: `Incoming call from ${call.callerName}. Tap to answer!` },
+        data: {
+          type: 'call',
+          callId: call.id,
+          callerId: call.callerId,
+          callerName: call.callerName,
+          callerPhoto: call.callerPhoto,
+          callType: call.type,
+          route: 'call',
+          url: `/call/${call.id}`
+        },
+        priority: 10,
+        content_available: true,
+        mutable_content: true,
+        ttl: 120, // 2-minute TTL for live ringing
+        android_visibility: 1,
+        android_channel_id: "calls",
+        android_sound: "ringtone",
+        ios_sound: "ringtone.wav",
+        small_icon: "ic_stat_flick_logo",
+        large_icon: call.callerPhoto || `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(call.callerName)}`,
+        android_accent_color: "FF39FF14",
+        buttons: [
+          { id: "accept", text: "Answer" },
+          { id: "decline", text: "Decline" }
+        ]
+      };
+
+      if (playerIds.length > 0) {
+        payload.include_subscription_ids = playerIds;
+      } else {
+        payload.include_aliases = { external_id: [recipientId] };
+        payload.include_external_user_ids = [recipientId];
+        payload.target_channel = "push";
+        payload.isAndroid = true;
+        payload.isIos = true;
+        payload.isAnyWeb = true;
+      }
+
+      console.log(`[Backend Call Push] Dispatching high-priority OneSignal call alert for UID ${recipientId}, callId: ${call.id}`);
+      const osResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const osResult = await osResponse.json();
+      console.log(`[Backend Call Push] Result:`, osResult);
+    } catch (pushErr) {
+      console.error(`[Backend Call Push] Exception:`, pushErr);
+    }
   }
 
   // Secure Backend-driven System User Authentication (allows bypassing rules securely by registering as client)
@@ -435,6 +592,252 @@ async function startServer() {
       res.status(response.status).json(responseData);
     } catch (err: any) {
       console.error("[Backend Push Exception] failed:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Real-time Calling Conduit & Signaling Endpoints ---
+
+  // 1. Initiate Outgoing Call: POST /api/calls/initiate
+  app.post("/api/calls/initiate", async (req, res) => {
+    try {
+      const {
+        callId: providedCallId,
+        callerId,
+        callerName = 'Anonymous User',
+        callerPhoto = '',
+        receiverId,
+        type = 'voice',
+        isGroup = false,
+        groupId = '',
+        groupName = ''
+      } = req.body;
+
+      if (!callerId || !receiverId) {
+        return res.status(400).json({ error: "Missing callerId or receiverId" });
+      }
+
+      const callId = providedCallId || `call-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      const now = Date.now();
+
+      const callRecord: ActiveCallRecord = {
+        id: callId,
+        callerId,
+        callerName,
+        callerPhoto,
+        receiverId,
+        type,
+        status: isGroup ? 'active' : 'dialing',
+        isGroup,
+        groupId: groupId || (isGroup ? receiverId : ''),
+        groupName: groupName || (isGroup ? 'Group Audio Channel' : callerName),
+        createdAt: now,
+        updatedAt: now
+      };
+
+      activeCallsCache.set(callId, callRecord);
+
+      // Write to Firestore if connected
+      if (db) {
+        try {
+          const callRef = doc(db, 'calls', callId);
+          await setDoc(callRef, {
+            id: callId,
+            callerId,
+            callerName,
+            callerPhoto,
+            receiverId,
+            type,
+            status: isGroup ? 'active' : 'dialing',
+            isGroup,
+            groupId: groupId || (isGroup ? receiverId : ''),
+            groupName: groupName || (isGroup ? 'Group Audio Channel' : callerName),
+            participants: [
+              {
+                uid: callerId,
+                name: callerName,
+                photo: callerPhoto,
+                isMuted: false,
+                isSpeaking: false,
+                isHandRaised: false,
+                joinedAt: now
+              }
+            ],
+            createdAt: serverTimestamp()
+          });
+        } catch (dbErr) {
+          console.warn("[POST /api/calls/initiate] Firestore write notice:", dbErr);
+        }
+      }
+
+      // Immediately dispatch push notification to receiver
+      dispatchCallPushNotification(callRecord).catch(console.warn);
+
+      console.log(`[Calls Backend] Registered call ${callId} from ${callerName} (${callerId}) to recipient ${receiverId}`);
+      res.status(201).json({ success: true, callId, call: callRecord });
+    } catch (err: any) {
+      console.error("[POST /api/calls/initiate] Exception:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 2. Query Active Incoming Call for User: GET /api/calls/incoming/:userId
+  app.get("/api/calls/incoming/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const now = Date.now();
+
+      // Check in-memory active calls cache first (0ms latency!)
+      for (const call of activeCallsCache.values()) {
+        if (
+          call.receiverId === userId &&
+          call.callerId !== userId &&
+          (call.status === 'dialing' || call.status === 'ringing') &&
+          now - call.createdAt < 90000
+        ) {
+          return res.json({ incomingCall: call });
+        }
+      }
+
+      // If not in cache, fallback query to Firestore
+      if (db) {
+        try {
+          const q = query(collection(db, 'calls'), orderBy('createdAt', 'desc'), limit(5));
+          const snap = await getDocs(q);
+          const active = snap.docs
+            .map(d => d.data())
+            .filter(c => {
+              if (!c || c.status === 'ended' || c.callerId === userId) return false;
+              if (c.receiverId !== userId) return false;
+              const cTime = c.createdAt?.toMillis ? c.createdAt.toMillis() : (c.createdAt?.seconds ? c.createdAt.seconds * 1000 : (typeof c.createdAt === 'number' ? c.createdAt : now));
+              return (now - cTime < 90000) && (c.status === 'dialing' || c.status === 'ringing');
+            });
+
+          if (active.length > 0) {
+            const first = active[0];
+            return res.json({ incomingCall: first });
+          }
+        } catch (dbErr) {
+          console.warn("[GET /api/calls/incoming] Firestore fallback error:", dbErr);
+        }
+      }
+
+      res.json({ incomingCall: null });
+    } catch (err: any) {
+      console.error("[GET /api/calls/incoming] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Mark Call as Ringing: POST /api/calls/ring
+  app.post("/api/calls/ring", async (req, res) => {
+    try {
+      const { callId } = req.body;
+      if (!callId) return res.status(400).json({ error: "Missing callId" });
+
+      const cached = activeCallsCache.get(callId);
+      if (cached) {
+        cached.status = 'ringing';
+        cached.updatedAt = Date.now();
+      }
+
+      if (db) {
+        try {
+          await updateDoc(doc(db, 'calls', callId), { status: 'ringing' });
+        } catch (e) {
+          console.warn("[POST /api/calls/ring] Firestore update notice:", e);
+        }
+      }
+
+      res.json({ success: true, status: 'ringing' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. Accept Call: POST /api/calls/accept
+  app.post("/api/calls/accept", async (req, res) => {
+    try {
+      const { callId } = req.body;
+      if (!callId) return res.status(400).json({ error: "Missing callId" });
+
+      const cached = activeCallsCache.get(callId);
+      if (cached) {
+        cached.status = 'active';
+        cached.updatedAt = Date.now();
+      }
+
+      if (db) {
+        try {
+          await updateDoc(doc(db, 'calls', callId), {
+            status: 'active',
+            acceptedAt: serverTimestamp()
+          });
+        } catch (e) {
+          console.warn("[POST /api/calls/accept] Firestore update notice:", e);
+        }
+      }
+
+      console.log(`[Calls Backend] Call ${callId} accepted.`);
+      res.json({ success: true, status: 'active' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 5. End Call: POST /api/calls/end
+  app.post("/api/calls/end", async (req, res) => {
+    try {
+      const { callId, durationSeconds, endReason = 'completed', quickReplyText } = req.body;
+      if (!callId) return res.status(400).json({ error: "Missing callId" });
+
+      activeCallsCache.delete(callId);
+
+      if (db) {
+        try {
+          const updateData: any = {
+            status: 'ended',
+            endedAt: serverTimestamp(),
+            endReason
+          };
+          if (durationSeconds !== undefined) updateData.durationSeconds = durationSeconds;
+          if (quickReplyText) updateData.quickReplyText = quickReplyText;
+
+          await updateDoc(doc(db, 'calls', callId), updateData);
+        } catch (e) {
+          console.warn("[POST /api/calls/end] Firestore update notice:", e);
+        }
+      }
+
+      console.log(`[Calls Backend] Call ${callId} ended.`);
+      res.json({ success: true, status: 'ended' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 6. Get Call State: GET /api/calls/state/:callId
+  app.get("/api/calls/state/:callId", async (req, res) => {
+    try {
+      const { callId } = req.params;
+      const cached = activeCallsCache.get(callId);
+      if (cached) {
+        return res.json({ call: cached });
+      }
+
+      if (db) {
+        try {
+          const snap = await getDoc(doc(db, 'calls', callId));
+          if (snap.exists()) {
+            return res.json({ call: snap.data() });
+          }
+        } catch (e) {
+          console.warn("[GET /api/calls/state] Firestore read notice:", e);
+        }
+      }
+
+      res.status(404).json({ error: "Call not found" });
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });

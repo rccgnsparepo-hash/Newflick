@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Volume2,
   VolumeX,
-  PlusCircle
+  PlusCircle,
+  Phone
 } from 'lucide-react';
 
 interface UnifiedNavigationProps {
@@ -24,13 +25,15 @@ interface UnifiedNavigationProps {
   onOpenSearch?: () => void;
   onOpenSettings?: () => void;
   onOpenCreate?: () => void;
+  onOpenCallHistory?: () => void;
 }
 
 export function UnifiedNavigation({
   unreadE2EECount = 0,
   onOpenSearch,
   onOpenSettings,
-  onOpenCreate
+  onOpenCreate,
+  onOpenCallHistory
 }: UnifiedNavigationProps) {
   const { profile } = useAuth();
   const { activeTab, setActiveTab, setIsSettingsOpen } = useNavigation();
@@ -180,6 +183,23 @@ export function UnifiedNavigation({
                 </button>
               );
             })}
+
+            {/* Calls / Call History Trigger */}
+            <button
+              onClick={() => {
+                playGlitchClickSound();
+                triggerVibration('light');
+                if (onOpenCallHistory) onOpenCallHistory();
+                else window.dispatchEvent(new CustomEvent('faraflick-open-call-history'));
+              }}
+              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl font-mono text-xs uppercase tracking-wider transition-all cursor-pointer text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 ${
+                sidebarExpanded ? '' : 'justify-center px-0'
+              }`}
+              title="Call History & Logs"
+            >
+              <Phone className="w-5 h-5 shrink-0 text-emerald-400" />
+              {sidebarExpanded && <span className="truncate">Call Logs</span>}
+            </button>
           </nav>
         </div>
 

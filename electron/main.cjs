@@ -552,6 +552,35 @@ ipcMain.on('show-notification', (event, { title, body, icon }) => {
   });
 });
 
+// IPC handler for High-Priority Native Incoming Call Alert
+ipcMain.on('incoming-call', (event, { callerName, callType, callId }) => {
+  console.log('[Electron Main] Incoming call notification received for:', callerName, callId);
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.flashFrame(true);
+  }
+
+  const notif = new Notification({
+    title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Voice'} Call`,
+    body: `${callerName || 'Someone'} is calling you on Flick. Click to answer!`,
+    icon: path.join(__dirname, '../dist/icon.png'),
+    urgency: 'critical',
+    silent: false
+  });
+  notif.show();
+  notif.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.flashFrame(false);
+      mainWindow.webContents.send('deeplink-action', 'call');
+    }
+  });
+});
+
 app.whenReady().then(() => {
   createSplash();
   createWindow();
