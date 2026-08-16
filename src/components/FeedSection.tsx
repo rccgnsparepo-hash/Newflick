@@ -167,7 +167,23 @@ export default function FeedSection({
   const [isPublishingPost, setIsPublishingPost] = useState(false);
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [isFeedPendingLong, setIsFeedPendingLong] = useState(false);
   const [isStoriesLoading, setIsStoriesLoading] = useState(true);
+
+  // Show explicit status when Firestore data retrieval takes > 2 seconds
+  useEffect(() => {
+    let timer: any = null;
+    if (isFeedLoading) {
+      timer = setTimeout(() => {
+        setIsFeedPendingLong(true);
+      }, 2000);
+    } else {
+      setIsFeedPendingLong(false);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isFeedLoading]);
   const [storyContent, setStoryContent] = useState('');
   const [storyImg, setStoryImg] = useState('');
   const [storyVideo, setStoryVideo] = useState('');
@@ -1135,7 +1151,7 @@ export default function FeedSection({
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="w-full h-full overflow-y-auto flex flex-col px-2 sm:px-4 py-4 space-y-5"
             >
-              <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-12">
+              <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-28 md:pb-12">
                 {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
                 <div className="sticky top-0 z-30 flex glass-panel p-1.5 rounded-[20px]">
                   <button
@@ -1350,22 +1366,46 @@ export default function FeedSection({
             {/* =================================== SECTION 4 — MAIN FEED =================================== */}
             <div className="space-y-6">
               {isFeedLoading ? (
-                Array.from({ length: 3 }).map((_, idx) => (
-                  <div key={idx} className="p-5 border border-[var(--neon-green-border)] bg-[var(--color-background)]/40 rounded-2xl space-y-4 animate-pulse">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-9 h-9 bg-[var(--color-surface)] rounded-full" />
-                      <div className="space-y-1.5 flex-1">
-                        <div className="h-3 bg-[var(--color-surface)] rounded w-1/4" />
-                        <div className="h-2 bg-[var(--color-surface)] rounded w-1/6" />
+                <div className="space-y-4">
+                  {isFeedPendingLong && (
+                    <div className="p-4 border border-emerald-500/30 bg-emerald-950/20 backdrop-blur-md rounded-2xl flex items-center space-x-3.5 text-emerald-400 font-mono text-xs shadow-[0_0_20px_rgba(16,185,129,0.12)] transition-all">
+                      <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black tracking-wider uppercase text-[11px] text-emerald-300">
+                            Syncing with secure nodes...
+                          </span>
+                          <span className="text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-900/30 text-emerald-400 font-mono uppercase">
+                            LIVE PROTOCOL
+                          </span>
+                        </div>
+                        <p className="text-[9.5px] text-zinc-400 font-sans mt-0.5 leading-tight">
+                          Decrypting & streaming real-time campus feeds from decentralized cloud database relays.
+                        </p>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-[var(--color-surface)] rounded w-full" />
-                      <div className="h-3 bg-[var(--color-surface)] rounded w-5/6" />
+                  )}
+
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="p-5 border border-[var(--neon-green-border)] bg-[var(--color-background)]/40 rounded-2xl space-y-4 animate-pulse">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-9 h-9 bg-[var(--color-surface)] rounded-full" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3 bg-[var(--color-surface)] rounded w-1/4" />
+                          <div className="h-2 bg-[var(--color-surface)] rounded w-1/6" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-[var(--color-surface)] rounded w-full" />
+                        <div className="h-3 bg-[var(--color-surface)] rounded w-5/6" />
+                      </div>
+                      <div className="h-32 bg-[var(--color-surface)]/30 rounded-xl border border-[var(--neon-green-border)]" />
                     </div>
-                    <div className="h-32 bg-[var(--color-surface)]/30 rounded-xl border border-[var(--neon-green-border)]" />
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : getMergedPosts().length === 0 ? (
                 <div className="p-12 text-center bg-[var(--color-background)]/40 border-2 border-dashed border-[var(--neon-green-border)] rounded-2xl flex flex-col items-center justify-center space-y-4">
                   <div className="w-12 h-12 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-full flex items-center justify-center text-zinc-500 font-mono text-lg font-black animate-bounce">
@@ -1830,7 +1870,7 @@ export default function FeedSection({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.995 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4"
+            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
           >
             <BentoProfile
               profile={profile}
@@ -1876,7 +1916,7 @@ export default function FeedSection({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.995 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full min-h-0 flex flex-col p-2 sm:p-4"
+            className="w-full h-full min-h-0 flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
           >
             <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
               <WorkspaceHub />
@@ -1892,7 +1932,7 @@ export default function FeedSection({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.995 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4"
+            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
           >
             <div className="flex-1 flex flex-col">
               <SecureNewsFlow />

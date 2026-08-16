@@ -36,7 +36,7 @@ export function UnifiedNavigation({
   onOpenCallHistory
 }: UnifiedNavigationProps) {
   const { profile } = useAuth();
-  const { activeTab, setActiveTab, setIsSettingsOpen } = useNavigation();
+  const { activeTab, setActiveTab, setIsSettingsOpen, isChatScreenOpen } = useNavigation();
 
   // Collapsible desktop sidebar state
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
@@ -262,54 +262,56 @@ export function UnifiedNavigation({
         </div>
       </aside>
 
-      {/* MOBILE BOTTOM NAV BAR (< md) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass-panel rounded-t-2xl border-t border-[var(--glass-border)] px-2 py-2 md:hidden">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
+      {/* MOBILE BOTTOM NAV BAR (< md) - Hidden when active chat conversation is open on mobile */}
+      {!(activeTab === 'chat' && isChatScreenOpen) && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 glass-panel rounded-t-2xl border-t border-[var(--glass-border)] px-2 py-2 md:hidden">
+          <div className="flex items-center justify-around max-w-md mx-auto">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  playGlitchClickSound();
-                  triggerVibration('light');
-                  setActiveTab(item.id);
-                }}
-                className={`relative flex flex-col items-center justify-center py-1 px-3 min-w-[56px] min-h-[44px] cursor-pointer rounded-xl transition-all duration-200 ${
-                  isActive ? 'text-[var(--color-text)]' : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="mobileActiveGlow"
-                    className="absolute inset-0 bg-[var(--neon-green)]/15 rounded-xl border border-[var(--neon-green)]/40 pointer-events-none"
-                    transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                  />
-                )}
-
-                <div className="relative shrink-0 z-10">
-                  <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 ' + item.color : ''}`} />
-                  {!!item.badge && item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2 bg-red-600 text-white font-mono font-bold text-[8px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-
-                <span
-                  className={`text-[9px] font-mono font-bold tracking-tight mt-1 z-10 uppercase ${
-                    isActive ? item.color : 'text-zinc-500'
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    playGlitchClickSound();
+                    triggerVibration('light');
+                    setActiveTab(item.id);
+                  }}
+                  className={`relative flex flex-col items-center justify-center py-1 px-3 min-w-[56px] min-h-[44px] cursor-pointer rounded-xl transition-all duration-200 ${
+                    isActive ? 'text-[var(--color-text)]' : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+                  {isActive && (
+                    <motion.div
+                      layoutId="mobileActiveGlow"
+                      className="absolute inset-0 bg-[var(--neon-green)]/15 rounded-xl border border-[var(--neon-green)]/40 pointer-events-none"
+                      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                    />
+                  )}
+
+                  <div className="relative shrink-0 z-10">
+                    <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 ' + item.color : ''}`} />
+                    {!!item.badge && item.badge > 0 && (
+                      <span className="absolute -top-1.5 -right-2 bg-red-600 text-white font-mono font-bold text-[8px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <span
+                    className={`text-[9px] font-mono font-bold tracking-tight mt-1 z-10 uppercase ${
+                      isActive ? item.color : 'text-zinc-500'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </>
   );
 }

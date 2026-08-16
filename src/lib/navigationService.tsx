@@ -36,6 +36,8 @@ export interface NavigationContextType {
   setIsTourOpen: (open: boolean) => void;
   showNotifDropdown: boolean;
   setShowNotifDropdown: (open: boolean) => void;
+  isChatScreenOpen: boolean;
+  setIsChatScreenOpen: (open: boolean) => void;
 
   // Navigation History Operations
   pushToHistory: (state: NavigationState) => void;
@@ -99,6 +101,7 @@ export const CustomNavigationProvider: React.FC<{ children: React.ReactNode }> =
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [isChatScreenOpen, setIsChatScreenOpen] = useState(false);
 
   // History Stack for React views
   const [history, setHistory] = useState<NavigationState[]>(() => {
@@ -330,6 +333,8 @@ export const CustomNavigationProvider: React.FC<{ children: React.ReactNode }> =
         setIsTourOpen,
         showNotifDropdown,
         setShowNotifDropdown,
+        isChatScreenOpen,
+        setIsChatScreenOpen,
         pushToHistory,
         goBack,
         clearHistory,

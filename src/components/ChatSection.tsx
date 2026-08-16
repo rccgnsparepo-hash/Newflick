@@ -27,7 +27,18 @@ import {
 } from '../lib/services';
 import QRCodeGenerator from 'qrcode';
 import jsQR from 'jsqr';
-import { playSendMessageSound, playReceiveMessageSound, playGlitchClickSound, playLikeSound } from '../lib/sounds';
+import { 
+  playSendMessageSound, 
+  playMessageSentSound,
+  playReceiveMessageSound, 
+  playMessageReceivedSound,
+  playGlitchClickSound, 
+  playLikeSound,
+  playTypingSound,
+  playMessageReadSound,
+  playMessageDeliveredSound,
+  isInteractionSoundsEnabled
+} from '../lib/sounds';
 import { decryptE2EEMessage, encryptE2EEMessage } from '../lib/crypto';
 import { refreshScrollTrigger } from '../lib/gsapAnimations';
 import { 
@@ -52,6 +63,7 @@ import { triggerVibration } from '../lib/haptics';
 import { triggerViewProfile } from '../lib/profileTrigger';
 import EmoStickerBoard from './EmoStickerBoard';
 import { ConversationNotificationManager } from '../lib/notificationSystem';
+import { useNavigation } from '../lib/navigationService';
 import { getBackendUrl } from '../lib/bootstrap';
 
 function formatLastSeen(lastChanged: any): string {
@@ -1002,6 +1014,7 @@ export default function ChatSection({
   onClearDeepLinkedGroup?: () => void;
 } = {}) {
   const { profile, localPrivateKey, unlockE2EEKeysWithPassword, regenerateE2EEKeys: authRegenerateE2EEKeys } = useAuth();
+  const { setIsChatScreenOpen } = useNavigation();
   const operations = useOperations();
   useThemeListener();
 
@@ -1021,17 +1034,20 @@ export default function ChatSection({
   const [selectedPeer, setSelectedPeer] = useState<UserProfile | null>(null);
   const [currentChat, setCurrentChat] = useState<DirectChat | null>(null);
 
-  // Synchronize focused chat to our premium ConversationNotificationManager
+  // Synchronize focused chat to our premium ConversationNotificationManager and navigation context
   useEffect(() => {
     if (currentChat?.id) {
       ConversationNotificationManager.setActiveChat(currentChat.id);
+      setIsChatScreenOpen(true);
     } else {
       ConversationNotificationManager.setActiveChat(null);
+      setIsChatScreenOpen(false);
     }
     return () => {
       ConversationNotificationManager.setActiveChat(null);
+      setIsChatScreenOpen(false);
     };
-  }, [currentChat?.id]);
+  }, [currentChat?.id, setIsChatScreenOpen]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [decryptedCache, setDecryptedCache] = useState<{[msgId: string]: string}>({});
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
@@ -1041,6 +1057,53 @@ export default function ChatSection({
   const [sending, setSending] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean | string>>({});
   const [allTunnelsTyping, setAllTunnelsTyping] = useState<Record<string, Record<string, boolean | string>>>({});
+  const prevMessagesRef = useRef<ChatMessage[]>([]);
+  const hasInitialMessagesLoadedRef = useRef<boolean>(false);
+
+  // Dynamic Mobile Keyboard & Bottom Navigation Clearance Logic
+  const [mobileBottomPadding, setMobileBottomPadding] = useState<number>(0);
+
+  useEffect(() => {
+    const calculateMobilePadding = () => {
+      if (typeof window === 'undefined') return;
+      const isMobile = window.innerWidth < 768;
+      if (!isMobile) {
+        setMobileBottomPadding(0);
+        return;
+      }
+
+      if (window.visualViewport) {
+        const windowHeight = window.innerHeight;
+        const viewportHeight = window.visualViewport.height;
+        const keyboardHeight = Math.max(0, windowHeight - viewportHeight);
+
+        // If keyboard is expanded (>50px), pad by keyboard height to lift input above keyboard
+        // If keyboard is idle on mobile, pad by 64px to clear mobile bottom navigation bar
+        if (keyboardHeight > 50) {
+          setMobileBottomPadding(keyboardHeight);
+        } else {
+          setMobileBottomPadding(64);
+        }
+      } else {
+        setMobileBottomPadding(window.innerWidth < 768 ? 64 : 0);
+      }
+    };
+
+    calculateMobilePadding();
+    window.addEventListener('resize', calculateMobilePadding);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', calculateMobilePadding);
+      window.visualViewport.addEventListener('scroll', calculateMobilePadding);
+    }
+
+    return () => {
+      window.removeEventListener('resize', calculateMobilePadding);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', calculateMobilePadding);
+        window.visualViewport.removeEventListener('scroll', calculateMobilePadding);
+      }
+    };
+  }, []);
 
   // =================== FLICK COMM UPGRADES STATES ===================
   const [isEmoStickerOpen, setIsEmoStickerOpen] = useState(false);
@@ -1414,6 +1477,41 @@ export default function ChatSection({
 
   // Active chat tunnels and search filter type states
   const [activeChatTunnels, setActiveChatTunnels] = useState<DirectChat[]>([]);
+  const [isChatsLoading, setIsChatsLoading] = useState<boolean>(true);
+  const [isChatsPendingLong, setIsChatsPendingLong] = useState<boolean>(false);
+  const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false);
+  const [isMessagesPendingLong, setIsMessagesPendingLong] = useState<boolean>(false);
+
+  // Trigger explicit status message when Firestore chats retrieval is pending for > 2 seconds
+  useEffect(() => {
+    let timer: any = null;
+    if (isChatsLoading) {
+      timer = setTimeout(() => {
+        setIsChatsPendingLong(true);
+      }, 2000);
+    } else {
+      setIsChatsPendingLong(false);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isChatsLoading]);
+
+  // Trigger explicit status message when Firestore messages retrieval is pending for > 2 seconds
+  useEffect(() => {
+    let timer: any = null;
+    if (isMessagesLoading) {
+      timer = setTimeout(() => {
+        setIsMessagesPendingLong(true);
+      }, 2000);
+    } else {
+      setIsMessagesPendingLong(false);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isMessagesLoading]);
+
   const groups = activeChatTunnels.filter(chat => chat.isGroup || chat.id === 'global-node-concourse');
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business' | 'trash'>('all');
@@ -1617,7 +1715,9 @@ export default function ChatSection({
   // Subscribe to all ongoing conversations
   useEffect(() => {
     if (!profile?.uid) return;
+    setIsChatsLoading(true);
     const unsub = subscribeToChats(profile.uid, (chats) => {
+      setIsChatsLoading(false);
       const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
       const myAIChat: DirectChat = {
         id: aiChatId,
@@ -1638,6 +1738,9 @@ export default function ChatSection({
           setActiveChatTunnels([myAIChat, ...chats]);
         }
       }
+    }, (err) => {
+      console.warn("Chats sync stream warning:", err);
+      setIsChatsLoading(false);
     });
     return unsub;
   }, [profile?.uid]);
@@ -2121,11 +2224,22 @@ export default function ChatSection({
     window.location.reload();
   };
 
+  // Reset message audio tracking on chat switch
+  useEffect(() => {
+    hasInitialMessagesLoadedRef.current = false;
+    prevMessagesRef.current = [];
+  }, [currentChat?.id]);
+
   // Real-time messages subcollection stream listener
   useEffect(() => {
-    if (!currentChat?.id || !profile?.uid) return;
+    if (!currentChat?.id || !profile?.uid) {
+      setIsMessagesLoading(false);
+      return;
+    }
 
+    setIsMessagesLoading(true);
     const unsubscribe = subscribeToMessages(currentChat.id, (loadedMessages) => {
+      setIsMessagesLoading(false);
       // Auto-Purge settings check
       const autoPurgeOn = localStorage.getItem('flick_auto_purge_enabled') === 'true' || (profile as any)?.autoPurge === true;
       const autoPurgeRetention = localStorage.getItem('flick_auto_purge_retention') || (profile as any)?.autoPurgeRetention || '24h';
@@ -2158,6 +2272,47 @@ export default function ChatSection({
         }
         return true;
       });
+
+      // Sound triggers for Sent, Received, and Read message status transitions
+      if (!hasInitialMessagesLoadedRef.current) {
+        hasInitialMessagesLoadedRef.current = true;
+        prevMessagesRef.current = filtered;
+      } else {
+        const prevList = prevMessagesRef.current;
+        
+        // 1. Check for newly sent messages authored by local user (Sent status trigger)
+        const hasNewSentByMe = filtered.some(m =>
+          m.senderId === profile.uid &&
+          !prevList.some(p => p.id === m.id)
+        );
+        if (hasNewSentByMe) {
+          playMessageSentSound();
+        }
+
+        // 2. Check for incoming new messages from peer/group (Received status trigger)
+        const hasNewIncoming = filtered.some(m => 
+          m.senderId !== profile.uid && 
+          !prevList.some(p => p.id === m.id)
+        );
+        if (hasNewIncoming) {
+          playMessageReceivedSound();
+          triggerVibration('light');
+        }
+
+        // 3. Check for read receipt transitions on messages sent by me (Read status trigger)
+        const hasNewlyRead = filtered.some(m => {
+          if (m.senderId !== profile.uid) return false;
+          const isNowRead = !!(m.read || (m.readBy && m.readBy.length > 0));
+          const prev = prevList.find(p => p.id === m.id);
+          const wasRead = prev ? !!(prev.read || (prev.readBy && prev.readBy.length > 0)) : false;
+          return isNowRead && !wasRead;
+        });
+        if (hasNewlyRead) {
+          playMessageReadSound();
+        }
+
+        prevMessagesRef.current = filtered;
+      }
 
       setMessages(filtered);
 
@@ -2787,7 +2942,10 @@ export default function ChatSection({
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 bg-[var(--color-surface)] overflow-hidden h-full w-full font-mono">
+    <div 
+      style={{ paddingBottom: `${mobileBottomPadding}px` }}
+      className="grid grid-cols-1 md:grid-cols-12 bg-[var(--color-surface)] overflow-hidden h-full w-full font-mono transition-[padding-bottom] duration-150"
+    >
       
       {/* Contact Panel sidebar - spans 4 cols */}
       <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[var(--color-background)] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'} ${guideHighlight === 'highlight_tunnels' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse' : ''}`}>
@@ -3491,6 +3649,19 @@ export default function ChatSection({
           )}
 
           {/* Render Chats List */}
+          {isChatsLoading && isChatsPendingLong && (
+            <div className="mx-3 my-2 p-3.5 border border-emerald-500/30 bg-emerald-950/25 backdrop-blur-md rounded-xl flex items-center space-x-3 text-emerald-400 font-mono text-xs shadow-[0_0_15px_rgba(16,185,129,0.12)] animate-pulse">
+              <div className="relative flex items-center justify-center w-4 h-4 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-[10.5px] uppercase tracking-wider text-emerald-300">Syncing with secure nodes...</p>
+                <p className="text-[8.5px] text-zinc-400 font-sans truncate">Establishing encrypted Firestore channel relay</p>
+              </div>
+            </div>
+          )}
+
           {filterType === 'all-nodes' ? (
             /* Render all registered users directory */
             filteredUsers.map((u, index) => {
@@ -4119,7 +4290,7 @@ export default function ChatSection({
 
         {/* E2EE Keys diagnostics indicators */}
         {profile && (
-          <div className={`p-4 border-t border-[var(--neon-green)]/15 bg-[var(--color-surface)] flex-shrink-0 space-y-3 transition-all ${guideHighlight === 'highlight_keys' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse bg-violet-950/10' : ''}`}>
+          <div className={`p-4 pb-24 md:pb-4 border-t border-[var(--neon-green)]/15 bg-[var(--color-surface)] flex-shrink-0 space-y-3 transition-all ${guideHighlight === 'highlight_keys' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse bg-violet-950/10' : ''}`}>
             <div className="flex items-center justify-between text-[8px] uppercase tracking-wider font-extrabold opacity-70 text-zinc-400">
               <span className="flex items-center">
                 <Key className="w-3.5 h-3.5 mr-1 text-[var(--neon-green)]" /> RSA KEYRING STATUS
@@ -4526,7 +4697,17 @@ export default function ChatSection({
                   </div>
                 )}
 
-                {messages.length === 0 ? (
+                {isMessagesLoading && isMessagesPendingLong ? (
+                  <div className="text-center py-24 space-y-3 animate-pulse select-none">
+                    <div className="inline-flex items-center space-x-2.5 px-4 py-2 rounded-full border border-emerald-500/30 bg-emerald-950/30 text-emerald-400 font-mono text-xs shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                      <span className="font-black tracking-wider uppercase text-[11px]">Syncing with secure nodes...</span>
+                    </div>
+                    <p className="text-[9.5px] text-zinc-500 font-mono uppercase tracking-widest">
+                      Retrieving end-to-end encrypted packet stream from Firestore...
+                    </p>
+                  </div>
+                ) : messages.length === 0 ? (
                   selectedPeer?.uid === 'my-ai-bot-uid' ? (
                     <div className="text-center py-6 text-zinc-500 text-[10px] uppercase tracking-wider font-mono animate-pulse">
                       🔮 DIRECT QUANTUM FEED ESTABLISHED WITH THE FATHER. INITIATE SACRED INQUIRY BELOW...
@@ -5874,9 +6055,11 @@ export default function ChatSection({
                       onChange={(e) => {
                         setText(e.target.value);
                         handleTypingPulse();
+                        playTypingSound();
                       }}
                       onPaste={handlePaste}
                       onKeyDown={(e) => {
+                        playTypingSound(e.key);
                         if (e.key === 'Enter') {
                           const sendShortcutSetting = localStorage.getItem('flick_send_shortcut') || 'enter';
                           if (sendShortcutSetting === 'cmd-enter') {

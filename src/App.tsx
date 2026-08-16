@@ -196,6 +196,21 @@ function Dashboard() {
 
   const { profile, logout, localPrivateKey, loading, isAuthReady } = useAuth();
   const { triggerInAppNotification } = useNotificationSystem();
+  const [loadingPendingLong, setLoadingPendingLong] = useState(false);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (loading) {
+      timer = setTimeout(() => {
+        setLoadingPendingLong(true);
+      }, 2000);
+    } else {
+      setLoadingPendingLong(false);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [loading]);
 
   // Helper to handle and display incoming call across Web, Electron, and Mobile
   const handleIncomingCallData = (incomingCall: any) => {
@@ -897,10 +912,12 @@ function Dashboard() {
           </div>
           <div className="space-y-2">
             <p className="text-[10px] font-black tracking-[0.2em] text-[var(--neon-green)] uppercase">
-              INITIALIZING SECURE SESSION
+              {loadingPendingLong ? 'Syncing with secure nodes...' : 'INITIALIZING SECURE SESSION'}
             </p>
             <p className="text-[9px] text-zinc-500 uppercase tracking-widest leading-relaxed">
-              Verifying terminal node credentials...
+              {loadingPendingLong 
+                ? 'Retrieving cryptographic user identity and keychains from Firestore...' 
+                : 'Verifying terminal node credentials...'}
             </p>
           </div>
         </div>

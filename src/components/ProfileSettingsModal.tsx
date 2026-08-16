@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield } from 'lucide-react';
+import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield, Volume2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { showBrutalistToast } from '../lib/toast';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
 import { upsertUserProfile, subscribeToUsers } from '../lib/services';
 import { compressImage } from '../lib/mediaHelper';
-import { playLikeSound, playGlitchClickSound } from '../lib/sounds';
+import { playLikeSound, playGlitchClickSound, isInteractionSoundsEnabled, setInteractionSoundsEnabled } from '../lib/sounds';
 import { showPushNotification, registerCapacitorPushNotifications } from '../lib/pushNotifications';
 import { NativePushDebugger } from './NativePushDebugger';
 import { SettingsAccountTab } from './SettingsAccountTab';
 import { SettingsNotificationsTab } from './SettingsNotificationsTab';
 import { SettingsAccessibilityTab } from './SettingsAccessibilityTab';
+import { SettingsAudioTab } from './SettingsAudioTab';
 import { SettingsOtherTabs } from './SettingsOtherTabs';
 import { SettingsQrKeyExchangeTab } from './SettingsQrKeyExchangeTab';
 import { SettingsStoragePurgeTab } from './SettingsStoragePurgeTab';
@@ -57,7 +58,8 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'account' | 'privacy' | 'security' | 'notifications' | 'accessibility' | 'storage' | 'about'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'privacy' | 'security' | 'audio' | 'notifications' | 'accessibility' | 'storage' | 'about'>('account');
+  const [interactionSoundsEnabled, setInteractionSoundsEnabledState] = useState<boolean>(() => isInteractionSoundsEnabled());
   const [eduModeEnabled, setEduModeEnabled] = useState<boolean>(() => localStorage.getItem('flick_edu_mode') === 'true');
   const [newsFeedStyle, setNewsFeedStyle] = useState<'vapor' | 'brutalist' | 'silicon'>(() => {
     return (localStorage.getItem('flick_news_style') as 'vapor' | 'brutalist' | 'silicon') || 'brutalist';
@@ -301,6 +303,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
       setNotifMessagesAll(profile.notifMessagesAll !== false);
       setNotifMessagesFrom(profile.notifMessagesFrom || []);
       setSoundEnabled(profile.soundEnabled !== false);
+      setInteractionSoundsEnabledState(isInteractionSoundsEnabled());
       setSelectedTheme(getSavedTheme());
       setVibeEnabled(isVibrationEnabled());
       setVibeMessageIntensity(getVibrationIntensity('message'));
@@ -368,7 +371,9 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
 
     try {
       showBrutalistToast('SAVING...', 'Updating decentralized registry profile nodes...', 'loading', undefined, toastId);
-      localStorage.setItem('flick_sound_enabled', soundEnabled ? 'true' : 'false');
+      localStorage.setItem('flick_sound_enabled', interactionSoundsEnabled ? 'true' : 'false');
+      localStorage.setItem('flick_interaction_sounds_enabled', interactionSoundsEnabled ? 'true' : 'false');
+      setInteractionSoundsEnabled(interactionSoundsEnabled);
       localStorage.setItem('flick_send_shortcut', sendShortcut);
       localStorage.setItem('flick_typing_style', typingVisualStyle);
       localStorage.setItem('flick_cipher_ttl', sessionCipherTtl);
@@ -469,6 +474,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                     { id: 'account', label: 'Account', icon: User },
                     { id: 'privacy', label: 'Privacy', icon: Eye },
                     { id: 'security', label: 'Security', icon: Shield },
+                    { id: 'audio', label: 'Audio', icon: Volume2 },
                     { id: 'notifications', label: 'Notifications', icon: Bell },
                     { id: 'accessibility', label: 'Appearance', icon: Layout },
                     { id: 'storage', label: 'Storage', icon: HardDrive },
@@ -545,6 +551,21 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                         transition={{ duration: 0.15 }}
                       >
                         <SettingsSecurityTab userId={profile.uid} />
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'audio' && (
+                      <motion.div
+                        key="tab-panel-audio"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <SettingsAudioTab
+                          interactionSoundsEnabled={interactionSoundsEnabled}
+                          setInteractionSoundsEnabled={setInteractionSoundsEnabledState}
+                        />
                       </motion.div>
                     )}
 

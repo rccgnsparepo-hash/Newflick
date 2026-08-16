@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Clock, Smartphone, Zap, ShieldAlert, Volume2 } from 'lucide-react';
+import { Bell, Clock, Smartphone, Zap, ShieldAlert, Volume2, VolumeX, Keyboard, Send, CheckCheck, Sparkles } from 'lucide-react';
 import { UserProfile } from '../types';
-import { playGroupNotificationSound } from '../lib/sounds';
+import { 
+  playGroupNotificationSound,
+  playTypingSound,
+  playSendMessageSound,
+  playReceiveMessageSound,
+  playMessageReadSound,
+  getTypingSoundStyle,
+  setTypingSoundStyle,
+  isTypingSoundEnabled,
+  isSendMessageSoundEnabled,
+  isReceiveMessageSoundEnabled,
+  isReadMessageSoundEnabled,
+  setSoundSetting,
+  TypingSoundStyle
+} from '../lib/sounds';
 import { NativePushDebugger } from './NativePushDebugger';
 import {
   getHapticPatternForMessageType,
@@ -64,6 +78,13 @@ export function SettingsNotificationsTab({
 }: NotificationsTabProps) {
   const [, setSoundsUpdateToken] = useState(0);
 
+  // Message Audio & Typing local state
+  const [typingSoundEnabled, setTypingSoundEnabledState] = useState<boolean>(isTypingSoundEnabled);
+  const [typingSoundStyle, setTypingSoundStyleState] = useState<TypingSoundStyle>(getTypingSoundStyle);
+  const [sendSoundEnabled, setSendSoundEnabledState] = useState<boolean>(isSendMessageSoundEnabled);
+  const [receiveSoundEnabled, setReceiveSoundEnabledState] = useState<boolean>(isReceiveMessageSoundEnabled);
+  const [readSoundEnabled, setReadSoundEnabledState] = useState<boolean>(isReadMessageSoundEnabled);
+
   // Quiet Hours local state
   const [quietConfig, setQuietConfig] = useState(getQuietHoursConfig);
   const [inQuietHours, setInQuietHours] = useState(isCurrentlyInQuietHours);
@@ -76,6 +97,11 @@ export function SettingsNotificationsTab({
   useEffect(() => {
     const handleUpdate = () => {
       setSoundsUpdateToken(prev => prev + 1);
+      setTypingSoundEnabledState(isTypingSoundEnabled());
+      setTypingSoundStyleState(getTypingSoundStyle());
+      setSendSoundEnabledState(isSendMessageSoundEnabled());
+      setReceiveSoundEnabledState(isReceiveMessageSoundEnabled());
+      setReadSoundEnabledState(isReadMessageSoundEnabled());
       setQuietConfig(getQuietHoursConfig());
       setInQuietHours(isCurrentlyInQuietHours());
       setDirectHaptic(getHapticPatternForMessageType('direct'));
@@ -92,6 +118,49 @@ export function SettingsNotificationsTab({
       window.removeEventListener('flick_haptics_updated', handleUpdate);
     };
   }, []);
+
+  const handleToggleTypingSound = (enabled: boolean) => {
+    setSoundSetting('flick_sound_typing_enabled', enabled);
+    setTypingSoundEnabledState(enabled);
+    if (enabled) {
+      playTypingSound('a', typingSoundStyle);
+    }
+    showBrutalistToast('TYPING AUDIO UPDATED', enabled ? 'Keyboard typing sounds enabled.' : 'Keyboard typing sounds muted.', 'info');
+  };
+
+  const handleChangeTypingStyle = (style: TypingSoundStyle) => {
+    setTypingSoundStyle(style);
+    setTypingSoundStyleState(style);
+    playTypingSound('Enter', style);
+    showBrutalistToast('TYPING SOUND THEME', `Switch style set to [${style.toUpperCase()}]`, 'success');
+  };
+
+  const handleToggleSendSound = (enabled: boolean) => {
+    setSoundSetting('flick_sound_send_enabled', enabled);
+    setSendSoundEnabledState(enabled);
+    if (enabled) {
+      playSendMessageSound();
+    }
+    showBrutalistToast('SENT AUDIO UPDATED', enabled ? 'Message sent chimes enabled.' : 'Message sent chimes muted.', 'info');
+  };
+
+  const handleToggleReceiveSound = (enabled: boolean) => {
+    setSoundSetting('flick_sound_receive_enabled', enabled);
+    setReceiveSoundEnabledState(enabled);
+    if (enabled) {
+      playReceiveMessageSound();
+    }
+    showBrutalistToast('RECEIVE AUDIO UPDATED', enabled ? 'Incoming message sounds enabled.' : 'Incoming message sounds muted.', 'info');
+  };
+
+  const handleToggleReadSound = (enabled: boolean) => {
+    setSoundSetting('flick_sound_read_enabled', enabled);
+    setReadSoundEnabledState(enabled);
+    if (enabled) {
+      playMessageReadSound();
+    }
+    showBrutalistToast('READ RECEIPTS AUDIO', enabled ? 'Read receipt delivery chimes enabled.' : 'Read receipt chimes muted.', 'info');
+  };
 
   const handleQuietToggle = (enabled: boolean) => {
     setQuietHoursConfig({ enabled });
@@ -144,9 +213,155 @@ export function SettingsNotificationsTab({
         />
         <label htmlFor="soundEnabledSub" className="text-xs text-zinc-400 cursor-pointer select-none leading-snug">
           <span className="font-semibold block text-[var(--color-text)] font-mono uppercase text-[10px] tracking-wide mb-1">Global sound chimes</span>
-          Enable fluid digital sound synthesis when dispatching/receiving.
+          Enable fluid digital sound synthesis when interacting, typing, dispatching, and receiving.
         </label>
       </div>
+
+      {/* Granular message interaction & typing sound FX suite */}
+      {soundEnabled && (
+        <div className="space-y-4 border-t border-dashed border-[var(--neon-green)]/20 pt-4">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase tracking-widest font-extrabold text-[var(--neon-green)] font-mono flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-[var(--neon-green)]" /> Message Audio & Interaction FX
+            </label>
+            <span className="text-[8px] font-mono text-[var(--neon-green)]/70 uppercase">Zero-Latency Synthesized</span>
+          </div>
+
+          <div className="space-y-2.5">
+            {/* 1. Keyboard typing sound */}
+            <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2.5">
+                  <input
+                    type="checkbox"
+                    id="typingSoundToggle"
+                    checked={typingSoundEnabled}
+                    onChange={(e) => handleToggleTypingSound(e.target.checked)}
+                    className="accent-[var(--neon-green)] cursor-pointer"
+                  />
+                  <label htmlFor="typingSoundToggle" className="text-xs font-mono text-white font-bold cursor-pointer flex items-center gap-1.5">
+                    <Keyboard className="w-3.5 h-3.5 text-[var(--neon-green)]" /> Keyboard Typing Sounds
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => playTypingSound('Enter', typingSoundStyle)}
+                  className="px-2 py-0.5 border border-[var(--neon-green)]/35 bg-[var(--neon-green)]/10 text-[var(--neon-green)] font-mono text-[8.5px] uppercase hover:bg-[var(--neon-green)]/25 transition cursor-pointer"
+                  title="Test typing sound"
+                >
+                  ▶ Test Key
+                </button>
+              </div>
+              <p className="text-[9px] text-zinc-400 font-sans pl-6">
+                Hear realistic mechanical, pop, or cyber feedback as you type into chat dialogues.
+              </p>
+              {typingSoundEnabled && (
+                <div className="pl-6 pt-1 flex items-center space-x-2">
+                  <span className="text-[9px] font-mono text-zinc-500 uppercase">Switch Theme:</span>
+                  <select
+                    value={typingSoundStyle}
+                    onChange={(e) => handleChangeTypingStyle(e.target.value as TypingSoundStyle)}
+                    className="bg-[var(--color-background)] border border-[var(--neon-green-border)] text-[9px] font-mono text-[var(--neon-green)] px-2 py-1 uppercase focus:outline-none cursor-pointer"
+                  >
+                    <option value="modern">Modern Tactile Click</option>
+                    <option value="thock">Mechanical Thock</option>
+                    <option value="bubble">Bubble Pop</option>
+                    <option value="cyber">Cyber Zap</option>
+                    <option value="clack">Classic Clack</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Message Sent sound */}
+            <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <input
+                  type="checkbox"
+                  id="sendSoundToggle"
+                  checked={sendSoundEnabled}
+                  onChange={(e) => handleToggleSendSound(e.target.checked)}
+                  className="accent-[var(--neon-green)] cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="sendSoundToggle" className="text-xs font-mono text-white font-bold cursor-pointer flex items-center gap-1.5">
+                    <Send className="w-3.5 h-3.5 text-[var(--neon-green)]" /> Outgoing Message Sent
+                  </label>
+                  <p className="text-[8.5px] text-zinc-400 font-sans">
+                    Ascending swoop & digital chime upon cryptographic payload transmission.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => playSendMessageSound()}
+                className="px-2 py-0.5 border border-[var(--neon-green)]/35 bg-[var(--neon-green)]/10 text-[var(--neon-green)] font-mono text-[8.5px] uppercase hover:bg-[var(--neon-green)]/25 transition cursor-pointer shrink-0"
+                title="Test sent sound"
+              >
+                ▶ Test
+              </button>
+            </div>
+
+            {/* 3. Message Received sound */}
+            <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <input
+                  type="checkbox"
+                  id="receiveSoundToggle"
+                  checked={receiveSoundEnabled}
+                  onChange={(e) => handleToggleReceiveSound(e.target.checked)}
+                  className="accent-[var(--neon-green)] cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="receiveSoundToggle" className="text-xs font-mono text-white font-bold cursor-pointer flex items-center gap-1.5">
+                    <Bell className="w-3.5 h-3.5 text-[var(--neon-green)]" /> Incoming Message Alert
+                  </label>
+                  <p className="text-[8.5px] text-zinc-400 font-sans">
+                    Melodic dual chime tone when a peer or group broadcasts a message.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => playReceiveMessageSound()}
+                className="px-2 py-0.5 border border-[var(--neon-green)]/35 bg-[var(--neon-green)]/10 text-[var(--neon-green)] font-mono text-[8.5px] uppercase hover:bg-[var(--neon-green)]/25 transition cursor-pointer shrink-0"
+                title="Test receive sound"
+              >
+                ▶ Test
+              </button>
+            </div>
+
+            {/* 4. Read & Delivery Receipts sound */}
+            <div className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <input
+                  type="checkbox"
+                  id="readSoundToggle"
+                  checked={readSoundEnabled}
+                  onChange={(e) => handleToggleReadSound(e.target.checked)}
+                  className="accent-[var(--neon-green)] cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="readSoundToggle" className="text-xs font-mono text-white font-bold cursor-pointer flex items-center gap-1.5">
+                    <CheckCheck className="w-3.5 h-3.5 text-[var(--neon-green)]" /> Read & Delivery Receipts
+                  </label>
+                  <p className="text-[8.5px] text-zinc-400 font-sans">
+                    Crisp double-tick confirmation when recipient opens and reads your message.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => playMessageReadSound()}
+                className="px-2 py-0.5 border border-[var(--neon-green)]/35 bg-[var(--neon-green)]/10 text-[var(--neon-green)] font-mono text-[8.5px] uppercase hover:bg-[var(--neon-green)]/25 transition cursor-pointer shrink-0"
+                title="Test read receipt sound"
+              >
+                ▶ Test
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom notification sounds configuration panel */}
       {soundEnabled && (
