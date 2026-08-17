@@ -513,6 +513,29 @@ async function startServer() {
       });
       const osResult = await osResponse.json();
       console.log(`[Backend Call Push] Result:`, osResult);
+
+      // Also create an in-app urgent notification doc in Firestore so any active client instance receives it instantly
+      if (db) {
+        try {
+          const notifId = `call-notif-${call.id}`;
+          await setDoc(doc(db, 'notifications', notifId), {
+            id: notifId,
+            receiverId: recipientId,
+            senderId: call.callerId,
+            senderName: call.callerName,
+            senderPhoto: call.callerPhoto,
+            type: 'call',
+            title: `📞 Incoming ${call.type === 'video' ? 'Video' : 'Voice'} Call`,
+            body: `Incoming call from ${call.callerName}`,
+            callId: call.id,
+            callType: call.type,
+            read: false,
+            createdAt: serverTimestamp()
+          });
+        } catch (notifErr) {
+          console.warn("[Backend Call Push] In-app notification creation notice:", notifErr);
+        }
+      }
     } catch (pushErr) {
       console.error(`[Backend Call Push] Exception:`, pushErr);
     }
@@ -816,6 +839,18 @@ async function startServer() {
     }
   });
 
+  // --- Fast In-Memory WebRTC Signaling Relay ---
+  interface CallSignal {
+    id: string;
+    callId: string;
+    senderId: string;
+    type: 'offer' | 'answer' | 'candidate';
+    payload: any;
+    timestamp: number;
+  }
+
+  const callSignalsStore = new Map<string, CallSignal[]>();
+
   // 6. Get Call State: GET /api/calls/state/:callId
   app.get("/api/calls/state/:callId", async (req, res) => {
     try {
@@ -837,6 +872,66 @@ async function startServer() {
       }
 
       res.status(404).json({ error: "Call not found" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 7. Send WebRTC Signal (Offer, Answer, ICE Candidate): POST /api/calls/signal/send
+  app.post("/api/calls/signal/send", async (req, res) => {
+    try {
+      const { callId, senderId, type, payload } = req.body;
+      if (!callId || !senderId || !type || !payload) {
+        return res.status(400).json({ error: "Missing required signal parameters" });
+      }
+
+      const signal: CallSignal = {
+        id: `sig-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        callId,
+        senderId,
+        type,
+        payload,
+        timestamp: Date.now()
+      };
+
+      const existingSignals = callSignalsStore.get(callId) || [];
+      existingSignals.push(signal);
+      callSignalsStore.set(callId, existingSignals.slice(-50)); // keep last 50 signals
+
+      // Also persist offer/answer in Firestore document for cross-network reliability
+      if (db && (type === 'offer' || type === 'answer')) {
+        try {
+          const callRef = doc(db, 'calls', callId);
+          if (type === 'offer') {
+            await updateDoc(callRef, { offer: payload, updatedAt: serverTimestamp() });
+          } else if (type === 'answer') {
+            await updateDoc(callRef, { answer: payload, updatedAt: serverTimestamp() });
+          }
+        } catch (e) {
+          // ignore background update notice
+        }
+      }
+
+      res.json({ success: true, signalId: signal.id });
+    } catch (err: any) {
+      console.error("[POST /api/calls/signal/send] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 8. Poll WebRTC Signals: GET /api/calls/signal/poll/:callId/:participantId
+  app.get("/api/calls/signal/poll/:callId/:participantId", (req, res) => {
+    try {
+      const { callId, participantId } = req.params;
+      const since = parseInt((req.query.since as string) || '0', 10);
+
+      const signals = callSignalsStore.get(callId) || [];
+      // Return signals from the peer (senderId !== participantId) that occurred after 'since'
+      const peerSignals = signals.filter(
+        s => s.senderId !== participantId && s.timestamp > since
+      );
+
+      res.json({ signals: peerSignals, serverTime: Date.now() });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

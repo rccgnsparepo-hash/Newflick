@@ -1,6 +1,6 @@
 {
   "name": "Flick",
-  "description": "Fara Flick - The ultimate exquisite, end-to-end encrypted messaging nodes and high-entropy social media chronicles engineered under raw brutalism and liquid glass composites.",
+  "description": "Flick - Voice-First, Local-First Decentralized Audio Communication Platform with End-to-End Encrypted Tunnels and Local Device Audio Vaults.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

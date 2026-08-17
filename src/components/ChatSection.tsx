@@ -65,6 +65,10 @@ import EmoStickerBoard from './EmoStickerBoard';
 import { ConversationNotificationManager } from '../lib/notificationSystem';
 import { useNavigation } from '../lib/navigationService';
 import { getBackendUrl } from '../lib/bootstrap';
+import { VoicePlayerBubble } from './VoicePlayerBubble';
+import { VoiceFirstBar } from './VoiceFirstBar';
+import { VoiceMemoriesModal } from './VoiceMemoriesModal';
+import { saveVoiceNoteToVault } from '../lib/voiceVault';
 
 function formatLastSeen(lastChanged: any): string {
   if (!lastChanged) return 'offline';
@@ -396,6 +400,9 @@ function DecryptedMessageBubble({
   let attachmentName = "";
   let quotedAuthor = "";
   let quotedSnippet = "";
+  let audioDuration = 0;
+  let audioWaveform: number[] = [];
+  let audioTranscript = "";
 
   if (decryptedText.trim().startsWith('{') && decryptedText.includes('attachmentUrl')) {
     try {
@@ -404,6 +411,9 @@ function DecryptedMessageBubble({
       attachmentUrl = parsed.attachmentUrl || "";
       attachmentType = parsed.attachmentType || "none";
       attachmentName = parsed.attachmentName || "";
+      audioDuration = parsed.duration || 0;
+      audioWaveform = parsed.waveform || [];
+      audioTranscript = parsed.transcript || "";
       hasAttachment = !!attachmentUrl;
       quotedAuthor = parsed.quotedAuthor || "";
       quotedSnippet = parsed.quotedSnippet || "";
@@ -643,37 +653,18 @@ function DecryptedMessageBubble({
                 )}
 
                 {attachmentType === 'audio' && (
-                  <div className="flex items-center space-x-3 bg-[var(--color-surface)] border border-[var(--neon-green)]/35 p-2.5 rounded-none w-full max-w-xs justify-between">
-                    <button
-                      type="button"
-                      onClick={toggleAudioPlayback}
-                      className="p-1 px-2.5 bg-[var(--neon-green)] text-black font-extrabold text-[10px] uppercase hover:bg-neutral-200 transition"
-                    >
-                      {audioState === 'playing' ? 'PAUSE' : 'PLAY'}
-                    </button>
-                    
-                    <audio
-                      ref={(el) => {
-                        audioElRef.current = el;
-                        if (el) {
-                          el.onended = () => setAudioState('idle');
-                          el.playbackRate = playbackRate;
-                        }
-                      }}
-                      src={attachmentUrl}
-                      className="hidden"
-                    />
-
-                    {/* Audio Speed Control */}
-                    <button
-                      type="button"
-                      onClick={togglePlaybackSpeed}
-                      className="text-[9px] px-1.5 py-0.5 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition uppercase font-mono font-bold"
-                      title="Voice playback speed multiplier"
-                    >
-                      {playbackRate}x
-                    </button>
-                  </div>
+                  <VoicePlayerBubble
+                    messageId={message.id}
+                    chatId={chatId}
+                    audioUrl={attachmentUrl}
+                    duration={audioDuration}
+                    waveform={audioWaveform}
+                    transcript={audioTranscript}
+                    senderName={message.senderDisplayName || (message.senderId === currentUserId ? 'You' : 'Peer')}
+                    senderId={message.senderId}
+                    isMe={message.senderId === currentUserId}
+                    timestamp={getRelativeTimestamp(message.createdAt)}
+                  />
                 )}
               </div>
             )}
@@ -1107,6 +1098,7 @@ export default function ChatSection({
 
   // =================== FLICK COMM UPGRADES STATES ===================
   const [isEmoStickerOpen, setIsEmoStickerOpen] = useState(false);
+  const [isVoiceVaultOpen, setIsVoiceVaultOpen] = useState(false);
   
   // Safety list arrays
   const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
@@ -2641,6 +2633,151 @@ export default function ChatSection({
       
       // Phase 8: FAILED
       operations.failTask(taskId, errMsg);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Voice-First Flick Transmission with local vault caching
+  const handleSendVoiceFlick = async (params: {
+    audioDataUrl: string;
+    duration: number;
+    waveform: number[];
+    transcript?: string;
+  }) => {
+    if (!profile || !currentChat) return;
+    if (!currentChat.isGroup && !selectedPeer) return;
+
+    triggerVibration('medium');
+    setSending(true);
+    setError(null);
+
+    const voiceNotePayload = JSON.stringify({
+      text: params.transcript ? `🎙️ "${params.transcript}"` : "🎙️ Voice Flick",
+      attachmentUrl: params.audioDataUrl,
+      attachmentType: "audio",
+      attachmentName: `Voice Flick (${Math.floor(params.duration / 60)}:${(Math.floor(params.duration % 60)).toString().padStart(2, '0')})`,
+      duration: params.duration,
+      waveform: params.waveform,
+      transcript: params.transcript || "",
+      quotedAuthor: replyQuote?.authorName || "",
+      quotedSnippet: replyQuote?.snippetText || "",
+    });
+
+    setReplyQuote(null);
+
+    // Save to local device vault immediately
+    const tempId = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    await saveVoiceNoteToVault({
+      messageId: tempId,
+      chatId: currentChat.id,
+      audioData: params.audioDataUrl,
+      duration: params.duration,
+      waveform: params.waveform,
+      transcript: params.transcript,
+      senderId: profile.uid,
+      senderName: profile.displayName || 'You',
+      isMe: true,
+    });
+
+    const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
+    if (currentChat.id !== aiChatId) {
+      setFirestoreTypingStatus(currentChat.id, profile.uid, false);
+    }
+
+    try {
+      if (currentChat.id === aiChatId) {
+        const userMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
+        await setDoc(doc(db, 'chats', aiChatId, 'messages', userMessageId), {
+          id: userMessageId,
+          senderId: profile.uid,
+          receiverId: 'my-ai-bot-uid',
+          participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+          plainText: voiceNotePayload,
+          senderDisplayName: profile.displayName || 'You',
+          createdAt: serverTimestamp(),
+          read: true
+        });
+        playSendMessageSound();
+
+        if (params.transcript) {
+          try {
+            const baseUrl = getBackendUrl();
+            const aiResponse = await fetch(`${baseUrl}/api/myai`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: params.transcript })
+            });
+            const aiData = await aiResponse.json();
+            const aiReplyText = aiData.reply || "I heard your voice flick! ✨";
+            const aiMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
+            await setDoc(doc(db, 'chats', aiChatId, 'messages', aiMessageId), {
+              id: aiMessageId,
+              senderId: 'my-ai-bot-uid',
+              receiverId: profile.uid,
+              participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+              plainText: aiReplyText,
+              senderDisplayName: 'THE FATHER 🔮',
+              createdAt: serverTimestamp(),
+              read: false
+            });
+          } catch (e) {
+            console.warn('AI voice response error:', e);
+          }
+        }
+        return;
+      }
+
+      if (currentChat.isGroup) {
+        await sendGroupMessageService({
+          chatId: currentChat.id,
+          senderId: profile.uid,
+          senderDisplayName: profile.displayName || 'Relay User',
+          plainText: voiceNotePayload,
+          messageType: 'text',
+          mediaUrl: params.audioDataUrl,
+          mediaType: 'audio',
+          mediaName: `Voice Flick (${Math.floor(params.duration / 60)}:${(Math.floor(params.duration % 60)).toString().padStart(2, '0')})`,
+        });
+        playSendMessageSound();
+        showBrutalistToast('VOICE FLICK TRANSMITTED', 'Broadcasted across group conduit.', 'success');
+        return;
+      }
+
+      const calculatedLifespan = selfDestructSeconds > 0 ? selfDestructSeconds : undefined;
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+      if (isOffline) {
+        await queueOfflineMessage({
+          chatId: currentChat.id,
+          senderId: profile.uid,
+          senderDisplayName: profile.displayName,
+          receiverId: selectedPeer.uid,
+          plainText: voiceNotePayload,
+          recipientPublicKeyJwk: selectedPeer.publicKey,
+          senderPublicKeyJwk: profile.publicKey,
+          lifespanSeconds: calculatedLifespan
+        });
+        playSendMessageSound();
+        showBrutalistToast('VOICE QUEUED', 'Encrypted and stored in local device vault.', 'warning');
+      } else {
+        await sendE2EEMessage({
+          chatId: currentChat.id,
+          senderId: profile.uid,
+          senderDisplayName: profile.displayName,
+          receiverId: selectedPeer.uid,
+          plainText: voiceNotePayload,
+          recipientPublicKeyJwk: selectedPeer.publicKey,
+          senderPublicKeyJwk: profile.publicKey,
+          lifespanSeconds: calculatedLifespan
+        });
+        playSendMessageSound();
+        showBrutalistToast('VOICE TRANSMITTED', 'Encrypted tunnel delivery complete.', 'success');
+      }
+    } catch (err: any) {
+      const errMsg = "Voice transmission error: " + sanitizeErrorMessage(err);
+      setError(errMsg);
+      showBrutalistToast('TRANSMISSION ERROR', errMsg, 'error');
     } finally {
       setSending(false);
     }
@@ -4484,6 +4621,21 @@ export default function ChatSection({
               {/* Dedicated local message tunnels controls & search bar */}
               <div className="flex items-center gap-2 max-w-lg shrink-0 pl-1.5 font-mono">
                 
+                {/* Local Voice Vault & Memories Modal Trigger */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playGlitchClickSound();
+                    triggerVibration('light');
+                    setIsVoiceVaultOpen(true);
+                  }}
+                  className="p-1.5 px-2 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition uppercase font-bold text-[9px] cursor-pointer flex items-center gap-1 shrink-0"
+                  title="Open Local Voice Vault & Audio Memories"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline font-mono tracking-wider text-[9px]">VAULT</span>
+                </button>
+
                 {/* Group Audio Call Toggle Trigger */}
                 {currentChat.isGroup && (
                   <button
@@ -5698,9 +5850,8 @@ export default function ChatSection({
               )}
             </AnimatePresence>
 
-            {/* Broadcast Form Input Box */}
-            <form 
-              onSubmit={handleSendMessage} 
+            {/* Broadcast Controls and Voice-First Input Box */}
+            <div 
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -6009,93 +6160,101 @@ export default function ChatSection({
                 </div>
               )}
 
-              {/* Message Typing Panel */}
-              <div className="flex items-center space-x-2.5">
-                {isRecording ? (
-                  <div className="flex-1 flex items-center justify-between bg-red-950/40 border-2 border-red-500/60 p-2.5 px-3.5 space-x-3 font-mono">
-                    <div className="flex items-center space-x-2.5">
-                      <span className="w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
-                      <span className="text-red-400 font-extrabold text-xs uppercase tracking-wider">
-                        REC {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}
-                      </span>
-                      <div className="hidden sm:flex items-center space-x-1 pl-2">
-                        <span className="w-1 h-3 bg-red-500 animate-pulse" />
-                        <span className="w-1 h-5 bg-red-400 animate-pulse delay-75" />
-                        <span className="w-1 h-2 bg-red-500 animate-pulse delay-150" />
-                        <span className="w-1 h-4 bg-red-400 animate-pulse delay-100" />
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
-                        onClick={cancelVoiceRecording}
-                        className="p-1.5 border border-red-500/50 hover:bg-red-900/60 text-red-300 font-bold text-[10px] uppercase flex items-center space-x-1 cursor-pointer"
-                        title="Discard voice recording"
-                      >
-                        <Trash className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">DISCARD</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={stopVoiceRecording}
-                        className="px-3 py-1.5 bg-red-500 hover:bg-red-400 text-black font-extrabold text-[10px] uppercase flex items-center space-x-1 cursor-pointer"
-                        title="Stop and attach voice note"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>ATTACH VOICE NOTE</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="TRANSMIT SECURE ENCRYPTED DIALOGUE..."
-                      value={text}
-                      onChange={(e) => {
-                        setText(e.target.value);
-                        handleTypingPulse();
-                        playTypingSound();
-                      }}
-                      onPaste={handlePaste}
-                      onKeyDown={(e) => {
-                        playTypingSound(e.key);
-                        if (e.key === 'Enter') {
-                          const sendShortcutSetting = localStorage.getItem('flick_send_shortcut') || 'enter';
-                          if (sendShortcutSetting === 'cmd-enter') {
-                            const isCmdOrCtrl = e.metaKey || e.ctrlKey;
-                            if (!isCmdOrCtrl) {
-                              e.preventDefault();
-                            }
-                          }
-                        }
-                      }}
-                      disabled={sending}
-                      className="flex-1 bg-[var(--color-surface)] border border-[var(--neon-green)]/30 p-3 leading-none text-xs text-[var(--neon-green)] focus:outline-none focus:border-[var(--neon-green)] placeholder:opacity-50 select-text font-serif"
-                    />
-                    
-                    <button
-                      type="button"
-                      onClick={startVoiceRecording}
-                      className="p-3 bg-[var(--color-surface)] border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition cursor-pointer shrink-0"
-                      title="Record Voice Note"
-                    >
-                      <Mic className="w-4 h-4" />
-                    </button>
+              {/* Voice-First 98% Talk & Transmission Studio Engine */}
+              <VoiceFirstBar
+                chatId={currentChat.id}
+                recipientName={currentChat.isGroup ? currentChat.name || 'Group' : selectedPeer?.displayName || 'Peer'}
+                senderId={profile.uid}
+                senderName={profile.displayName || 'You'}
+                onSendVoiceMessage={async (params) => {
+                  await handleSendVoiceFlick(params);
+                }}
+                onSendTextMessage={async (auxText) => {
+                  setText(auxText);
+                  const fakeEvent = { preventDefault: () => {} } as any;
+                  // Construct text to send directly
+                  if (!profile || !currentChat) return;
+                  if (!currentChat.isGroup && !selectedPeer) return;
+                  triggerVibration('medium');
+                  setSending(true);
+                  try {
+                    const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
+                    if (currentChat.id === aiChatId) {
+                      const userMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
+                      await setDoc(doc(db, 'chats', aiChatId, 'messages', userMessageId), {
+                        id: userMessageId,
+                        senderId: profile.uid,
+                        receiverId: 'my-ai-bot-uid',
+                        participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+                        plainText: auxText.trim(),
+                        senderDisplayName: profile.displayName || 'You',
+                        createdAt: serverTimestamp(),
+                        read: true
+                      });
+                      playSendMessageSound();
+                      const baseUrl = getBackendUrl();
+                      const aiRes = await fetch(`${baseUrl}/api/myai`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: auxText.trim() })
+                      });
+                      const aiD = await aiRes.json();
+                      const aiMsgId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
+                      await setDoc(doc(db, 'chats', aiChatId, 'messages', aiMsgId), {
+                        id: aiMsgId,
+                        senderId: 'my-ai-bot-uid',
+                        receiverId: profile.uid,
+                        participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
+                        plainText: aiD.reply || "Transmission received.",
+                        senderDisplayName: 'THE FATHER 🔮',
+                        createdAt: serverTimestamp(),
+                        read: false
+                      });
+                      return;
+                    }
 
-                    <button
-                      type="submit"
-                      disabled={sending || (!text.trim() && !selectedAttachment)}
-                      className="bg-[var(--neon-green)] border border-black text-black font-extrabold uppercase px-6 py-3.5 text-xs transition-all cursor-pointer hover:bg-white hover:text-black shrink-0 flex items-center space-x-2 select-none"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">SEND</span>
-                    </button>
-                  </>
-                )}
-              </div>
+                    if (currentChat.isGroup) {
+                      await sendGroupMessageService({
+                        chatId: currentChat.id,
+                        senderId: profile.uid,
+                        senderDisplayName: profile.displayName || 'Relay User',
+                        plainText: auxText.trim(),
+                        messageType: 'text'
+                      });
+                      playSendMessageSound();
+                    } else if (selectedPeer) {
+                      await sendE2EEMessage({
+                        chatId: currentChat.id,
+                        senderId: profile.uid,
+                        senderDisplayName: profile.displayName,
+                        receiverId: selectedPeer.uid,
+                        plainText: auxText.trim(),
+                        recipientPublicKeyJwk: selectedPeer.publicKey,
+                        senderPublicKeyJwk: profile.publicKey,
+                        lifespanSeconds: selfDestructSeconds > 0 ? selfDestructSeconds : undefined
+                      });
+                      playSendMessageSound();
+                    }
+                  } catch (e: any) {
+                    console.error('Send text error:', e);
+                  } finally {
+                    setSending(false);
+                    setText('');
+                  }
+                }}
+                onPickAttachment={() => fileInputRef.current?.click()}
+                onTypingStatusChange={(isTyping, type) => {
+                  if (currentChat && profile) {
+                    const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
+                    if (currentChat.id !== aiChatId) {
+                      setFirestoreTypingStatus(currentChat.id, profile.uid, isTyping, type);
+                    }
+                  }
+                }}
+                disabled={sending}
+              />
 
-            </form>
+            </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[var(--color-surface)]">
@@ -6490,6 +6649,14 @@ export default function ChatSection({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Voice Vault & Offline Memories IndexedDB Modal */}
+      <VoiceMemoriesModal
+        isOpen={isVoiceVaultOpen}
+        onClose={() => setIsVoiceVaultOpen(false)}
+        chatId={currentChat?.id}
+        chatTitle={currentChat?.isGroup ? currentChat?.name : selectedPeer?.displayName}
+      />
 
     </div>
   );

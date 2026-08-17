@@ -260,7 +260,12 @@ function Dashboard() {
       if (incomingCall && incomingCall.callerId !== profile.uid) {
         handleIncomingCallData(incomingCall);
       } else {
-        setOngoingCall(prev => (prev && prev.isIncoming ? null : prev));
+        setOngoingCall(prev => {
+          if (!prev) return null;
+          // Keep active connected calls or outgoing calls alive
+          if (prev.status === 'active' || !prev.isIncoming) return prev;
+          return null;
+        });
       }
     });
 
@@ -1157,6 +1162,7 @@ function Dashboard() {
               }}
               onAcceptCall={async () => {
                 if (ongoingCall.id) {
+                  setOngoingCall(prev => prev ? { ...prev, status: 'active' } : null);
                   if (ongoingCall.isGroup && profile) {
                     await joinGroupCall(ongoingCall.id, {
                       uid: profile.uid,

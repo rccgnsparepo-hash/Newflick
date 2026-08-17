@@ -16,6 +16,7 @@ import { showBrutalistToast } from '../lib/toast';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { updateGroupParticipantState, leaveGroupCall, joinGroupCall, sendQuickReplyAndEndCall, endActiveCall } from '../lib/services';
+import { startWebRTCSession, WebRTCSession } from '../lib/webrtcService';
 
 export interface CallState {
   id?: string;
@@ -67,15 +68,21 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   const [signalQuality, setSignalQuality] = useState<'excellent' | 'good' | 'poor'>('excellent');
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);
   const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
+  const [isRemoteSpeaking, setIsRemoteSpeaking] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const miniVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const webrtcSessionRef = useRef<WebRTCSession | null>(null);
 
   // GSAP animation refs
   const overlayStageRef = useRef<HTMLDivElement | null>(null);
@@ -294,7 +301,58 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
     };
   }, [call.type]);
 
-  // Handle Mute & Camera Toggles on active stream
+  // 5. Initialize WebRTC Real-Time Audio & Video Session
+  useEffect(() => {
+    if (!call.id || !localStream || call.isGroup) return;
+
+    // Start WebRTC signaling when the caller initiates or when callee connects
+    const isCaller = !call.isIncoming;
+    if (!isCaller && status !== 'active') return;
+
+    console.log(`[CallOverlay WebRTC] Starting live session for call ${call.id}`);
+    const session = startWebRTCSession({
+      callId: call.id,
+      currentUserId: currentUid,
+      peerId: call.peerId,
+      isCaller,
+      callType: call.type,
+      localStream,
+      onRemoteStream: (stream) => {
+        console.log('[CallOverlay WebRTC] Remote stream received, tracks:', stream.getTracks().map(t => `${t.kind}:${t.enabled}`));
+        setRemoteStream(stream);
+
+        // Check if remote video track exists and is active
+        const hasVid = stream.getVideoTracks().length > 0;
+        setHasRemoteVideo(hasVid);
+
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = stream;
+          remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.6;
+          remoteAudioRef.current.play().catch(e => console.warn('Remote audio playback:', e));
+        }
+
+        if (remoteVideoRef.current && call.type === 'video') {
+          remoteVideoRef.current.srcObject = stream;
+          remoteVideoRef.current.play().catch(e => console.warn('Remote video playback:', e));
+        }
+      },
+      onConnectionStateChange: (pcState) => {
+        console.log(`[CallOverlay WebRTC] Connection state: ${pcState}`);
+        if (pcState === 'connected') {
+          setStatus('active');
+        }
+      }
+    });
+
+    webrtcSessionRef.current = session;
+
+    return () => {
+      session.close();
+      webrtcSessionRef.current = null;
+    };
+  }, [call.id, !!localStream, status, call.isIncoming, call.type, call.isGroup, currentUid, call.peerId]);
+
+  // Handle Mute & Camera Toggles on active stream & WebRTC session
   useEffect(() => {
     if (localStream) {
       localStream.getAudioTracks().forEach(track => {
@@ -304,7 +362,18 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
         track.enabled = isVideoOn;
       });
     }
+    if (webrtcSessionRef.current) {
+      webrtcSessionRef.current.toggleAudio(!isMuted);
+      webrtcSessionRef.current.toggleVideo(isVideoOn);
+    }
   }, [isMuted, isVideoOn, localStream]);
+
+  // Speaker mode volume control
+  useEffect(() => {
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.5;
+    }
+  }, [isSpeakerOn]);
 
   // Stopwatch duration timer for active calls
   useEffect(() => {
@@ -781,17 +850,55 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
         ) : (
           /* 1-ON-1 DIRECT CALL STAGE */
           <div className="w-full h-full min-h-[360px] border-4 border-black dark:border-[var(--neon-green-border)] bg-[var(--color-surface)] shadow-[8px_8px_0_0_#000000] flex flex-col relative items-center justify-center overflow-hidden">
-            
-            {/* Animated Canvas */}
+            {/* Hidden Remote Audio Element for Crisp Real-Time Voice Playback */}
+            <audio ref={remoteAudioRef} autoPlay playsInline />
+
+            {/* Video Streams */}
             {status === 'active' && call.type === 'video' ? (
-              <canvas ref={canvasRef} width={640} height={400} className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 w-full h-full bg-black flex items-center justify-center overflow-hidden">
+                {/* Remote Video Stream */}
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Overlay if remote video track is connecting */}
+                {!hasRemoteVideo && (
+                  <div className="absolute inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10 space-y-4">
+                    <div className="relative">
+                      <span className="absolute -inset-3 border-2 border-[var(--neon-green)]/40 rounded-none animate-ping" />
+                      <img
+                        src={effectivePeerPhoto}
+                        alt={effectivePeerName}
+                        className="w-28 h-28 border-2 border-[var(--neon-green)] object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-serif text-lg font-bold text-white uppercase">{effectivePeerName}</p>
+                      <p className="text-[10px] text-[var(--neon-green)] font-mono animate-pulse uppercase tracking-wider">
+                        ⚡ SECURING ENCRYPTED VIDEO FEED...
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Video HUD Indicators */}
+                <div className="absolute top-3 left-3 z-20 bg-black/80 px-2.5 py-1 border border-[var(--neon-green)]/40 text-[var(--neon-green)] font-mono text-[9px] flex items-center gap-1.5 uppercase font-bold tracking-wider">
+                  <div className="w-2 h-2 rounded-full bg-[var(--neon-green)] animate-ping" />
+                  <span>REMOTE // {effectivePeerName}</span>
+                </div>
+              </div>
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-950 to-black select-none pointer-events-none opacity-40">
                 <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(rgba(0,255,102,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,102,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
+                <canvas ref={canvasRef} width={640} height={400} className="w-full h-full object-cover" />
               </div>
             )}
 
-            {/* Peer Avatar & Status Info */}
+            {/* Peer Avatar & Status Info (shown when not active video) */}
             {(status !== 'active' || call.type === 'voice') && (
               <div className="relative flex flex-col items-center z-10 space-y-5 px-4 text-center">
                 <div className="relative">
@@ -839,13 +946,13 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
                   <p className="text-[10px] text-[var(--neon-green)] tracking-widest uppercase animate-pulse">
                     {status === 'dialing' && '⚡ ESTABLISHING SECURE PORTAL CHANNEL...'}
                     {status === 'ringing' && '📞 HANDSHAKE PING SENT // RINGING...'}
-                    {status === 'active' && '● WEBRTC AUDIO TUNNEL OPENED'}
+                    {status === 'active' && (isRemoteSpeaking ? '🎙️ PEER TRANSMITTING AUDIO...' : '● WEBRTC AUDIO TUNNEL CONNECTED')}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Video picture-in-picture loopback */}
+            {/* Video picture-in-picture loopback (local video camera preview) */}
             {status === 'active' && call.type === 'video' && isVideoOn && (
               <div className="absolute bottom-4 right-4 z-20 w-36 h-48 border-2 border-[var(--neon-green)] bg-[var(--color-surface)] shadow-lg flex flex-col font-mono text-[8px] overflow-hidden">
                 <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
