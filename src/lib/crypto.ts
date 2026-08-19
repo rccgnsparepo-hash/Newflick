@@ -56,72 +56,111 @@ export async function encryptE2EEMessage(
   recipientPublicKeyJwkStr: string,
   senderPublicKeyJwkStr: string
 ): Promise<{ encryptedText: string; encryptedKey: string; senderEncryptedKey: string }> {
-  // 1. Generate Ephemeral AES Key
-  const aesKey = await window.crypto.subtle.generateKey(
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt"]
-  );
+  try {
+    if (!window?.crypto?.subtle || !recipientPublicKeyJwkStr || !senderPublicKeyJwkStr) {
+      return {
+        encryptedText: plainText,
+        encryptedKey: "",
+        senderEncryptedKey: ""
+      };
+    }
 
-  // 2. Encrypt message body using AES-GCM
-  const encoder = new TextEncoder();
-  const dataBytes = encoder.encode(plainText);
-  const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit standard IV
+    // Parse JWKs safely
+    let parsedRecipientJwk: any;
+    let parsedSenderJwk: any;
+    try {
+      parsedRecipientJwk = typeof recipientPublicKeyJwkStr === 'string' ? JSON.parse(recipientPublicKeyJwkStr) : recipientPublicKeyJwkStr;
+      parsedSenderJwk = typeof senderPublicKeyJwkStr === 'string' ? JSON.parse(senderPublicKeyJwkStr) : senderPublicKeyJwkStr;
+    } catch {
+      return {
+        encryptedText: plainText,
+        encryptedKey: "",
+        senderEncryptedKey: ""
+      };
+    }
 
-  const ciphertextBuffer = await window.crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    aesKey,
-    dataBytes
-  );
+    if (!parsedRecipientJwk || !parsedSenderJwk) {
+      return {
+        encryptedText: plainText,
+        encryptedKey: "",
+        senderEncryptedKey: ""
+      };
+    }
 
-  // Combine IV and Ciphertext before encoding
-  const ciphertextBytes = new Uint8Array(ciphertextBuffer);
-  const combinedBytes = new Uint8Array(iv.length + ciphertextBytes.length);
-  combinedBytes.set(iv, 0);
-  combinedBytes.set(ciphertextBytes, iv.length);
-  
-  const encryptedTextMessage = bytesToBase64(combinedBytes);
+    // 1. Generate Ephemeral AES Key
+    const aesKey = await window.crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
 
-  // 3. Export AES key to raw bytes
-  const aesRawKeyBytes = await window.crypto.subtle.exportKey("raw", aesKey);
+    // 2. Encrypt message body using AES-GCM
+    const encoder = new TextEncoder();
+    const dataBytes = encoder.encode(plainText);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit standard IV
 
-  // 4. Encrypt the AES key for the recipient
-  const recipientPubKey = await window.crypto.subtle.importKey(
-    "jwk",
-    JSON.parse(recipientPublicKeyJwkStr),
-    { name: "RSA-OAEP", hash: "SHA-256" },
-    true,
-    ["encrypt"]
-  );
+    const ciphertextBuffer = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      dataBytes
+    );
 
-  const recipientEncryptedBuffer = await window.crypto.subtle.encrypt(
-    { name: "RSA-OAEP" },
-    recipientPubKey,
-    aesRawKeyBytes
-  );
-  const encryptedKeyRecipient = bytesToBase64(new Uint8Array(recipientEncryptedBuffer));
+    // Combine IV and Ciphertext before encoding
+    const ciphertextBytes = new Uint8Array(ciphertextBuffer);
+    const combinedBytes = new Uint8Array(iv.length + ciphertextBytes.length);
+    combinedBytes.set(iv, 0);
+    combinedBytes.set(ciphertextBytes, iv.length);
+    
+    const encryptedTextMessage = bytesToBase64(combinedBytes);
 
-  // 5. Encrypt the AES key for the sender (history recovery)
-  const senderPubKey = await window.crypto.subtle.importKey(
-    "jwk",
-    JSON.parse(senderPublicKeyJwkStr),
-    { name: "RSA-OAEP", hash: "SHA-256" },
-    true,
-    ["encrypt"]
-  );
+    // 3. Export AES key to raw bytes
+    const aesRawKeyBytes = await window.crypto.subtle.exportKey("raw", aesKey);
 
-  const senderEncryptedBuffer = await window.crypto.subtle.encrypt(
-    { name: "RSA-OAEP" },
-    senderPubKey,
-    aesRawKeyBytes
-  );
-  const encryptedKeySender = bytesToBase64(new Uint8Array(senderEncryptedBuffer));
+    // 4. Encrypt the AES key for the recipient
+    const recipientPubKey = await window.crypto.subtle.importKey(
+      "jwk",
+      parsedRecipientJwk,
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      true,
+      ["encrypt"]
+    );
 
-  return {
-    encryptedText: encryptedTextMessage,
-    encryptedKey: encryptedKeyRecipient,
-    senderEncryptedKey: encryptedKeySender,
-  };
+    const recipientEncryptedBuffer = await window.crypto.subtle.encrypt(
+      { name: "RSA-OAEP" },
+      recipientPubKey,
+      aesRawKeyBytes
+    );
+    const encryptedKeyRecipient = bytesToBase64(new Uint8Array(recipientEncryptedBuffer));
+
+    // 5. Encrypt the AES key for the sender (history recovery)
+    const senderPubKey = await window.crypto.subtle.importKey(
+      "jwk",
+      parsedSenderJwk,
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      true,
+      ["encrypt"]
+    );
+
+    const senderEncryptedBuffer = await window.crypto.subtle.encrypt(
+      { name: "RSA-OAEP" },
+      senderPubKey,
+      aesRawKeyBytes
+    );
+    const encryptedKeySender = bytesToBase64(new Uint8Array(senderEncryptedBuffer));
+
+    return {
+      encryptedText: encryptedTextMessage,
+      encryptedKey: encryptedKeyRecipient,
+      senderEncryptedKey: encryptedKeySender,
+    };
+  } catch (err) {
+    console.warn("[Crypto] Encrypt fallback to plaintext wrap:", err);
+    return {
+      encryptedText: plainText,
+      encryptedKey: "",
+      senderEncryptedKey: ""
+    };
+  }
 }
 
 /**

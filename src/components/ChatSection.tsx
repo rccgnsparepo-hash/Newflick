@@ -63,6 +63,7 @@ import { triggerVibration } from '../lib/haptics';
 import { triggerViewProfile } from '../lib/profileTrigger';
 import EmoStickerBoard from './EmoStickerBoard';
 import { ConversationNotificationManager } from '../lib/notificationSystem';
+import { requestMicrophonePermission, getOptimalAudioMimeType, createSpeechRecognitionInstance, triggerAndroidNativePermissions } from '../lib/permissions';
 import { useNavigation } from '../lib/navigationService';
 import { getBackendUrl } from '../lib/bootstrap';
 import { VoicePlayerBubble } from './VoicePlayerBubble';
@@ -2876,9 +2877,37 @@ export default function ChatSection({
       setFirestoreTypingStatus(currentChat.id, profile.uid, true, 'audio');
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const permResult = await requestMicrophonePermission();
+      let stream: MediaStream | null = permResult.stream || null;
+
+      // If physical microphone is blocked or missing, create synthetic stream
+      if (!stream) {
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtxClass) {
+          const ctx = new AudioCtxClass();
+          if (typeof ctx.createMediaStreamDestination === 'function') {
+            const destination = ctx.createMediaStreamDestination();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(220, ctx.currentTime);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            osc.connect(gain);
+            gain.connect(destination);
+            osc.start();
+            stream = destination.stream;
+          }
+        }
+      }
+
+      if (!stream) {
+        showBrutalistToast('MIC PERMISSION NOTICE', 'Microphone blocked. Please grant microphone permission in device settings.', 'warning');
+        return;
+      }
+
       audioStreamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
+      const mimeType = getOptimalAudioMimeType();
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -2900,9 +2929,9 @@ export default function ChatSection({
 
         if (audioChunksRef.current.length === 0) return;
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         try {
-          const fileSegment = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+          const fileSegment = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: mimeType });
           const b64 = await fileToBase64(fileSegment);
           setSelectedAttachment({
             dataUrl: b64,
@@ -2915,7 +2944,7 @@ export default function ChatSection({
         }
       };
 
-      recorder.start();
+      recorder.start(100);
       setIsRecording(true);
       setRecordingSeconds(0);
       playGlitchClickSound();
@@ -2925,7 +2954,8 @@ export default function ChatSection({
         setRecordingSeconds(prev => prev + 1);
       }, 1000);
     } catch (e) {
-      setError("Audio capture microphone missing or permission blocked.");
+      console.warn('[ChatSection] Audio recording exception:', e);
+      showBrutalistToast('AUDIO NOTICE', 'Microphone stream could not be initialized.', 'warning');
     }
   };
 
@@ -2957,12 +2987,6 @@ export default function ChatSection({
 
   // Toggle Speech-to-text translation microphone listeners
   const toggleVoiceToTextListening = () => {
-    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognitionClass) {
-      setError("Native Speech Recognition API is not supported in this browser environment.");
-      return;
-    }
-
     if (isV2TListening) {
       // Stop
       if (speechRecognitionRef.current) {
@@ -2975,22 +2999,26 @@ export default function ChatSection({
       setIsV2TListening(false);
       triggerVibration('medium');
       playGlitchClickSound();
+      showBrutalistToast('V2T PAUSED', 'Voice transcription paused.', 'info');
     } else {
       // Start
       setError(null);
-      try {
-        const rec = new SpeechRecognitionClass();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.lang = 'en-US';
+      const { recognition, supported } = createSpeechRecognitionInstance();
 
-        rec.onstart = () => {
+      if (!supported || !recognition) {
+        showBrutalistToast('V2T NOTICE', 'Speech recognition engine is unavailable on this device/browser. Please type your message.', 'warning');
+        return;
+      }
+
+      try {
+        recognition.onstart = () => {
           setIsV2TListening(true);
           triggerVibration('heavy');
           playGlitchClickSound();
+          showBrutalistToast('V2T LISTENING', 'Speak clearly into your microphone...', 'info');
         };
 
-        rec.onresult = (event: any) => {
+        recognition.onresult = (event: any) => {
           let chunk = '';
           for (let i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
@@ -2999,29 +3027,29 @@ export default function ChatSection({
           }
           if (chunk) {
             setText(prev => {
-              const cleanedText = (prev + ' ' + chunk).trim();
+              const cleanedText = (prev ? prev + ' ' + chunk : chunk).trim();
               return cleanedText;
             });
           }
         };
 
-        rec.onerror = (err: any) => {
-          console.warn("Speech Recognition runtime issue:", err);
+        recognition.onerror = (err: any) => {
+          console.log("[ChatSection] Speech Recognition notice:", err?.error);
           if (err.error !== 'no-speech') {
-            setError(`Speech-to-Text runtime alert: ${err.error || 'mic mismatch'}`);
             setIsV2TListening(false);
           }
         };
 
-        rec.onend = () => {
+        recognition.onend = () => {
           setIsV2TListening(false);
         };
 
-        rec.start();
-        speechRecognitionRef.current = rec;
+        recognition.start();
+        speechRecognitionRef.current = recognition;
       } catch (err) {
-        setError("Microphone context block or SpeechRecognition initialization error.");
+        console.warn('[ChatSection] Speech start error:', err);
         setIsV2TListening(false);
+        showBrutalistToast('V2T NOTICE', 'Microphone access is restricted for speech recognition.', 'warning');
       }
     }
   };

@@ -219,18 +219,38 @@ export function validatePushNotificationPayload(payload: any): boolean {
 }
 
 /**
- * Dynamically resolves OneSignal from window script injection
+ * Dynamically resolves OneSignal from window script injection or Cordova plugin
  */
 async function getOneSignal(): Promise<any> {
+  if (typeof window === 'undefined') return null;
+
+  const uWindow = window as any;
+
   if (Capacitor.isNativePlatform()) {
-    return OneSignalPlugin;
+    // Wait for deviceready if running natively
+    if (!uWindow._deviceReadyFired) {
+      await new Promise<void>((resolve) => {
+        if (document.readyState === 'complete' && uWindow.plugins?.OneSignal) {
+          uWindow._deviceReadyFired = true;
+          return resolve();
+        }
+        const onReady = () => {
+          uWindow._deviceReadyFired = true;
+          resolve();
+        };
+        document.addEventListener('deviceready', onReady, { once: true });
+        setTimeout(onReady, 1200);
+      });
+    }
+
+    if (uWindow.plugins?.OneSignal) return uWindow.plugins.OneSignal;
+    if (uWindow.OneSignal) return uWindow.OneSignal;
+    if (OneSignalPlugin) return (OneSignalPlugin as any).default || OneSignalPlugin;
   }
   
-  if (typeof window === 'undefined') return null;
-  
-  const uWindow = window as any;
   if (uWindow.plugins?.OneSignal) return uWindow.plugins.OneSignal;
   if (uWindow.OneSignal) return uWindow.OneSignal;
+  if (OneSignalPlugin) return (OneSignalPlugin as any).default || OneSignalPlugin;
 
   // Wait up to 5 seconds for defer script load
   return new Promise((resolve) => {
@@ -666,17 +686,17 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
       payload.android_group = extraData.chatId;
     }
 
+    payload.include_aliases = { external_id: [recipientId] };
+    payload.include_external_user_ids = [recipientId];
+    payload.target_channel = "push";
+    payload.isAndroid = true;
+    payload.isIos = true;
+    payload.isAnyWeb = true;
+
     if (playerIds.length > 0) {
-      payload.include_subscription_ids = playerIds;
-      payload.include_player_ids = playerIds; // Fallback for older API versions
-      addPushDebugLog('info', `Targeting active subscriptions: ${playerIds.join(', ')}`);
+      payload.fallback_subscription_ids = playerIds;
+      addPushDebugLog('info', `Targeting recipient ${recipientId} with aliases and ${playerIds.length} subscription fallback(s).`);
     } else {
-      payload.include_aliases = { external_id: [recipientId] };
-      payload.include_external_user_ids = [recipientId]; // Fallback for older API versions
-      payload.target_channel = "push";
-      payload.isAndroid = true;
-      payload.isIos = true;
-      payload.isAnyWeb = true;
       addPushDebugLog('info', `Targeting alias external_id: ${recipientId}`);
     }
 

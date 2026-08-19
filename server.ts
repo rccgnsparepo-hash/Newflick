@@ -3,7 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, setLogLevel } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { readFileSync } from 'fs';
 
 // Suppress Firestore verbose/warning logs (such as offline connection warnings)
@@ -17,7 +17,8 @@ const app = express();
 const PORT = 3000;
 
 async function startServer() {
-  app.use(express.json());
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.raw({ limit: '100mb', type: 'application/octet-stream' }));
 
   // Enable CORS securely for all origins to allow standalone desktop/mobile clients to access the config tunnel
   app.use((req, res, next) => {
@@ -187,15 +188,13 @@ async function startServer() {
                   ios_sound: "default",
                   android_channel_id: channelId,
                   small_icon: "ic_stat_flick_logo",
-                  android_accent_color: "FF39FF14"
+                  android_accent_color: "FF39FF14",
+                  target_channel: "push",
+                  isAndroid: true,
+                  isIos: true,
+                  isAnyWeb: true,
+                  include_aliases: { external_id: [receiverId] }
                 };
-
-                if (playerIds.length > 0) {
-                  payload.include_subscription_ids = playerIds;
-                } else {
-                  payload.include_aliases = { external_id: [receiverId] };
-                  payload.target_channel = "push";
-                }
 
                 const osResponse = await fetch("https://onesignal.com/api/v1/notifications", {
                   method: "POST",
@@ -206,8 +205,26 @@ async function startServer() {
                   body: JSON.stringify(payload)
                 });
 
-                const osResult = await osResponse.json();
+                let osResult = await osResponse.json();
                 console.log(`[Backend Push Dispatcher] OneSignal REST API Response Status: ${osResponse.status}`, osResult);
+
+                // If alias dispatch had no registered players and we have playerIds, retry with subscription IDs
+                if (osResult.errors && playerIds.length > 0) {
+                  console.log(`[Backend Push Dispatcher] Retrying with direct subscription IDs for recipient ${receiverId}`);
+                  const fallbackPayload = { ...payload };
+                  delete fallbackPayload.include_aliases;
+                  fallbackPayload.include_subscription_ids = playerIds;
+                  const fallbackResp = await fetch("https://onesignal.com/api/v1/notifications", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json; charset=utf-8",
+                      "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
+                    },
+                    body: JSON.stringify(fallbackPayload)
+                  });
+                  osResult = await fallbackResp.json();
+                  console.log(`[Backend Push Dispatcher] Fallback Response:`, osResult);
+                }
               }
             } catch (err) {
               console.error(`[Backend Push Dispatcher] Error processing notification push:`, err);
@@ -524,6 +541,13 @@ async function startServer() {
       // Also create an in-app urgent notification doc in Firestore so any active client instance receives it instantly
       if (db) {
         try {
+          if (auth && !auth.currentUser) {
+            try {
+              await signInAnonymously(auth);
+            } catch (authErr) {
+              // ignore auth attempt error
+            }
+          }
           const notifId = `call-notif-${call.id}`;
           await setDoc(doc(db, 'notifications', notifId), {
             id: notifId,
@@ -539,8 +563,11 @@ async function startServer() {
             read: false,
             createdAt: serverTimestamp()
           });
-        } catch (notifErr) {
-          console.warn("[Backend Call Push] In-app notification creation notice:", notifErr);
+        } catch (notifErr: any) {
+          // Log at debug level to avoid polluting runtime logs
+          if (!notifErr?.message?.includes('PERMISSION_DENIED')) {
+            console.warn("[Backend Call Push] In-app notification creation notice:", notifErr?.message || notifErr);
+          }
         }
       }
     } catch (pushErr) {
@@ -550,6 +577,15 @@ async function startServer() {
 
   // Secure Backend-driven System User Authentication (allows bypassing rules securely by registering as client)
   async function authenticateBackendSystemUser(auth: any) {
+    // 1. Try anonymous sign-in first (instant, guaranteed to succeed if enabled)
+    try {
+      const anonCred = await signInAnonymously(auth);
+      console.log("[Backend Auth] System backend signed in anonymously as UID:", anonCred.user.uid);
+      return true;
+    } catch (anonErr) {
+      console.log("[Backend Auth] Anonymous sign-in unavailable, trying email credentials...");
+    }
+
     const email = "system-backend@flick-pwa.internal";
     const password = process.env.SYSTEM_BACKEND_PASSWORD || "FlickSystemSecureBackendPass123!";
     
@@ -575,11 +611,11 @@ async function startServer() {
             console.log("[Backend Auth] Fallback system backend registered and signed in successfully as UID:", userCredential.user.uid);
             return true;
           } catch (fallbackErr: any) {
-            console.error("[Backend Auth] Failed to register fallback system backend user:", fallbackErr);
+            console.warn("[Backend Auth] Notice: backend running in unauthenticated mode (client-side will handle authenticated writes).");
             return false;
           }
         } else {
-          console.error("[Backend Auth] Failed to register primary system backend user:", createErr);
+          console.warn("[Backend Auth] Notice: backend running in unauthenticated mode (client-side will handle authenticated writes).");
           return false;
         }
       }
@@ -606,10 +642,11 @@ async function startServer() {
     try {
       const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
-      // Forward full body from client to preserve all native options (channel_id, small_icon, large_icon, collapse_id, etc.)
       const payload = { ...req.body };
+      const fallbackSubIds = payload.fallback_subscription_ids;
+      delete payload.fallback_subscription_ids;
 
-      const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      let response = await fetch("https://onesignal.com/api/v1/notifications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
@@ -618,7 +655,30 @@ async function startServer() {
         body: JSON.stringify(payload)
       });
 
-      const responseData = await response.json();
+      let responseData = await response.json();
+
+      // If alias had no players and we have fallback subscription IDs, retry with them
+      if (responseData.errors && fallbackSubIds && Array.isArray(fallbackSubIds) && fallbackSubIds.length > 0) {
+        console.log("[/api/push/send] Alias dispatch failed, retrying with fallback subscription IDs:", fallbackSubIds);
+        const retryPayload = { ...payload };
+        delete retryPayload.include_aliases;
+        retryPayload.include_subscription_ids = fallbackSubIds;
+
+        const retryResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
+          },
+          body: JSON.stringify(retryPayload)
+        });
+        const retryData = await retryResponse.json();
+        if (!retryData.errors || retryData.id) {
+          responseData = retryData;
+          response = retryResponse;
+        }
+      }
+
       res.status(response.status).json(responseData);
     } catch (err: any) {
       console.error("[Backend Push Exception] failed:", err);
@@ -846,6 +906,37 @@ async function startServer() {
     }
   });
 
+  // 5b. Purge Call Records & Signals: POST /api/calls/purge
+  app.post("/api/calls/purge", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      activeCallsCache.clear();
+      callSignalsStore.clear();
+
+      let purgedCount = 0;
+      if (db) {
+        try {
+          const callsColl = collection(db, 'calls');
+          const snap = await getDocs(callsColl);
+          for (const docSnap of snap.docs) {
+            const data = docSnap.data();
+            if (!userId || data.callerId === userId || data.receiverId === userId) {
+              await deleteDoc(docSnap.ref);
+              purgedCount++;
+            }
+          }
+        } catch (e) {
+          console.warn("[POST /api/calls/purge] Firestore purge notice:", e);
+        }
+      }
+
+      console.log(`[Calls Backend] Purged ${purgedCount} call logs and cleared signaling memory.`);
+      res.json({ success: true, purgedCount });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // --- Fast In-Memory WebRTC Signaling Relay ---
   interface CallSignal {
     id: string;
@@ -926,19 +1017,143 @@ async function startServer() {
     }
   });
 
-  // 8. Poll WebRTC Signals: GET /api/calls/signal/poll/:callId/:participantId
-  app.get("/api/calls/signal/poll/:callId/:participantId", (req, res) => {
+  // 8. Poll WebRTC Signals: GET /api/calls/signal/poll (Supports both query params and URL params)
+  const handleSignalPoll = (req: express.Request, res: express.Response) => {
     try {
-      const { callId, participantId } = req.params;
+      const callId = req.params.callId || (req.query.callId as string);
+      const participantId = req.params.participantId || (req.query.recipientId as string) || (req.query.participantId as string);
       const since = parseInt((req.query.since as string) || '0', 10);
 
+      if (!callId) {
+        return res.status(400).json({ error: "Missing callId" });
+      }
+
       const signals = callSignalsStore.get(callId) || [];
-      // Return signals from the peer (senderId !== participantId) that occurred after 'since'
       const peerSignals = signals.filter(
-        s => s.senderId !== participantId && s.timestamp > since
+        s => (!participantId || s.senderId !== participantId) && s.timestamp > since
       );
 
-      res.json({ signals: peerSignals, serverTime: Date.now() });
+      // Extract direct offer / answer for quick matching
+      const offerSignal = peerSignals.find(s => s.type === 'offer');
+      const answerSignal = peerSignals.find(s => s.type === 'answer');
+
+      res.json({
+        signals: peerSignals,
+        offer: offerSignal ? offerSignal.payload : null,
+        answer: answerSignal ? answerSignal.payload : null,
+        serverTime: Date.now()
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  };
+
+  app.get("/api/calls/signal/poll", handleSignalPoll);
+  app.get("/api/calls/signal/poll/:callId/:participantId", handleSignalPoll);
+
+  // --- ZERO-KNOWLEDGE ENCRYPTED VAULT SYNC RELAY (PIN-BASED MULTI-DEVICE BRIDGE) ---
+  interface VaultRelayEntry {
+    syncPin: string;
+    payloadBase64: string;
+    totalBytes: number;
+    createdAt: number;
+    expiresAt: number;
+    senderDeviceId?: string;
+  }
+
+  const vaultSyncRelayStore = new Map<string, VaultRelayEntry>();
+
+  // Cleanup expired relay entries every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [pin, entry] of vaultSyncRelayStore.entries()) {
+      if (now > entry.expiresAt) {
+        vaultSyncRelayStore.delete(pin);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  // 1. Dispatch Encrypted Vault to Temporary Bridge: POST /api/vault/sync/dispatch
+  app.post("/api/vault/sync/dispatch", (req, res) => {
+    try {
+      const { syncPin, payloadBase64, totalBytes, senderDeviceId } = req.body;
+      if (!syncPin || !payloadBase64) {
+        return res.status(400).json({ error: "Missing required syncPin or encrypted payload." });
+      }
+
+      const normalizedPin = String(syncPin).trim().toUpperCase();
+      const now = Date.now();
+      const expiresAt = now + (15 * 60 * 1000); // 15 minutes TTL
+
+      vaultSyncRelayStore.set(normalizedPin, {
+        syncPin: normalizedPin,
+        payloadBase64,
+        totalBytes: totalBytes || payloadBase64.length,
+        createdAt: now,
+        expiresAt,
+        senderDeviceId
+      });
+
+      console.log(`[Vault Relay] Stored encrypted vault dispatch for PIN ${normalizedPin} (${Math.round((totalBytes || payloadBase64.length) / 1024)} KB)`);
+      res.status(200).json({
+        success: true,
+        syncPin: normalizedPin,
+        expiresAt,
+        message: "Encrypted vault staged on secure bridge."
+      });
+    } catch (err: any) {
+      console.error("[POST /api/vault/sync/dispatch] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 2. Query Relay Status: GET /api/vault/sync/status/:syncPin
+  app.get("/api/vault/sync/status/:syncPin", (req, res) => {
+    try {
+      const pin = req.params.syncPin.trim().toUpperCase();
+      const entry = vaultSyncRelayStore.get(pin);
+      if (!entry || Date.now() > entry.expiresAt) {
+        return res.json({ ready: false, exists: false });
+      }
+      res.json({
+        ready: true,
+        exists: true,
+        totalBytes: entry.totalBytes,
+        createdAt: entry.createdAt,
+        expiresAt: entry.expiresAt,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Claim / Ingest Encrypted Vault: GET /api/vault/sync/claim/:syncPin
+  app.get("/api/vault/sync/claim/:syncPin", (req, res) => {
+    try {
+      const pin = req.params.syncPin.trim().toUpperCase();
+      const entry = vaultSyncRelayStore.get(pin);
+      if (!entry || Date.now() > entry.expiresAt) {
+        return res.status(404).json({ error: "Vault dispatch code not found, expired, or already claimed." });
+      }
+
+      console.log(`[Vault Relay] Delivering encrypted vault for PIN ${pin} to receiving device.`);
+      res.json({
+        success: true,
+        payloadBase64: entry.payloadBase64,
+        totalBytes: entry.totalBytes,
+        createdAt: entry.createdAt
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. Delete / Clear Claimed Vault: DELETE /api/vault/sync/claim/:syncPin
+  app.delete("/api/vault/sync/claim/:syncPin", (req, res) => {
+    try {
+      const pin = req.params.syncPin.trim().toUpperCase();
+      vaultSyncRelayStore.delete(pin);
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -186,11 +186,88 @@ function Dashboard() {
     window.addEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
     window.addEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
     window.addEventListener('faraflick-open-call-history', handleOpenCallHistory);
+
+    // Dynamic Physical Display Density (DPI) & Zoom Normalizer
+    const adjustDisplayDensityZoom = () => {
+      const isDesktop = window.innerWidth >= 1024;
+      if (!isDesktop) {
+        document.documentElement.style.removeProperty('--app-desktop-zoom');
+        document.documentElement.style.removeProperty('zoom');
+        return;
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+      let targetZoom = 0.90;
+
+      // Adjust for Windows DPI display scaling (e.g. 1.25x / 1.5x) or Retina (2.0x+)
+      if (dpr >= 1.75) {
+        // High density Retina / 4K monitors: maintain crisp 0.90
+        targetZoom = 0.90;
+      } else if (dpr >= 1.4) {
+        // Common 150% Windows scaling on 1080p laptop panels: scale to 0.85 to avoid bloated cards
+        targetZoom = 0.85;
+      } else if (dpr >= 1.15) {
+        // 125% Windows scaling on standard laptops: scale to 0.88
+        targetZoom = 0.88;
+      } else {
+        // Standard 100% desktop DPI (1.0x)
+        targetZoom = 0.90;
+      }
+
+      document.documentElement.style.setProperty('--app-desktop-zoom', targetZoom.toString());
+      (document.documentElement.style as any).zoom = targetZoom.toString();
+    };
+
+    adjustDisplayDensityZoom();
+    window.addEventListener('resize', adjustDisplayDensityZoom);
+
+    // Watch for resolution / monitor transitions
+    let mediaQuery: MediaQueryList | null = null;
+    const updateMediaQueryListener = () => {
+      const dpr = window.devicePixelRatio || 1;
+      try {
+        if (mediaQuery) {
+          mediaQuery.removeEventListener('change', handleDpiChange);
+        }
+        mediaQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+        mediaQuery.addEventListener('change', handleDpiChange);
+      } catch (e) {
+        // Ignore fallback
+      }
+    };
+
+    const handleDpiChange = () => {
+      adjustDisplayDensityZoom();
+      updateMediaQueryListener();
+    };
+
+    updateMediaQueryListener();
+
+    // Prevent accidental browser zooming across laptops/desktops to lock permanent layout scale
+    const handleWheelZoom = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+    const handleKeyZoom = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0' || e.key === '_')) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('wheel', handleWheelZoom, { passive: false });
+    window.addEventListener('keydown', handleKeyZoom);
+
     return () => {
       window.removeEventListener('faraflick-view-profile', handleViewProfileEvent);
       window.removeEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
       window.removeEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
       window.removeEventListener('faraflick-open-call-history', handleOpenCallHistory);
+      window.removeEventListener('resize', adjustDisplayDensityZoom);
+      if (mediaQuery) {
+        mediaQuery.removeEventListener('change', handleDpiChange);
+      }
+      window.removeEventListener('wheel', handleWheelZoom);
+      window.removeEventListener('keydown', handleKeyZoom);
     };
   }, []);
 
@@ -212,15 +289,56 @@ function Dashboard() {
     };
   }, [loading]);
 
+  // Registry ref to uniquely key call status transitions by callId and prevent race conditions
+  const callEventsStateRef = useRef<Map<string, { lastStatus: string; updatedAt: number; dialedRing: boolean; notifiedIpc: boolean }>>(new Map());
+
+  // Diagnostic checker for call signal events
+  const runCallSignalDiagnostic = (callId: string, signalData: any, source: string): boolean => {
+    if (!callId || typeof callId !== 'string' || callId.trim().length === 0) {
+      console.warn(`[Call Diagnostic (${source})] Rejected invalid or missing callId:`, signalData);
+      return false;
+    }
+
+    const currentStatus = signalData?.status || 'unknown';
+    const record = callEventsStateRef.current.get(callId);
+
+    // If call was already ended, ignore any lingering dialing/ringing signals
+    if (record?.lastStatus === 'ended' && currentStatus !== 'ended') {
+      console.log(`[Call Diagnostic (${source})] Ignored stale signal "${currentStatus}" for terminated callId: ${callId}`);
+      return false;
+    }
+
+    console.log(`[Call Diagnostic (${source})] Verified call signal [callId: ${callId}, status: ${currentStatus}, peer: ${signalData?.callerName || signalData?.callerId || signalData?.peerId || 'Unknown'}, type: ${signalData?.type || 'voice'}]`);
+    return true;
+  };
+
   // Helper to handle and display incoming call across Web, Electron, and Mobile
-  const handleIncomingCallData = (incomingCall: any) => {
+  const handleIncomingCallData = (incomingCall: any, source: string = 'snapshot') => {
     if (!incomingCall || !profile || incomingCall.callerId === profile.uid || incomingCall.status === 'ended') return;
 
-    console.log('[Realtime Call] Incoming call active:', incomingCall);
+    const callId = incomingCall.id || incomingCall.callId;
+    if (!runCallSignalDiagnostic(callId, incomingCall, source)) return;
+
+    const record = callEventsStateRef.current.get(callId) || {
+      lastStatus: '',
+      updatedAt: 0,
+      dialedRing: false,
+      notifiedIpc: false
+    };
+
+    // Update state uniquely keyed by callId
     setOngoingCall(prev => {
-      if (prev && !prev.isIncoming) return prev;
+      // If user is already on a different active (connected) call, do not clobber it
+      if (prev && prev.id !== callId && prev.status === 'active') {
+        console.warn(`[Call Diagnostic] User already in active call ${prev.id}, ignoring incoming call ${callId}`);
+        return prev;
+      }
+      // If same call already in identical status, keep ref to prevent re-render thrashing
+      if (prev && prev.id === callId && prev.status === (incomingCall.status || 'dialing')) {
+        return prev;
+      }
       return {
-        id: incomingCall.id,
+        id: callId,
         type: incomingCall.type || 'voice',
         status: incomingCall.status || 'dialing',
         peerId: incomingCall.callerId,
@@ -230,26 +348,36 @@ function Dashboard() {
       };
     });
 
-    // Notify caller that our device is ringing
-    if (incomingCall.status === 'dialing') {
-      ringActiveCall(incomingCall.id);
+    // Notify caller that our device is ringing (only once per callId)
+    if (incomingCall.status === 'dialing' && !record.dialedRing) {
+      ringActiveCall(callId);
+      record.dialedRing = true;
     }
 
-    // Electron desktop notification & window focus
-    const uWindow = window as any;
-    if (uWindow.electron?.ipcRenderer?.send) {
-      uWindow.electron.ipcRenderer.send('incoming-call', {
-        callerName: incomingCall.callerName,
-        callType: incomingCall.type,
-        callId: incomingCall.id
-      });
-    } else if (uWindow.ipcRenderer?.send) {
-      uWindow.ipcRenderer.send('incoming-call', {
-        callerName: incomingCall.callerName,
-        callType: incomingCall.type,
-        callId: incomingCall.id
-      });
+    // Electron desktop notification & window focus (only once per callId)
+    if (!record.notifiedIpc) {
+      const uWindow = window as any;
+      if (uWindow.electron?.ipcRenderer?.send) {
+        uWindow.electron.ipcRenderer.send('incoming-call', {
+          callerName: incomingCall.callerName,
+          callType: incomingCall.type,
+          callId: callId
+        });
+        record.notifiedIpc = true;
+      } else if (uWindow.ipcRenderer?.send) {
+        uWindow.ipcRenderer.send('incoming-call', {
+          callerName: incomingCall.callerName,
+          callType: incomingCall.type,
+          callId: callId
+        });
+        record.notifiedIpc = true;
+      }
     }
+
+    // Record latest transition for this callId
+    record.lastStatus = incomingCall.status || 'dialing';
+    record.updatedAt = Date.now();
+    callEventsStateRef.current.set(callId, record);
   };
 
   // Subscribe to incoming call requests via Firestore snapshot
@@ -258,7 +386,7 @@ function Dashboard() {
 
     const unsubscribeIncoming = subscribeToIncomingCall(profile.uid, (incomingCall) => {
       if (incomingCall && incomingCall.callerId !== profile.uid) {
-        handleIncomingCallData(incomingCall);
+        handleIncomingCallData(incomingCall, 'firestore-snapshot');
       } else {
         setOngoingCall(prev => {
           if (!prev) return null;
@@ -282,7 +410,7 @@ function Dashboard() {
         try {
           const incoming = await fetchActiveIncomingCall(profile.uid);
           if (incoming && incoming.callerId !== profile.uid && incoming.status !== 'ended') {
-            handleIncomingCallData(incoming);
+            handleIncomingCallData(incoming, 'heartbeat-poll');
           }
         } catch (e) {
           // ignore
@@ -299,7 +427,7 @@ function Dashboard() {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
         console.log('[Realtime Call] Window event incoming call received:', customEvent.detail);
-        handleIncomingCallData(customEvent.detail);
+        handleIncomingCallData(customEvent.detail, 'custom-window-event');
       }
     };
 
@@ -309,17 +437,44 @@ function Dashboard() {
     };
   }, [profile]);
 
-  // Sync handshakes in real-time
+  // Sync handshakes in real-time uniquely keyed by callId
   useEffect(() => {
     if (!ongoingCall?.id) return;
+    const activeCallId = ongoingCall.id;
 
-    const unsubscribeState = subscribeToCallState(ongoingCall.id, (updatedCall) => {
+    const unsubscribeState = subscribeToCallState(activeCallId, (updatedCall) => {
+      if (!runCallSignalDiagnostic(activeCallId, updatedCall, 'state-subscription')) return;
+
       if (!updatedCall || updatedCall.status === 'ended') {
-        console.log('[Realtime Call] Call terminated by peer.');
-        setOngoingCall(null);
-      } else {
+        console.log(`[Realtime Call] Call ${activeCallId} terminated.`);
+        const record = callEventsStateRef.current.get(activeCallId) || {
+          lastStatus: '',
+          updatedAt: 0,
+          dialedRing: false,
+          notifiedIpc: false
+        };
+        record.lastStatus = 'ended';
+        record.updatedAt = Date.now();
+        callEventsStateRef.current.set(activeCallId, record);
+
         setOngoingCall(prev => {
-          if (!prev) return null;
+          if (prev?.id === activeCallId) return null;
+          return prev;
+        });
+      } else {
+        const record = callEventsStateRef.current.get(activeCallId) || {
+          lastStatus: '',
+          updatedAt: 0,
+          dialedRing: false,
+          notifiedIpc: false
+        };
+        record.lastStatus = updatedCall.status;
+        record.updatedAt = Date.now();
+        callEventsStateRef.current.set(activeCallId, record);
+
+        setOngoingCall(prev => {
+          if (!prev || prev.id !== activeCallId) return prev;
+          if (prev.status === updatedCall.status) return prev;
           return {
             ...prev,
             status: updatedCall.status

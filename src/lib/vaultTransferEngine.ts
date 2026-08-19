@@ -269,19 +269,22 @@ export async function startDeviceTransferSender(
   passphrase: string,
   onStatusChange: (session: DeviceSyncSession) => void
 ): Promise<DeviceSyncSession> {
-  const sessionId = `transfer_${syncPin}_${Date.now()}`;
+  const normalizedPin = syncPin.trim().toUpperCase();
+  const sessionId = `transfer_${normalizedPin}_${Date.now()}`;
   let pc: RTCPeerConnection | null = null;
   let dataChannel: RTCDataChannel | null = null;
   let isClosed = false;
+  let pollInterval: any = null;
 
   const session: DeviceSyncSession = {
-    syncPin,
+    syncPin: normalizedPin,
     sessionId,
     isSender: true,
     status: 'pairing',
-    progressPercent: 0,
+    progressPercent: 10,
     close: () => {
       isClosed = true;
+      if (pollInterval) clearInterval(pollInterval);
       if (dataChannel) dataChannel.close();
       if (pc) pc.close();
     },
@@ -290,94 +293,121 @@ export async function startDeviceTransferSender(
   onStatusChange(session);
 
   try {
-    // 1. Prepare the encrypted vault payload
+    // 1. Prepare and export the encrypted vault payload (Zero-Knowledge AES-256-GCM)
+    session.progressPercent = 25;
+    onStatusChange(session);
+
     const vaultBlob = await exportEncryptedVault(passphrase);
     const vaultBuffer = await vaultBlob.arrayBuffer();
+    const bytes = new Uint8Array(vaultBuffer);
+    const payloadBase64 = bytesToBase64(bytes);
 
-    // 2. Initialize WebRTC Peer Connection with DataChannel
-    pc = new RTCPeerConnection(ICE_SERVERS);
-    dataChannel = pc.createDataChannel('flick_vault_transfer', { ordered: true });
-    dataChannel.binaryType = 'arraybuffer';
+    session.progressPercent = 50;
+    onStatusChange(session);
 
-    dataChannel.onopen = async () => {
-      session.status = 'transferring';
-      onStatusChange(session);
-
-      // Stream data in 64KB chunks
-      const CHUNK_SIZE = 64 * 1024;
-      const totalBytes = vaultBuffer.byteLength;
-      let offset = 0;
-
-      // Send header with total size
-      dataChannel?.send(JSON.stringify({ type: 'TRANSFER_HEADER', totalBytes }));
-
-      const sendNextChunk = () => {
-        if (isClosed || !dataChannel || dataChannel.readyState !== 'open') return;
-
-        while (dataChannel.bufferedAmount < 1024 * 1024 && offset < totalBytes) {
-          const end = Math.min(offset + CHUNK_SIZE, totalBytes);
-          const chunk = vaultBuffer.slice(offset, end);
-          dataChannel.send(chunk);
-          offset = end;
-
-          const pct = Math.round((offset / totalBytes) * 100);
-          session.progressPercent = pct;
-          onStatusChange(session);
-        }
-
-        if (offset < totalBytes) {
-          setTimeout(sendNextChunk, 20);
-        } else {
-          // Send completion signal
-          dataChannel.send(JSON.stringify({ type: 'TRANSFER_COMPLETE' }));
-          session.status = 'completed';
-          session.progressPercent = 100;
-          onStatusChange(session);
-        }
-      };
-
-      sendNextChunk();
-    };
-
-    // Register signaling over fast server relay
+    // 2. Stage encrypted ciphertext on the high-speed Zero-Knowledge bridge
     const backendUrl = getBackendUrl();
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    await fetch(`${backendUrl}/api/calls/signal/send`, {
+    await fetch(`${backendUrl}/api/vault/sync/dispatch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        callId: `sync_${syncPin}`,
-        senderId: 'sender',
-        type: 'offer',
-        payload: offer,
+        syncPin: normalizedPin,
+        payloadBase64,
+        totalBytes: bytes.byteLength,
+        senderDeviceId: `device_${Date.now()}`
       }),
-    }).catch(console.warn);
+    });
 
-    // Poll for answer
-    const pollInterval = setInterval(async () => {
+    session.progressPercent = 75;
+    session.status = 'pairing';
+    onStatusChange(session);
+
+    // 3. Initialize WebRTC Peer Connection with DataChannel as additional direct pipe
+    try {
+      pc = new RTCPeerConnection(ICE_SERVERS);
+      dataChannel = pc.createDataChannel('flick_vault_transfer', { ordered: true });
+      dataChannel.binaryType = 'arraybuffer';
+
+      dataChannel.onopen = async () => {
+        session.status = 'transferring';
+        session.progressPercent = 85;
+        onStatusChange(session);
+
+        const CHUNK_SIZE = 64 * 1024;
+        const totalBytes = vaultBuffer.byteLength;
+        let offset = 0;
+
+        dataChannel?.send(JSON.stringify({ type: 'TRANSFER_HEADER', totalBytes }));
+
+        const sendNextChunk = () => {
+          if (isClosed || !dataChannel || dataChannel.readyState !== 'open') return;
+
+          while (dataChannel.bufferedAmount < 1024 * 1024 && offset < totalBytes) {
+            const end = Math.min(offset + CHUNK_SIZE, totalBytes);
+            const chunk = vaultBuffer.slice(offset, end);
+            dataChannel.send(chunk);
+            offset = end;
+
+            const pct = Math.round((offset / totalBytes) * 100);
+            session.progressPercent = Math.max(85, pct);
+            onStatusChange(session);
+          }
+
+          if (offset < totalBytes) {
+            setTimeout(sendNextChunk, 20);
+          } else {
+            dataChannel.send(JSON.stringify({ type: 'TRANSFER_COMPLETE' }));
+            session.status = 'completed';
+            session.progressPercent = 100;
+            onStatusChange(session);
+          }
+        };
+
+        sendNextChunk();
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      fetch(`${backendUrl}/api/calls/signal/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callId: `sync_${normalizedPin}`,
+          senderId: 'sender',
+          type: 'offer',
+          payload: offer,
+        }),
+      }).catch(console.warn);
+    } catch (webrtcErr) {
+      console.warn('[P2P Sync] WebRTC init fallback to instant relay:', webrtcErr);
+    }
+
+    // 4. Poll status to detect when peer claims the vault
+    pollInterval = setInterval(async () => {
       if (isClosed || session.status === 'completed') {
         clearInterval(pollInterval);
         return;
       }
 
       try {
-        const res = await fetch(`${backendUrl}/api/calls/signal/poll?callId=sync_${syncPin}&recipientId=sender`);
+        const res = await fetch(`${backendUrl}/api/vault/sync/status/${normalizedPin}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.answer && !pc?.currentRemoteDescription) {
-            await pc?.setRemoteDescription(new RTCSessionDescription(data.answer));
-            session.status = 'connected';
+          // If relay entry is removed or claimed by receiver, mark transfer complete
+          if (!data.exists) {
+            session.status = 'completed';
+            session.progressPercent = 100;
             onStatusChange(session);
+            clearInterval(pollInterval);
           }
         }
       } catch {}
-    }, 1200);
+    }, 1500);
 
   } catch (err: any) {
     session.status = 'failed';
-    session.errorMessage = err.message || 'Transfer failed';
+    session.errorMessage = err.message || 'Transfer staging failed';
     onStatusChange(session);
   }
 
@@ -392,108 +422,104 @@ export async function startDeviceTransferReceiver(
   passphrase: string,
   onStatusChange: (session: DeviceSyncSession) => void
 ): Promise<DeviceSyncSession> {
-  const sessionId = `recv_${syncPin}_${Date.now()}`;
+  const normalizedPin = syncPin.trim().toUpperCase();
+  const sessionId = `recv_${normalizedPin}_${Date.now()}`;
   let pc: RTCPeerConnection | null = null;
   let isClosed = false;
+  let pollInterval: any = null;
 
   const session: DeviceSyncSession = {
-    syncPin,
+    syncPin: normalizedPin,
     sessionId,
     isSender: false,
     status: 'pairing',
-    progressPercent: 0,
+    progressPercent: 15,
     close: () => {
       isClosed = true;
+      if (pollInterval) clearInterval(pollInterval);
       if (pc) pc.close();
     },
   };
 
   onStatusChange(session);
 
+  const backendUrl = getBackendUrl();
+
+  // Helper to ingest and restore ciphertext payload
+  const ingestPayload = async (payloadBase64: string) => {
+    try {
+      session.status = 'transferring';
+      session.progressPercent = 70;
+      onStatusChange(session);
+
+      const bytes = base64ToBytes(payloadBase64);
+      const buffer = bytes.buffer;
+
+      session.progressPercent = 85;
+      onStatusChange(session);
+
+      await restoreEncryptedVault(buffer, passphrase, 'merge');
+
+      // Clear the temporary bridge
+      fetch(`${backendUrl}/api/vault/sync/claim/${normalizedPin}`, { method: 'DELETE' }).catch(() => {});
+
+      session.status = 'completed';
+      session.progressPercent = 100;
+      onStatusChange(session);
+
+      if (pollInterval) clearInterval(pollInterval);
+    } catch (ingestErr: any) {
+      session.status = 'failed';
+      session.errorMessage = ingestErr.message || 'Failed to decrypt or restore vault';
+      onStatusChange(session);
+    }
+  };
+
   try {
-    pc = new RTCPeerConnection(ICE_SERVERS);
-    let totalBytesExpected = 0;
-    const receivedChunks: ArrayBuffer[] = [];
-    let receivedBytes = 0;
+    // 1. Check if payload is already staged on the bridge
+    const directCheckRes = await fetch(`${backendUrl}/api/vault/sync/claim/${normalizedPin}`);
+    if (directCheckRes.ok) {
+      const data = await directCheckRes.json();
+      if (data.payloadBase64) {
+        await ingestPayload(data.payloadBase64);
+        return session;
+      }
+    }
 
-    pc.ondatachannel = (event) => {
-      const channel = event.channel;
-      channel.binaryType = 'arraybuffer';
+    // 2. If not yet staged, begin polling loop (listening for sender to hit dispatch)
+    session.status = 'pairing';
+    session.progressPercent = 30;
+    onStatusChange(session);
 
-      channel.onmessage = async (e) => {
-        if (typeof e.data === 'string') {
-          try {
-            const parsed = JSON.parse(e.data);
-            if (parsed.type === 'TRANSFER_HEADER') {
-              totalBytesExpected = parsed.totalBytes;
-              session.status = 'transferring';
-              onStatusChange(session);
-            } else if (parsed.type === 'TRANSFER_COMPLETE') {
-              // Assemble chunks and restore
-              session.status = 'transferring';
-              session.progressPercent = 95;
-              onStatusChange(session);
+    let attempts = 0;
+    pollInterval = setInterval(async () => {
+      if (isClosed || session.status === 'completed') {
+        clearInterval(pollInterval);
+        return;
+      }
 
-              const combined = new Uint8Array(receivedBytes);
-              let offset = 0;
-              for (const chunk of receivedChunks) {
-                combined.set(new Uint8Array(chunk), offset);
-                offset += chunk.byteLength;
-              }
-
-              await restoreEncryptedVault(combined.buffer, passphrase, 'merge');
-              session.status = 'completed';
-              session.progressPercent = 100;
-              onStatusChange(session);
-            }
-          } catch {}
-        } else if (e.data instanceof ArrayBuffer) {
-          receivedChunks.push(e.data);
-          receivedBytes += e.data.byteLength;
-          if (totalBytesExpected > 0) {
-            session.progressPercent = Math.min(94, Math.round((receivedBytes / totalBytesExpected) * 100));
-            onStatusChange(session);
-          }
-        }
-      };
-    };
-
-    const backendUrl = getBackendUrl();
-
-    // Poll for sender offer
-    let offerHandled = false;
-    const pollInterval = setInterval(async () => {
-      if (isClosed || offerHandled) return;
+      attempts++;
+      if (attempts > 120) { // 2 minutes timeout
+        clearInterval(pollInterval);
+        session.status = 'failed';
+        session.errorMessage = 'Sync pairing timed out. Ensure the code matches on the sending device.';
+        onStatusChange(session);
+        return;
+      }
 
       try {
-        const res = await fetch(`${backendUrl}/api/calls/signal/poll?callId=sync_${syncPin}&recipientId=receiver`);
+        const res = await fetch(`${backendUrl}/api/vault/sync/claim/${normalizedPin}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.offer && !offerHandled) {
-            offerHandled = true;
+          if (data.payloadBase64) {
             clearInterval(pollInterval);
-
-            await pc?.setRemoteDescription(new RTCSessionDescription(data.offer));
-            const answer = await pc?.createAnswer();
-            await pc?.setLocalDescription(answer);
-
-            await fetch(`${backendUrl}/api/calls/signal/send`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                callId: `sync_${syncPin}`,
-                senderId: 'receiver',
-                type: 'answer',
-                payload: answer,
-              }),
-            });
-
-            session.status = 'connected';
-            onStatusChange(session);
+            await ingestPayload(data.payloadBase64);
           }
         }
-      } catch {}
-    }, 1200);
+      } catch (pollErr) {
+        console.warn('[P2P Sync] Polling check notice:', pollErr);
+      }
+    }, 1000);
 
   } catch (err: any) {
     session.status = 'failed';

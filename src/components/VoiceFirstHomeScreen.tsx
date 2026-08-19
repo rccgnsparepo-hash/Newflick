@@ -18,7 +18,7 @@ import {
   computeWaveformFromAudio,
   LocalVoiceNote
 } from '../lib/voiceVault';
-import { sendE2EEMessage, subscribeToUsers } from '../lib/services';
+import { sendE2EEMessage, subscribeToUsers, getDeterministicChatId } from '../lib/services';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
 import { showBrutalistToast } from '../lib/toast';
@@ -208,7 +208,7 @@ export default function VoiceFirstHomeScreen({
 
     const duration = recordDuration || 1;
     const messageId = `msg_voice_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const conversationId = selectedPeer ? `conv_${[profile.uid, selectedPeer.uid].sort().join('_')}` : `conv_self_${profile.uid}`;
+    const conversationId = selectedPeer ? getDeterministicChatId(profile.uid, selectedPeer.uid) : getDeterministicChatId(profile.uid, profile.uid);
 
     try {
       // 1. SAVE TO LOCAL MESSAGE STORE (Smart Local Media Index = LOCAL / SAVED)
@@ -246,7 +246,7 @@ export default function VoiceFirstHomeScreen({
       });
 
       // 2. DISPATCH TINY METADATA TO FIRESTORE (NO AUDIO BLOBS OR LARGE WAVEFORMS!)
-      if (selectedPeer && selectedPeer.publicKey) {
+      if (selectedPeer && selectedPeer.uid) {
         const payloadText = JSON.stringify({
           type: 'voice_flick',
           voiceMessageId: messageId,
@@ -254,16 +254,20 @@ export default function VoiceFirstHomeScreen({
           expiresAt: Date.now() + 86400 * 1000 * 7,
         });
 
-        await sendE2EEMessage({
-          chatId: conversationId,
-          senderId: profile.uid,
-          senderDisplayName: profile.displayName || 'You',
-          receiverId: selectedPeer.uid,
-          plainText: payloadText,
-          recipientPublicKeyJwk: selectedPeer.publicKey,
-          senderPublicKeyJwk: profile.publicKey || '',
-          lifespanSeconds: 86400 * 7,
-        });
+        try {
+          await sendE2EEMessage({
+            chatId: conversationId,
+            senderId: profile.uid,
+            senderDisplayName: profile.displayName || 'You',
+            receiverId: selectedPeer.uid,
+            plainText: payloadText,
+            recipientPublicKeyJwk: selectedPeer.publicKey || '',
+            senderPublicKeyJwk: profile.publicKey || '',
+            lifespanSeconds: 86400 * 7,
+          });
+        } catch (syncErr) {
+          console.warn('[VoiceFirstHome] Cloud sync metadata notice:', syncErr);
+        }
       }
 
       showBrutalistToast('FLICK DISPATCHED', `Voice burst sent to ${selectedPeer ? selectedPeer.displayName : 'Vault'}`, 'success');

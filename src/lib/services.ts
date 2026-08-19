@@ -590,11 +590,21 @@ export async function sendE2EEMessage(params: {
     // Post Message
     batch.set(messageRef, messageData);
     
-    // Update parent Chat snippet details
-    batch.update(chatRef, {
-      lastMessage: "Encrypted Message", // Keep database clear text completely masked!
-      lastMessageAt: serverTimestamp()
-    });
+    // Update or create parent Chat snippet details
+    let previewSnippet = "Message";
+    if (plainText.startsWith('{"type":"voice_flick"')) {
+      previewSnippet = "🎙️ Voice Flick";
+    } else if (plainText) {
+      previewSnippet = plainText.length > 40 ? plainText.slice(0, 40) + '...' : plainText;
+    }
+
+    batch.set(chatRef, {
+      id: chatId,
+      participantIds: [senderId, receiverId].sort() as [string, string],
+      lastMessage: previewSnippet,
+      lastMessageAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
 
     // Submit push Notification metadata so recipient's device triggers sound/banners
     const notifyPayload = {
@@ -983,14 +993,53 @@ export function subscribeToChats(userId: string, callback: (chats: DirectChat[])
   const q = query(
     collection(db, 'chats'),
     where('participantIds', 'array-contains', userId)
-    // Client-side sorting workaround to bypass composite index requirement
-    // orderBy('lastMessageAt', 'desc')
   );
   return onSnapshot(q, (snap) => {
-    const chats = snap.docs.map(doc => doc.data() as DirectChat);
+    const rawChats = snap.docs.map(doc => doc.data() as DirectChat);
+    
+    // Group and deduplicate chats by canonical conversation identity
+    const deduplicatedMap = new Map<string, DirectChat>();
+
+    for (const chat of rawChats) {
+      // If group chat, unique key is group id
+      if (chat.isGroup) {
+        deduplicatedMap.set(chat.id, chat);
+        continue;
+      }
+
+      // If direct chat, canonical key is the sorted pair of participants
+      const participants = Array.isArray(chat.participantIds) ? [...chat.participantIds].sort() : [];
+      const canonicalKey = participants.length >= 2 ? `direct_${participants.join('_')}` : `direct_${chat.id}`;
+      const canonicalId = participants.length >= 2 ? getDeterministicChatId(participants[0], participants[1]) : chat.id;
+
+      if (!deduplicatedMap.has(canonicalKey)) {
+        deduplicatedMap.set(canonicalKey, {
+          ...chat,
+          id: canonicalId // Guarantee canonical chat ID
+        });
+      } else {
+        const existing = deduplicatedMap.get(canonicalKey)!;
+        const existingTime = existing.lastMessageAt?.toMillis ? existing.lastMessageAt.toMillis() : (existing.lastMessageAt?.seconds ? existing.lastMessageAt.seconds * 1000 : 0);
+        const newTime = chat.lastMessageAt?.toMillis ? chat.lastMessageAt.toMillis() : (chat.lastMessageAt?.seconds ? chat.lastMessageAt.seconds * 1000 : 0);
+
+        // Keep the record with the newer message activity
+        if (newTime >= existingTime) {
+          deduplicatedMap.set(canonicalKey, {
+            ...chat,
+            id: canonicalId,
+            unreadCounts: {
+              ...(existing.unreadCounts || {}),
+              ...(chat.unreadCounts || {})
+            }
+          });
+        }
+      }
+    }
+
+    const chats = Array.from(deduplicatedMap.values());
     chats.sort((a, b) => {
-      const aTime = a.lastMessageAt?.toMillis ? a.lastMessageAt.toMillis() : 0;
-      const bTime = b.lastMessageAt?.toMillis ? b.lastMessageAt.toMillis() : 0;
+      const aTime = a.lastMessageAt?.toMillis ? a.lastMessageAt.toMillis() : (a.lastMessageAt?.seconds ? a.lastMessageAt.seconds * 1000 : 0);
+      const bTime = b.lastMessageAt?.toMillis ? b.lastMessageAt.toMillis() : (b.lastMessageAt?.seconds ? b.lastMessageAt.seconds * 1000 : 0);
       return bTime - aTime;
     });
     callback(chats);
@@ -1006,10 +1055,32 @@ export function subscribeToMessages(chatId: string, callback: (messages: ChatMes
   const q = query(
     collection(db, 'chats', chatId, 'messages'),
     orderBy('createdAt', 'asc'),
-    limit(100)
+    limit(150)
   );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage)));
+
+  // If this is a direct chat (chat_uidA_uidB), also listen to legacy conv_uidA_uidB if it exists
+  const legacyChatId = chatId.startsWith('chat_') ? chatId.replace('chat_', 'conv_') : null;
+
+  let mainMessages: ChatMessage[] = [];
+  let legacyMessages: ChatMessage[] = [];
+
+  const emitCombined = () => {
+    const combinedMap = new Map<string, ChatMessage>();
+    for (const msg of [...legacyMessages, ...mainMessages]) {
+      combinedMap.set(msg.id, msg);
+    }
+    const combined = Array.from(combinedMap.values());
+    combined.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (typeof a.createdAt === 'number' ? a.createdAt : 0));
+      const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (typeof b.createdAt === 'number' ? b.createdAt : 0));
+      return aTime - bTime;
+    });
+    callback(combined);
+  };
+
+  const unsubMain = onSnapshot(q, (snap) => {
+    mainMessages = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
+    emitCombined();
   }, (err) => {
     try {
       handleFirestoreError(err, OperationType.LIST, path);
@@ -1017,6 +1088,30 @@ export function subscribeToMessages(chatId: string, callback: (messages: ChatMes
       console.warn("Messages stream subscription error:", e);
     }
   });
+
+  let unsubLegacy: (() => void) | null = null;
+  if (legacyChatId) {
+    try {
+      const legacyQ = query(
+        collection(db, 'chats', legacyChatId, 'messages'),
+        orderBy('createdAt', 'asc'),
+        limit(50)
+      );
+      unsubLegacy = onSnapshot(legacyQ, (snap) => {
+        legacyMessages = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
+        emitCombined();
+      }, () => {
+        // Silently ignore if legacy room does not exist
+      });
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  return () => {
+    unsubMain();
+    if (unsubLegacy) unsubLegacy();
+  };
 }
 
 // --- Push & In-App Notification Services ---
@@ -1912,6 +2007,47 @@ export async function deleteCallRecord(callId: string): Promise<void> {
     await deleteDoc(doc(db, 'calls', callId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function clearAllCallHistory(userId: string): Promise<number> {
+  const path = 'calls';
+  try {
+    // Notify backend memory relay to clear memory cache
+    fetch('/api/calls/purge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    }).catch(console.warn);
+
+    const qReceiver = query(collection(db, 'calls'), where('receiverId', '==', userId));
+    const qCaller = query(collection(db, 'calls'), where('callerId', '==', userId));
+    const [snapR, snapC] = await Promise.all([getDocs(qReceiver), getDocs(qCaller)]);
+    
+    const batch = writeBatch(db);
+    const seenIds = new Set<string>();
+    
+    snapR.docs.forEach((d) => {
+      if (!seenIds.has(d.id)) {
+        seenIds.add(d.id);
+        batch.delete(d.ref);
+      }
+    });
+    
+    snapC.docs.forEach((d) => {
+      if (!seenIds.has(d.id)) {
+        seenIds.add(d.id);
+        batch.delete(d.ref);
+      }
+    });
+    
+    if (seenIds.size > 0) {
+      await batch.commit();
+    }
+    return seenIds.size;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+    return 0;
   }
 }
 

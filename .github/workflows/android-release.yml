@@ -50,13 +50,17 @@ jobs:
             echo "Warning: GOOGLE_SERVICES_JSON secret is not set, push notifications may not work."
           fi
 
+      - name: Generate App Icons & Android Mipmaps
+        run: node scripts/generate-android-icons.js
+
       - name: Sync Capacitor
         run: npx cap sync android
 
       - name: Build APK
         working-directory: android
         run: |
-          gradle assembleDebug
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -64,11 +68,11 @@ jobs:
         with:
           name: flick-android-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 1
+          retention-days: 14
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
           tag_name: android-v${{ github.run_number }}
           files: android/app/build/outputs/apk/debug/app-debug.apk

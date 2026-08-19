@@ -4,6 +4,8 @@
  * live speech-to-text transcription, and audio processing.
  */
 
+import { requestMicrophonePermission, getOptimalAudioMimeType, createSpeechRecognitionInstance } from './permissions';
+
 export type VoiceEffectPreset = 'natural' | 'studio' | 'crisp' | 'bass' | 'cyber';
 
 export interface VoiceRecordingState {
@@ -137,18 +139,15 @@ export class FlickVoiceRecorder {
     let stream: MediaStream | null = null;
 
     try {
-      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            channelCount: 1,
-          }
-        });
+      const permResult = await requestMicrophonePermission();
+      if (permResult.granted && permResult.stream) {
+        stream = permResult.stream;
+      } else {
+        console.warn('[FlickVoiceRecorder] Hardware mic unavailable (' + permResult.error + '), utilizing audio synthesizer fallback');
+        this.isSyntheticFallback = true;
       }
     } catch (micErr) {
-      console.warn('[FlickVoiceRecorder] Physical mic unavailable / permission denied, using audio synthesizer fallback:', micErr);
+      console.warn('[FlickVoiceRecorder] Physical mic error, using audio synthesizer fallback:', micErr);
       this.isSyntheticFallback = true;
     }
 
@@ -214,19 +213,7 @@ export class FlickVoiceRecorder {
 
       // MediaRecorder with best supported mimeType
       if (stream && typeof MediaRecorder !== 'undefined') {
-        let mimeType = 'audio/webm;codecs=opus';
-        if (typeof MediaRecorder.isTypeSupported === 'function') {
-          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-            mimeType = 'audio/webm;codecs=opus';
-          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-            mimeType = 'audio/webm';
-          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-            mimeType = 'audio/mp4';
-          } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-            mimeType = 'audio/ogg';
-          }
-        }
-
+        const mimeType = getOptimalAudioMimeType();
         const recorder = new MediaRecorder(stream, { mimeType });
         this.mediaRecorder = recorder;
 

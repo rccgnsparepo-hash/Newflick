@@ -170,6 +170,11 @@ export function DeviceVaultTransferModal({
 
   // Handle Start P2P Transfer
   const handleStartP2PTransfer = async () => {
+    if (transferMode === 'receive' && (!syncPin || syncPin.trim().length < 4)) {
+      showBrutalistToast('SYNC CODE REQUIRED', 'Please enter the 6-character code from your other device.', 'error');
+      return;
+    }
+
     playGlitchClickSound();
     triggerVibration('medium');
 
@@ -179,17 +184,22 @@ export function DeviceVaultTransferModal({
         if (updated.status === 'completed') {
           showBrutalistToast('TRANSFER COMPLETE', 'Vault sent successfully to peer device!', 'success');
           playLikeSound();
+        } else if (updated.status === 'failed') {
+          showBrutalistToast('TRANSFER FAILED', updated.errorMessage || 'Failed to dispatch vault', 'error');
         }
       });
       setSyncSession(sess);
+      showBrutalistToast('VAULT DISPATCHED', `Pairing code ${syncPin.toUpperCase()} is active on the secure bridge.`, 'info');
     } else {
       const sess = await startDeviceTransferReceiver(syncPin, transferPassphrase, (updated) => {
         setSyncSession({ ...updated });
         if (updated.status === 'completed') {
-          showBrutalistToast('VAULT INGESTED', 'All conversations and voice notes synced locally!', 'success');
+          showBrutalistToast('VAULT INGESTED', 'All conversations, keys, and voice notes synced locally!', 'success');
           playLikeSound();
           refreshStats();
           if (onDataRestored) onDataRestored();
+        } else if (updated.status === 'failed') {
+          showBrutalistToast('SYNC ERROR', updated.errorMessage || 'Could not find or decrypt vault with that code', 'error');
         }
       });
       setSyncSession(sess);

@@ -18,10 +18,11 @@ import {
   Radio,
   Trash2,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  AlertTriangle
 } from 'lucide-react';
 import { CallLogItem } from '../types';
-import { subscribeToCallHistory } from '../lib/services';
+import { subscribeToCallHistory, deleteCallRecord, clearAllCallHistory } from '../lib/services';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
 import { showBrutalistToast } from '../lib/toast';
@@ -49,6 +50,8 @@ export default function CallHistoryModal({
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'missed' | 'audio' | 'video' | 'group'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isClearing, setIsClearing] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !currentUserId) return;
@@ -63,6 +66,35 @@ export default function CallHistoryModal({
   }, [isOpen, currentUserId]);
 
   if (!isOpen) return null;
+
+  const handleDeleteItem = async (e: React.MouseEvent, callId: string) => {
+    e.stopPropagation();
+    playGlitchClickSound();
+    triggerVibration('light');
+    try {
+      await deleteCallRecord(callId);
+      setCallLogs(prev => prev.filter(c => c.id !== callId));
+      showBrutalistToast('CALL LOG ENTRY REMOVED', 'success');
+    } catch (err) {
+      showBrutalistToast('FAILED TO REMOVE LOG', 'error');
+    }
+  };
+
+  const handleClearAll = async () => {
+    playGlitchClickSound();
+    triggerVibration('medium');
+    setIsClearing(true);
+    try {
+      const count = await clearAllCallHistory(currentUserId);
+      setCallLogs([]);
+      setShowConfirmClear(false);
+      showBrutalistToast(`PURGED ${count} CALL LOGS`, 'success');
+    } catch (err) {
+      showBrutalistToast('FAILED TO PURGE CALL LOGS', 'error');
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const formatDuration = (totalSec?: number) => {
     if (!totalSec || totalSec <= 0) return '0s';
@@ -123,16 +155,59 @@ export default function CallHistoryModal({
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              playGlitchClickSound();
-              onClose();
-            }}
-            className="p-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {callLogs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  playGlitchClickSound();
+                  setShowConfirmClear(true);
+                }}
+                className="px-2.5 py-1.5 bg-black hover:bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+                title="Purge all call records"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
+                <span className="hidden sm:inline">PURGE LOGS</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                playGlitchClickSound();
+                onClose();
+              }}
+              className="p-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Confirmation Banner */}
+        {showConfirmClear && (
+          <div className="p-3 bg-zinc-900 border-b border-[var(--neon-green)] flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-zinc-300 font-bold">
+              <AlertTriangle className="w-4 h-4 text-[var(--neon-green)] shrink-0" />
+              <span>Permanently delete all {callLogs.length} call logs from this device and network?</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowConfirmClear(false)}
+                className="px-3 py-1 bg-black border border-zinc-700 text-zinc-400 hover:text-white text-[10px] font-bold uppercase cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearAll}
+                disabled={isClearing}
+                className="px-3 py-1 bg-[var(--neon-green)] hover:bg-white text-black text-[10px] font-black uppercase cursor-pointer flex items-center gap-1.5"
+              >
+                {isClearing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                <span>Confirm Purge</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Search & Filter Toolbar */}
         <div className="p-3 border-b border-zinc-800 bg-black/60 space-y-2">
@@ -184,7 +259,7 @@ export default function CallHistoryModal({
             <div className="flex flex-col items-center justify-center py-16 space-y-2 text-center text-zinc-500">
               <PhoneOff className="w-10 h-10 text-zinc-700" />
               <p className="text-xs uppercase font-bold text-zinc-400">No Call Records Found</p>
-              <p className="text-[10px] text-zinc-600">Calls established via cryptographic conduits will appear here.</p>
+              <p className="text-[10px] text-zinc-600">All logs are clean. New calls will appear here in real time.</p>
             </div>
           ) : (
             filteredLogs.map((log) => {
@@ -202,37 +277,27 @@ export default function CallHistoryModal({
               return (
                 <div
                   key={log.id}
-                  className={`p-3 border transition flex items-center justify-between gap-3 ${
-                    isMissed 
-                      ? 'bg-red-950/20 border-red-500/40 hover:border-red-500' 
-                      : 'bg-[#111218] border-zinc-800 hover:border-[var(--neon-green)]/60'
-                  }`}
+                  className="p-3 border transition flex items-center justify-between gap-3 bg-[#111218] border-zinc-800 hover:border-[var(--neon-green)]/60 group"
                 >
                   {/* Left: Direction Icon & Peer Avatar */}
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
                       <img
-                        src={peerPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120'}
+                        src={peerPhoto || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(peerName || 'peer')}`}
                         alt={peerName}
-                        className="w-10 h-10 border border-zinc-700 object-cover"
+                        className="w-10 h-10 border border-zinc-700 object-cover bg-zinc-900"
                         referrerPolicy="no-referrer"
                       />
                       {/* Direction badge */}
-                      <span className={`absolute -bottom-1 -right-1 p-0.5 border ${
-                        isMissed 
-                          ? 'bg-red-600 text-black border-red-400' 
-                          : isIncoming 
-                          ? 'bg-emerald-600 text-black border-emerald-400' 
-                          : 'bg-cyan-600 text-black border-cyan-400'
-                      }`}>
+                      <span className="absolute -bottom-1 -right-1 p-0.5 border bg-black text-[var(--neon-green)] border-zinc-700">
                         {isGroup ? (
                           <Users className="w-2.5 h-2.5" />
                         ) : isMissed ? (
-                          <PhoneMissed className="w-2.5 h-2.5" />
+                          <PhoneMissed className="w-2.5 h-2.5 text-zinc-400" />
                         ) : isIncoming ? (
                           <PhoneIncoming className="w-2.5 h-2.5" />
                         ) : (
-                          <PhoneOutgoing className="w-2.5 h-2.5" />
+                          <PhoneOutgoing className="w-2.5 h-2.5 text-zinc-300" />
                         )}
                       </span>
                     </div>
@@ -240,15 +305,15 @@ export default function CallHistoryModal({
                     {/* Middle details */}
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className={`font-bold text-xs truncate ${isMissed ? 'text-red-400' : 'text-white'}`}>
+                        <span className="font-bold text-xs truncate text-white">
                           {peerName}
                         </span>
                         {log.type === 'video' ? (
-                          <span className="p-0.5 bg-purple-950 text-purple-400 border border-purple-500/50 text-[8px] flex items-center gap-0.5">
+                          <span className="p-0.5 bg-black text-[var(--neon-green)] border border-zinc-700 text-[8px] flex items-center gap-0.5">
                             <Video className="w-2.5 h-2.5" /> VID
                           </span>
                         ) : (
-                          <span className="p-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/50 text-[8px] flex items-center gap-0.5">
+                          <span className="p-0.5 bg-black text-[var(--neon-green)] border border-zinc-700 text-[8px] flex items-center gap-0.5">
                             <Phone className="w-2.5 h-2.5" /> VOX
                           </span>
                         )}
@@ -265,9 +330,7 @@ export default function CallHistoryModal({
                           {formatDuration(log.duration)}
                         </span>
                         <span>•</span>
-                        <span className={`uppercase font-bold ${
-                          isCompleted ? 'text-emerald-400' : isMissed ? 'text-red-400' : 'text-amber-400'
-                        }`}>
+                        <span className="uppercase font-bold text-zinc-400">
                           {log.status}
                         </span>
                       </div>
@@ -276,6 +339,16 @@ export default function CallHistoryModal({
 
                   {/* Right Actions */}
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Delete single log record */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteItem(e, log.id)}
+                      className="p-2 bg-black hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-zinc-500 hover:text-zinc-300 transition cursor-pointer"
+                      title="Delete Record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+
                     {/* Direct Chat Shortcut */}
                     {onOpenChat && !isGroup && peerUid && (
                       <button
@@ -319,7 +392,7 @@ export default function CallHistoryModal({
                           onClose();
                           onInitiateCall({ uid: peerUid, name: peerName, photo: peerPhoto }, 'video');
                         }}
-                        className="p-2 bg-purple-600 hover:bg-purple-500 text-white font-bold transition cursor-pointer border border-black shadow-[2px_2px_0_0_#000000]"
+                        className="p-2 bg-black hover:bg-zinc-900 text-[var(--neon-green)] font-bold transition cursor-pointer border border-[var(--neon-green)] shadow-[2px_2px_0_0_#000000]"
                         title="Callback (Video)"
                       >
                         <Video className="w-3.5 h-3.5 stroke-[2.5]" />

@@ -49,7 +49,47 @@
   backdrop-filter: blur(8px);
 }
 
-/* Base custom styles */
+/* Base custom styles & Display Density Defaults */
+:root {
+  --app-desktop-zoom: 0.90;
+}
+
+html, body {
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+/* Responsive Desktop Scaled Layout (Adaptive 90% optimal ratio across standard and high-DPI displays) */
+@media (min-width: 1024px) {
+  html {
+    zoom: var(--app-desktop-zoom, 0.90);
+  }
+}
+
+/* Fine-tune for Windows 125% - 150% scaled laptop screens to prevent oversized UI */
+@media (min-width: 1024px) and (-webkit-min-device-pixel-ratio: 1.2),
+       (min-width: 1024px) and (min-resolution: 115dpi) {
+  html {
+    zoom: var(--app-desktop-zoom, 0.88);
+  }
+}
+
+@media (min-width: 1024px) and (-webkit-min-device-pixel-ratio: 1.4),
+       (min-width: 1024px) and (min-resolution: 135dpi) {
+  html {
+    zoom: var(--app-desktop-zoom, 0.85);
+  }
+}
+
+@media (min-width: 1024px) and (-webkit-min-device-pixel-ratio: 1.8),
+       (min-width: 1024px) and (min-resolution: 172dpi) {
+  html {
+    zoom: var(--app-desktop-zoom, 0.90);
+  }
+}
+
 body {
   background-color: #080a0f;
   background-image: 
