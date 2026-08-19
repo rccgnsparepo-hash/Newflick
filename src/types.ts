@@ -64,6 +64,7 @@ export interface DirectChat {
   roles?: { [userId: string]: 'owner' | 'admin' | 'moderator' | 'member' | 'muted' | 'guest' | 'bot' };
   announcementsOnly?: boolean;
   pinnedMessages?: string[];
+  unreadCounts?: { [userId: string]: number };
 
   // New WhatsApp-style group properties
   groupType?: 'friends' | 'school' | 'church' | 'business' | 'community' | 'custom';

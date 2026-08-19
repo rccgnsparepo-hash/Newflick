@@ -291,6 +291,8 @@ function Dashboard() {
 
   // Registry ref to uniquely key call status transitions by callId and prevent race conditions
   const callEventsStateRef = useRef<Map<string, { lastStatus: string; updatedAt: number; dialedRing: boolean; notifiedIpc: boolean }>>(new Map());
+  // Grace period timer ref for 5-second auto-reconnect on transient call disconnection
+  const callReconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Diagnostic checker for call signal events
   const runCallSignalDiagnostic = (callId: string, signalData: any, source: string): boolean => {
@@ -437,7 +439,7 @@ function Dashboard() {
     };
   }, [profile]);
 
-  // Sync handshakes in real-time uniquely keyed by callId
+  // Sync handshakes in real-time uniquely keyed by callId with 5-second auto-reconnect resilience
   useEffect(() => {
     if (!ongoingCall?.id) return;
     const activeCallId = ongoingCall.id;
@@ -446,22 +448,53 @@ function Dashboard() {
       if (!runCallSignalDiagnostic(activeCallId, updatedCall, 'state-subscription')) return;
 
       if (!updatedCall || updatedCall.status === 'ended') {
-        console.log(`[Realtime Call] Call ${activeCallId} terminated.`);
-        const record = callEventsStateRef.current.get(activeCallId) || {
-          lastStatus: '',
-          updatedAt: 0,
-          dialedRing: false,
-          notifiedIpc: false
-        };
-        record.lastStatus = 'ended';
-        record.updatedAt = Date.now();
-        callEventsStateRef.current.set(activeCallId, record);
-
+        // If the call is actively connected or dialing, give a 5-second grace window before terminating
         setOngoingCall(prev => {
-          if (prev?.id === activeCallId) return null;
-          return prev;
+          if (!prev || prev.id !== activeCallId) return prev;
+
+          // If the call was already active, enter auto-reconnect strategy instead of immediate drop
+          if (prev.status === 'active') {
+            console.log(`[Realtime Call] Signal drop detected on active call ${activeCallId}. Initiating 5s auto-reconnect grace period...`);
+            
+            if (!callReconnectTimerRef.current) {
+              callReconnectTimerRef.current = setTimeout(() => {
+                console.log(`[Realtime Call] 5s auto-reconnect window expired for call ${activeCallId}. Finalizing termination.`);
+                const record = callEventsStateRef.current.get(activeCallId) || {
+                  lastStatus: '',
+                  updatedAt: 0,
+                  dialedRing: false,
+                  notifiedIpc: false
+                };
+                record.lastStatus = 'ended';
+                record.updatedAt = Date.now();
+                callEventsStateRef.current.set(activeCallId, record);
+
+                setOngoingCall(current => (current?.id === activeCallId ? null : current));
+                callReconnectTimerRef.current = null;
+              }, 5000);
+            }
+
+            return {
+              ...prev,
+              status: 'reconnecting' as any
+            };
+          }
+
+          // If dialing or ringing was cancelled/ended, terminate immediately
+          if (callReconnectTimerRef.current) {
+            clearTimeout(callReconnectTimerRef.current);
+            callReconnectTimerRef.current = null;
+          }
+          return null;
         });
       } else {
+        // Connection recovered or active signal received
+        if (callReconnectTimerRef.current) {
+          console.log(`[Realtime Call] Signal recovered within 5s grace window for call ${activeCallId}! Auto-reconnected.`);
+          clearTimeout(callReconnectTimerRef.current);
+          callReconnectTimerRef.current = null;
+        }
+
         const record = callEventsStateRef.current.get(activeCallId) || {
           lastStatus: '',
           updatedAt: 0,
@@ -483,7 +516,13 @@ function Dashboard() {
       }
     });
 
-    return () => unsubscribeState();
+    return () => {
+      unsubscribeState();
+      if (callReconnectTimerRef.current) {
+        clearTimeout(callReconnectTimerRef.current);
+        callReconnectTimerRef.current = null;
+      }
+    };
   }, [ongoingCall?.id]);
 
   // Handle outbound calls triggered via custom window event
@@ -1093,52 +1132,57 @@ function Dashboard() {
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
+      {/* Main Dashboard Container - Dynamically blurred & dimmed when CallOverlay is active to focus user attention */}
+      <div className={`h-full w-full flex flex-col overflow-hidden transition-all duration-500 ease-out ${
+        ongoingCall ? 'filter blur-[12px] brightness-[0.20] scale-[0.985] pointer-events-none select-none' : 'filter-none brightness-100 scale-100'
+      }`}>
         {/* Main Responsive App Header */}
-      <AppHeader
-        profile={profile}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        unreadE2EECount={unreadE2EECount}
-        notifications={notifications}
-        isOnline={isOnline}
-        isSlow={isSlow}
-        connectionType={connectionType}
-        batteryLevel={batteryLevel}
-        isCharging={isCharging}
-        setShowCinematicIntro={setShowCinematicIntro}
-        setIsSettingsOpen={setIsSettingsOpen}
-        setIsShortcutsOpen={setIsShortcutsOpen}
-        handleNotificationClick={handleNotificationClick}
-        handleClearNotification={handleClearNotification}
-        logout={logout}
-        playGlitchClickSound={playGlitchClickSound}
-        triggerVibration={triggerVibration}
-      />
-
-      {/* Unified Nav-Aware Layout Container */}
-      <div className="flex-1 min-h-0 w-full max-w-full flex flex-row relative overflow-hidden">
-        
-        {/* Responsive Unified Navigation (Adapts Sidebar vs Mobile Bottom Nav) */}
-        <UnifiedNavigation
+        <AppHeader
+          profile={profile}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           unreadE2EECount={unreadE2EECount}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
-          onOpenCallHistory={() => setIsCallHistoryOpen(true)}
+          notifications={notifications}
+          isOnline={isOnline}
+          isSlow={isSlow}
+          connectionType={connectionType}
+          batteryLevel={batteryLevel}
+          isCharging={isCharging}
+          setShowCinematicIntro={setShowCinematicIntro}
+          setIsSettingsOpen={setIsSettingsOpen}
+          setIsShortcutsOpen={setIsShortcutsOpen}
+          handleNotificationClick={handleNotificationClick}
+          handleClearNotification={handleClearNotification}
+          logout={logout}
+          playGlitchClickSound={playGlitchClickSound}
+          triggerVibration={triggerVibration}
         />
 
-        {/* Center Content Column (Main Feed / Messaging / Profile / Workspace) */}
-        <main className="flex-1 min-h-0 flex flex-col min-w-0 h-full relative overflow-hidden">
-          <FeedSection 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
+        {/* Unified Nav-Aware Layout Container */}
+        <div className="flex-1 min-h-0 w-full max-w-full flex flex-row relative overflow-hidden">
+          
+          {/* Responsive Unified Navigation (Adapts Sidebar vs Mobile Bottom Nav) */}
+          <UnifiedNavigation
             unreadE2EECount={unreadE2EECount}
-            deepLinkedPeerId={deepLinkedPeerId}
-            onClearDeepLink={() => setDeepLinkedPeerId(null)}
-            deepLinkedGroupId={deepLinkedGroupId}
-            onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
+            onOpenCallHistory={() => setIsCallHistoryOpen(true)}
           />
-        </main>
 
+          {/* Center Content Column (Main Feed / Messaging / Profile / Workspace) */}
+          <main className="flex-1 min-h-0 flex flex-col min-w-0 h-full relative overflow-hidden">
+            <FeedSection 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              unreadE2EECount={unreadE2EECount}
+              deepLinkedPeerId={deepLinkedPeerId}
+              onClearDeepLink={() => setDeepLinkedPeerId(null)}
+              deepLinkedGroupId={deepLinkedGroupId}
+              onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
+            />
+          </main>
+
+        </div>
       </div>
 
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
