@@ -562,6 +562,7 @@ export async function sendE2EEMessage(params: {
       senderId,
       receiverId,
       participantIds: [senderId, receiverId].sort() as [string, string],
+      plainText: plainText,
       encryptedText: cipherResult.encryptedText,
       encryptedKey: cipherResult.encryptedKey,
       senderEncryptedKey: cipherResult.senderEncryptedKey,

@@ -1,4 +1,4 @@
-export type BrutalistTheme = 'green' | 'purple' | 'white';
+export type BrutalistTheme = 'green' | 'monochrome' | 'white';
 
 export interface ThemeConfig {
   name: string;
@@ -11,23 +11,23 @@ export interface ThemeConfig {
 
 export const THEMES: Record<BrutalistTheme, ThemeConfig> = {
   green: {
-    name: 'Emerald Glass',
+    name: 'Emerald Green',
     color: '#00ff66',
     rgb: '0, 255, 102',
     glow: 'rgba(0, 255, 102, 0.15)',
     border: 'rgba(0, 255, 102, 0.25)',
     glowIntense: 'rgba(0, 255, 102, 0.6)'
   },
-  purple: {
-    name: 'Violet Glass',
-    color: '#bd00ff',
-    rgb: '189, 0, 255',
-    glow: 'rgba(189, 0, 255, 0.15)',
-    border: 'rgba(189, 0, 255, 0.25)',
-    glowIntense: 'rgba(189, 0, 255, 0.6)'
+  monochrome: {
+    name: 'Monochrome Dark',
+    color: '#e4e4e7',
+    rgb: '228, 228, 231',
+    glow: 'rgba(255, 255, 255, 0.08)',
+    border: 'rgba(255, 255, 255, 0.18)',
+    glowIntense: 'rgba(255, 255, 255, 0.35)'
   },
   white: {
-    name: 'Ice Glass',
+    name: 'Monochrome Ice',
     color: '#ffffff',
     rgb: '255, 255, 255',
     glow: 'rgba(255, 255, 255, 0.12)',

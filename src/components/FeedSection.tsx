@@ -5,6 +5,7 @@ import { useOperations } from '../contexts/OperationContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Post, DirectChat, UserProfile, Story } from '../types';
 import ChatSection from './ChatSection';
+import VoiceFirstHomeScreen from './VoiceFirstHomeScreen';
 import SecureNewsFlow from './SecureNewsFlow';
 import LiveSportsHub from './LiveSportsHub';
 import { triggerVibration, triggerEventVibration } from '../lib/haptics';
@@ -110,7 +111,7 @@ export default function FeedSection({
   const [showCoverSelector, setShowCoverSelector] = useState(false);
   const activeTab = controlledActiveTab || localActiveTab;
   const setActiveTab = controlledSetActiveTab || localSetActiveTab;
-  const [homeSubView, setHomeSubView] = useState<'feed' | 'network' | 'live'>('feed');
+  const [homeSubView, setHomeSubView] = useState<'voice' | 'feed' | 'network' | 'live'>('voice');
   const [selectedCampus, setSelectedCampus] = useState<string>(() => {
     return localStorage.getItem('flick_selected_campus') || 'Global Feed';
   });
@@ -1153,10 +1154,28 @@ export default function FeedSection({
             >
               <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-28 md:pb-12">
                 {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
-                <div className="sticky top-0 z-30 flex glass-panel p-1.5 rounded-[20px]">
+                <div className="sticky top-0 z-30 flex glass-panel p-1.5 rounded-[20px] overflow-x-auto scrollbar-none gap-1">
+                  <button
+                    onClick={() => { playGlitchClickSound(); setHomeSubView('voice'); }}
+                    className={`relative flex-1 min-w-[110px] py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl flex items-center justify-center gap-1.5 ${
+                      homeSubView === 'voice'
+                        ? 'text-[var(--color-text)] font-extrabold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {homeSubView === 'voice' && (
+                      <motion.div
+                        layoutId="homeSubViewActivePill"
+                        className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl shadow-md z-0 pointer-events-none"
+                        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                      />
+                    )}
+                    <span className="w-1.5 h-1.5 bg-[var(--neon-green)] rounded-full animate-ping shrink-0 relative z-10"></span>
+                    <span className="relative z-10">🎙️ Voice Studio</span>
+                  </button>
                   <button
                     onClick={() => { playGlitchClickSound(); setHomeSubView('feed'); }}
-                    className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
+                    className={`relative flex-1 min-w-[110px] py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
                       homeSubView === 'feed'
                         ? 'text-[var(--color-text)] font-extrabold'
                         : 'text-zinc-500 hover:text-zinc-300'
@@ -1173,7 +1192,7 @@ export default function FeedSection({
                   </button>
                   <button
                     onClick={() => { playGlitchClickSound(); setHomeSubView('live'); }}
-                    className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl flex items-center justify-center gap-1 ${
+                    className={`relative flex-1 min-w-[100px] py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl flex items-center justify-center gap-1 ${
                       homeSubView === 'live'
                         ? 'text-[var(--color-text)] font-extrabold'
                         : 'text-zinc-500 hover:text-zinc-300'
@@ -1191,7 +1210,7 @@ export default function FeedSection({
                   </button>
                   <button
                     onClick={() => { playGlitchClickSound(); setHomeSubView('network'); }}
-                    className={`relative flex-1 py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
+                    className={`relative flex-1 min-w-[110px] py-2.5 text-center text-[9.5px] font-black uppercase tracking-wider cursor-pointer transition-all rounded-xl ${
                       homeSubView === 'network'
                         ? 'text-[var(--color-text)] font-extrabold'
                         : 'text-zinc-500 hover:text-zinc-300'
@@ -1204,11 +1223,24 @@ export default function FeedSection({
                         transition={{ type: 'spring', damping: 25, stiffness: 350 }}
                       />
                     )}
-                    <span className="relative z-10">⚡ Node Cluster Map</span>
+                    <span className="relative z-10">⚡ Node Cluster</span>
                   </button>
                 </div>
 
-            {homeSubView === 'network' ? (
+            {homeSubView === 'voice' ? (
+              <VoiceFirstHomeScreen 
+                onOpenDirectChat={(peerId) => {
+                  onClearDeepLink();
+                  if (setActiveTab) setActiveTab('chat');
+                }}
+                onOpenCall={(peerId, peerName, peerPhoto, type) => {
+                  window.dispatchEvent(new CustomEvent('faraflick-initiate-call', {
+                    detail: { peerId, peerName, peerPhoto, type }
+                  }));
+                }}
+                onOpenNetworkMap={() => setHomeSubView('network')}
+              />
+            ) : homeSubView === 'network' ? (
               <NodeClusterView 
                 users={registeredUsers} 
                 posts={firebasePosts} 

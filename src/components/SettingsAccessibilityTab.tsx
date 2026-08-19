@@ -173,16 +173,15 @@ export function SettingsAccessibilityTab({
         </p>
       </div>
 
-      {/* Dynamic Accent Color Palette */}
+      {/* Dynamic Accent Color Palette - Strictly Green & Monochrome */}
       <div className="space-y-3 glass-panel p-4 border border-[var(--glass-border)]">
         <label className="text-xs uppercase tracking-wider font-extrabold text-white font-mono block">
-          Glass Accent Color Palette
+          Interface Color Scheme (Green & Monochrome)
         </label>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           {[
-            { id: 'green', name: 'Emerald Glass', color: '#00ff66' },
-            { id: 'purple', name: 'Violet Glass', color: '#bd00ff' },
-            { id: 'white', name: 'Ice Glass', color: '#ffffff' }
+            { id: 'green', name: 'Emerald Green', color: '#00ff66' },
+            { id: 'monochrome', name: 'Monochrome Dark', color: '#e4e4e7' }
           ].map((ac) => (
             <button
               key={ac.id}
@@ -190,10 +189,10 @@ export function SettingsAccessibilityTab({
               onClick={() => {
                 setAccentColor(ac.id as AccentColor);
                 const legacyMapping: Record<string, BrutalistTheme> = {
-                  green: 'green', purple: 'purple', white: 'white'
+                  green: 'green', monochrome: 'monochrome'
                 };
-                setSelectedTheme(legacyMapping[ac.id]);
-                applyTheme(legacyMapping[ac.id]);
+                setSelectedTheme(legacyMapping[ac.id] || 'green');
+                applyTheme(legacyMapping[ac.id] || 'green');
                 playGlitchClickSound();
                 if (vibeEnabled) triggerVibration('light');
               }}

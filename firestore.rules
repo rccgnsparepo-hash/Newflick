@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Authentication helpers
     function isSignedIn() {
       return request.auth != null;
     }
@@ -16,14 +16,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Users collection
+    // User Directory (/users/{userId})
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create, update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
 
-    // Chats collection & subcollections (messages, typingStates, message_reactions)
+    // Private User Info (/users/{userId}/private/info)
+    match /users/{userId}/private/info {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Direct Chats & Message Envelopes (/chats/{chatId})
     match /chats/{chatId} {
       allow read, write: if isSignedIn();
       match /{allSubpaths=**} {
@@ -31,61 +36,49 @@ service cloud.firestore {
       }
     }
 
-    // Feed Posts & subcollections (comments, likes, post_reactions)
-    match /posts/{postId} {
+    // Realtime Presence (/presence/{userId})
+    match /presence/{userId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
-      match /{allSubpaths=**} {
-        allow read, write: if isSignedIn();
-      }
+      allow write: if isSignedIn();
     }
 
-    // Stories & subcollections
-    match /stories/{storyId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-      match /{allSubpaths=**} {
-        allow read, write: if isSignedIn();
-      }
-    }
-
-    // Notifications
-    match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    // Feedback submissions
-    match /feedbacks/{feedbackId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // User Devices (Session Management)
-    match /user_devices/{deviceId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create, update, delete: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-    }
-
-    // Security Logs
-    match /security_logs/{logId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false; // Immutable logs
-    }
-
-    // Calls collection
+    // WebRTC Calls (/calls/{callId})
     match /calls/{callId} {
       allow read, write: if isSignedIn();
       match /{allPaths=**} {
         allow read, write: if isSignedIn();
       }
     }
+
+    // User Devices (/user_devices/{deviceId})
+    match /user_devices/{deviceId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Notifications (/notifications/{notificationId})
+    match /notifications/{notificationId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Temporary Envelopes (/temporary_envelopes/{envelopeId})
+    match /temporary_envelopes/{envelopeId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // News & Broadcasts (/news/{newsId})
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Feedbacks (/feedbacks/{feedbackId})
+    match /feedbacks/{feedbackId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Security Logs (/security_logs/{logId})
+    match /security_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }
-
-

@@ -5,8 +5,7 @@ import { triggerVibration } from '../../lib/haptics';
 import {
   Home as HomeIcon,
   MessageSquare,
-  Sparkles,
-  Trophy,
+  Newspaper,
   User
 } from 'lucide-react';
 
@@ -38,7 +37,7 @@ export default function MobileBottomNav({
     {
       id: 'news' as const,
       label: 'Flick News',
-      icon: Trophy,
+      icon: Newspaper,
       color: 'text-emerald-400'
     },
     {

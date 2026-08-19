@@ -8,8 +8,7 @@ import { showBrutalistToast } from '../../lib/toast';
 import {
   Home as HomeIcon,
   MessageSquare,
-  Sparkles,
-  Trophy,
+  Newspaper,
   User,
   Search,
   Sliders,
@@ -75,7 +74,7 @@ export function UnifiedNavigation({
     {
       id: 'news' as const,
       label: 'Flick News',
-      icon: Trophy,
+      icon: Newspaper,
       color: 'text-emerald-400'
     },
     {

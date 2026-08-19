@@ -12,7 +12,7 @@ export type DesignSystemTheme =
   | 'softui';
 
 export type ColorScheme = 'dark' | 'light' | 'auto' | 'highcontrast';
-export type AccentColor = 'green' | 'purple' | 'white' | 'blue' | 'amber';
+export type AccentColor = 'green' | 'monochrome' | 'white';
 
 interface ThemeContextType {
   theme: DesignSystemTheme;
@@ -117,13 +117,11 @@ export function useThemeListener() {
 function applyThemeVariables(theme: DesignSystemTheme, scheme: ColorScheme, accent: AccentColor) {
   const root = document.documentElement;
 
-  // 1. Map Accent colors
+  // 1. Map Accent colors (Strictly Green & Monochrome)
   const accentColors: Record<AccentColor, { primary: string; rgb: string; secondary: string; accent: string }> = {
-    green: { primary: '#00ff66', rgb: '0, 255, 102', secondary: '#00ccff', accent: '#ff0055' },
-    purple: { primary: '#bd00ff', rgb: '189, 0, 255', secondary: '#ff00aa', accent: '#00f0ff' },
-    white: { primary: '#ffffff', rgb: '255, 255, 255', secondary: '#a1a1aa', accent: '#ff0055' },
-    blue: { primary: '#2563eb', rgb: '37, 99, 235', secondary: '#38bdf8', accent: '#f43f5e' },
-    amber: { primary: '#f59e0b', rgb: '245, 158, 11', secondary: '#10b981', accent: '#ec4899' },
+    green: { primary: '#00ff66', rgb: '0, 255, 102', secondary: '#10b981', accent: '#00ff66' },
+    monochrome: { primary: '#e4e4e7', rgb: '228, 228, 231', secondary: '#a1a1aa', accent: '#ffffff' },
+    white: { primary: '#ffffff', rgb: '255, 255, 255', secondary: '#d4d4d8', accent: '#ffffff' },
   };
 
   const colors = accentColors[accent] || accentColors.green;

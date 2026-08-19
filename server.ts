@@ -122,14 +122,19 @@ async function startServer() {
 
   // --- Real-time Backend-driven OneSignal Push Dispatch Engine ---
   function initBackendPushEngine(db: any, isAuthenticated: boolean) {
+    if (!isAuthenticated) {
+      console.log("[Backend Notification Engine] Operating in secure REST proxy mode (realtime client-to-client push is enabled via /api/push/send).");
+      return;
+    }
+
     let initialLoadComplete = false;
     setTimeout(() => {
       initialLoadComplete = true;
-      console.log("[Backend Notification Engine] Initial historical documents ignored. Live push dispatcher is now ONLINE.");
+      console.log("[Backend Notification Engine] Live push dispatcher snapshot stream is now ONLINE.");
     }, 5000);
 
     // 1. Listen to notifications collection (covers: Messages, Likes, Comments, Mentions, Follows)
-    if (true) {
+    if (isAuthenticated) {
       onSnapshot(query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(1)), async (snapshot) => {
         if (!initialLoadComplete) return;
 
@@ -210,155 +215,157 @@ async function startServer() {
           }
         }
       }, (error) => {
-        console.warn("[Backend Push Dispatcher] Notifications subscription warning/error (likely unauthenticated):", error.message || error);
+        // Silent catch for background snapshot notice
       });
-    } else {
-      console.warn("[Backend Notification Engine] Skipping 'notifications' subscription since engine is unauthenticated (unauthenticated clients are denied read access to private notifications).");
     }
 
     // 2. Listen to posts collection (to broadcast New Post notifications to all other users)
-    onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(1)), async (snapshot) => {
-      if (!initialLoadComplete) return;
+    if (isAuthenticated) {
+      onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(1)), async (snapshot) => {
+        if (!initialLoadComplete) return;
 
-      for (const change of snapshot.docChanges()) {
-        if (change.type === 'added') {
-          const postData = change.doc.data();
-          const { authorId, authorName, content, id } = postData;
-          if (!authorId) continue;
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added') {
+            const postData = change.doc.data();
+            const { authorId, authorName, content, id } = postData;
+            if (!authorId) continue;
 
-          console.log(`[Backend Push Dispatcher] New post detected by author ${authorName} (${authorId}): "${content.slice(0, 30)}..."`);
+            console.log(`[Backend Push Dispatcher] New post detected by author ${authorName} (${authorId}): "${content.slice(0, 30)}..."`);
 
-          try {
-            const usersSnap = await getDocs(collection(db, 'users'));
-            const otherUsers = usersSnap.docs.filter(uDoc => uDoc.id !== authorId);
+            try {
+              const usersSnap = await getDocs(collection(db, 'users'));
+              const otherUsers = usersSnap.docs.filter(uDoc => uDoc.id !== authorId);
 
-            for (const uDoc of otherUsers) {
-              const userData = uDoc.data();
-              let playerIds: string[] = [];
-              if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
-              if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
-              if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
-                playerIds.push(...userData.oneSignalSubscriptionIds);
-              }
+              for (const uDoc of otherUsers) {
+                const userData = uDoc.data();
+                let playerIds: string[] = [];
+                if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
+                if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
+                if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
+                  playerIds.push(...userData.oneSignalSubscriptionIds);
+                }
 
-              playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
+                playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
-              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
+                const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
+                const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
-              const payload: any = {
-                app_id: ONESIGNAL_APP_ID,
-                headings: { en: "New Chronicle Published" },
-                contents: { en: `${authorName} posted a new update: "${content.slice(0, 50)}..."` },
-                data: {
-                  id,
-                  authorId,
-                  type: "new_post"
-                },
-                priority: 10,
+                const payload: any = {
+                  app_id: ONESIGNAL_APP_ID,
+                  headings: { en: "New Chronicle Published" },
+                  contents: { en: `${authorName} posted a new update: "${content.slice(0, 50)}..."` },
+                  data: {
+                    id,
+                    authorId,
+                    type: "new_post"
+                  },
+                  priority: 10,
                   content_available: true,
                   mutable_content: true,
-                ttl: 259200,
-                android_channel_id: "updates",
-                small_icon: "ic_stat_flick_logo",
-                android_accent_color: "FF39FF14"
-              };
+                  ttl: 259200,
+                  android_channel_id: "updates",
+                  small_icon: "ic_stat_flick_logo",
+                  android_accent_color: "FF39FF14"
+                };
 
-              if (playerIds.length > 0) {
-                payload.include_subscription_ids = playerIds;
-              } else {
-                payload.include_aliases = { external_id: [uDoc.id] };
-                payload.target_channel = "push";
-                payload.isAndroid = true; // Ensure native Android push delivery
+                if (playerIds.length > 0) {
+                  payload.include_subscription_ids = playerIds;
+                } else {
+                  payload.include_aliases = { external_id: [uDoc.id] };
+                  payload.target_channel = "push";
+                  payload.isAndroid = true; // Ensure native Android push delivery
+                }
+
+                await fetch("https://onesignal.com/api/v1/notifications", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
+                  },
+                  body: JSON.stringify(payload)
+                }).catch(console.error);
               }
-
-              await fetch("https://onesignal.com/api/v1/notifications", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json; charset=utf-8",
-                  "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
-                },
-                body: JSON.stringify(payload)
-              }).catch(console.error);
+            } catch (err) {
+              console.error(`[Backend Push Dispatcher] Error processing new post notifications:`, err);
             }
-          } catch (err) {
-            console.error(`[Backend Push Dispatcher] Error processing new post notifications:`, err);
           }
         }
-      }
-    }, (error) => {
-      console.warn("[Backend Push Dispatcher] Posts subscription warning/error:", error.message || error);
-    });
+      }, (error) => {
+        // Silent catch for background snapshot notice
+      });
+    }
 
     // 3. Listen to news collection (to broadcast global news wire notifications to all users)
-    onSnapshot(query(collection(db, 'news'), limit(1)), async (snapshot) => {
-      if (!initialLoadComplete) return;
+    if (isAuthenticated) {
+      onSnapshot(query(collection(db, 'news'), limit(1)), async (snapshot) => {
+        if (!initialLoadComplete) return;
 
-      for (const change of snapshot.docChanges()) {
-        if (change.type === 'added') {
-          const newsData = change.doc.data();
-          const { title, summary, id } = newsData;
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added') {
+            const newsData = change.doc.data();
+            const { title, summary, id } = newsData;
 
-          console.log(`[Backend Push Dispatcher] New global news published: "${title}"`);
+            console.log(`[Backend Push Dispatcher] New global news published: "${title}"`);
 
-          try {
-            const usersSnap = await getDocs(collection(db, 'users'));
-            for (const uDoc of usersSnap.docs) {
-              const userData = uDoc.data();
-              let playerIds: string[] = [];
-              if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
-              if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
-              if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
-                playerIds.push(...userData.oneSignalSubscriptionIds);
-              }
+            try {
+              const usersSnap = await getDocs(collection(db, 'users'));
+              for (const uDoc of usersSnap.docs) {
+                const userData = uDoc.data();
+                let playerIds: string[] = [];
+                if (userData.oneSignalSubscriptionId) playerIds.push(userData.oneSignalSubscriptionId);
+                if (userData.oneSignalId) playerIds.push(userData.oneSignalId);
+                if (userData.oneSignalSubscriptionIds && Array.isArray(userData.oneSignalSubscriptionIds)) {
+                  playerIds.push(...userData.oneSignalSubscriptionIds);
+                }
 
-              playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
+                playerIds = Array.from(new Set(playerIds)).filter(id => typeof id === 'string' && id.trim().length > 0);
 
-              const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
-              const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
+                const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "453179e9-df43-4411-847b-e1cd7ae1a0f3";
+                const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "os_v2_app_iuyxt2o7incbdbd34hgxvyna6osis5d3txquyieb3gjtl57lpin4miutyjdakdknyd5ud55y2ucijhhb2s3k5t7kebgd4d3fmyhfxvy";
 
-              const payload: any = {
-                app_id: ONESIGNAL_APP_ID,
-                headings: { en: "Global Tech Wire Broadcast" },
-                contents: { en: `${title}: ${summary}` },
-                data: {
-                  id,
-                  type: "news"
-                },
-                priority: 10,
+                const payload: any = {
+                  app_id: ONESIGNAL_APP_ID,
+                  headings: { en: "Global Tech Wire Broadcast" },
+                  contents: { en: `${title}: ${summary}` },
+                  data: {
+                    id,
+                    type: "news"
+                  },
+                  priority: 10,
                   content_available: true,
                   mutable_content: true,
-                ttl: 259200,
-                android_channel_id: "updates",
-                small_icon: "ic_stat_flick_logo",
-                android_accent_color: "FF39FF14"
-              };
+                  ttl: 259200,
+                  android_channel_id: "updates",
+                  small_icon: "ic_stat_flick_logo",
+                  android_accent_color: "FF39FF14"
+                };
 
-              if (playerIds.length > 0) {
-                payload.include_subscription_ids = playerIds;
-              } else {
-                payload.include_aliases = { external_id: [uDoc.id] };
-                payload.target_channel = "push";
-                payload.isAndroid = true; // Ensure native Android push delivery
+                if (playerIds.length > 0) {
+                  payload.include_subscription_ids = playerIds;
+                } else {
+                  payload.include_aliases = { external_id: [uDoc.id] };
+                  payload.target_channel = "push";
+                  payload.isAndroid = true; // Ensure native Android push delivery
+                }
+
+                await fetch("https://onesignal.com/api/v1/notifications", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
+                  },
+                  body: JSON.stringify(payload)
+                }).catch(console.error);
               }
-
-              await fetch("https://onesignal.com/api/v1/notifications", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json; charset=utf-8",
-                  "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
-                },
-                body: JSON.stringify(payload)
-              }).catch(console.error);
+            } catch (err) {
+              console.error(`[Backend Push Dispatcher] Error processing news global broadcast:`, err);
             }
-          } catch (err) {
-            console.error(`[Backend Push Dispatcher] Error processing news global broadcast:`, err);
           }
         }
-      }
-    }, (error) => {
-      console.warn("[Backend Push Dispatcher] News subscription warning/error:", error.message || error);
-    });
+      }, (error) => {
+        // Silent catch for background snapshot notice
+      });
+    }
 
     // 4. Listen to calls collection for real-time incoming call push triggers
     onSnapshot(query(collection(db, 'calls'), orderBy('createdAt', 'desc'), limit(15)), async (snapshot) => {

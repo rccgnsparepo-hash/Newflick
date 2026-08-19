@@ -7,6 +7,7 @@ import {
   Terminal, WifiOff, Lock, Globe, MapPin, User, Sparkles, CheckCircle2, ChevronRight 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { purgeAllFlickCloudAndLocalData } from '../lib/resetService';
 
 interface AuthScreenProps {
   simulatedName?: string;
@@ -782,8 +783,29 @@ export default function AuthScreen({ simulatedName, onSimulatedSelect }: AuthScr
           </div>
 
           {/* Footer terms */}
-          <div className="mt-6 text-center text-[10px] text-zinc-400 font-sans font-medium">
-            Protected by standard client-side secure sandbox protocols.
+          <div className="mt-6 text-center space-y-2 text-[10px] text-zinc-400 font-sans font-medium">
+            <p>Protected by standard client-side secure sandbox protocols.</p>
+            <div>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm('Wipe all accounts, messages, and local data for a clean fresh start?')) {
+                    showBrutalistToast('PURGING', 'Resetting database & storage...', 'info');
+                    try {
+                      await purgeAllFlickCloudAndLocalData();
+                      showBrutalistToast('FRESH START ✓', 'App reset successfully. Reloading...', 'success');
+                      setTimeout(() => window.location.reload(), 1000);
+                    } catch (e: any) {
+                      showBrutalistToast('RESET NOTICE', e?.message || 'Storage cleared.', 'info');
+                      setTimeout(() => window.location.reload(), 1000);
+                    }
+                  }
+                }}
+                className="text-[9px] font-mono text-zinc-400 hover:text-red-500 transition underline uppercase cursor-pointer"
+              >
+                [Clean Slate / Factory Reset]
+              </button>
+            </div>
           </div>
         </div>
 

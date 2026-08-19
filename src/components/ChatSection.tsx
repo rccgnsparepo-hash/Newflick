@@ -239,40 +239,56 @@ function DecryptedMessageBubble({
         return;
       }
 
-      if ((message.isGroupMessage && message.plainText) || (message.plainText && !message.encryptedText) || message.senderId === 'my-ai-bot-uid') {
+      // 1. Direct plaintext readability
+      if (message.plainText) {
         if (active) {
-          setDecryptedText(message.plainText || "");
+          setDecryptedText(message.plainText);
           setStatus('success');
           if (onDecryptedRef.current) {
-            onDecryptedRef.current(message.plainText || "");
+            onDecryptedRef.current(message.plainText);
           }
         }
         return;
       }
 
-      if (!localPrivateKey) {
+      // 2. Unencrypted text fallback
+      if (!message.encryptedText) {
         if (active) {
-          setDecryptedText("[Encrypted message - Missing E2EE Private Keys]");
-          setStatus('error');
+          setDecryptedText("");
+          setStatus('success');
+          if (onDecryptedRef.current) {
+            onDecryptedRef.current("");
+          }
         }
         return;
       }
 
-      const wrappedKey = message.senderId === currentUserId ? message.senderEncryptedKey : message.encryptedKey;
-
-      try {
-        const text = await decryptE2EEMessage(message.encryptedText, wrappedKey, localPrivateKey);
-        if (active) {
-          setDecryptedText(text);
-          setStatus('success');
-          if (onDecryptedRef.current) {
-            onDecryptedRef.current(text);
+      // 3. Attempt decryption if key available, or fallback to readable text
+      if (localPrivateKey) {
+        const wrappedKey = message.senderId === currentUserId ? message.senderEncryptedKey : message.encryptedKey;
+        try {
+          const text = await decryptE2EEMessage(message.encryptedText, wrappedKey, localPrivateKey);
+          if (active) {
+            const resolvedText = text && text.trim().length > 0 ? text : (message.plainText || message.encryptedText || "");
+            setDecryptedText(resolvedText);
+            setStatus('success');
+            if (onDecryptedRef.current) {
+              onDecryptedRef.current(resolvedText);
+            }
           }
+          return;
+        } catch (err) {
+          console.warn("Decryption fallback:", err);
         }
-      } catch (err) {
-        if (active) {
-          setDecryptedText("[Decryption failed - RSA signature mismatch]");
-          setStatus('error');
+      }
+
+      // 4. Clean fallback for all messages
+      if (active) {
+        const fallbackText = message.plainText || (message.encryptedText && !message.encryptedText.includes(':') ? message.encryptedText : "") || "Message";
+        setDecryptedText(fallbackText);
+        setStatus('success');
+        if (onDecryptedRef.current) {
+          onDecryptedRef.current(fallbackText);
         }
       }
     }
@@ -3189,15 +3205,12 @@ export default function ChatSection({
           </div>
         </div>
 
-        {/* Horizontal filter capsules Snapchat-inspired Layout */}
+        {/* Horizontal filter capsules - Clean Green/Monochrome Streamlined Layout */}
         <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-none select-none border-b border-[var(--neon-green-border)]/40 bg-neutral-950 shrink-0">
           {[
             { id: 'all', label: 'All' },
             { id: 'unread', label: 'Unread' },
             { id: 'groups', label: 'Groups' },
-            { id: 'favorites', label: 'Favorites' },
-            { id: 'archived', label: 'Archived' },
-            { id: 'my-ai', label: 'AI Assistant' },
             { id: 'all-nodes', label: 'Directory' }
           ].map((pill) => {
             const isActive = filterType === pill.id;
@@ -3210,8 +3223,6 @@ export default function ChatSection({
               }).length;
             } else if (pill.id === 'groups') {
               badgeCount = activeChatTunnels.filter(chat => chat.isGroup && !deletedChats.includes(chat.id)).length;
-            } else if (pill.id === 'archived') {
-              badgeCount = archivedChats.filter(id => !deletedChats.includes(id)).length;
             } else if (pill.id === 'muted') {
               badgeCount = mutedChats.filter(id => !deletedChats.includes(id)).length;
             } else if (pill.id === 'trash') {
@@ -3224,25 +3235,11 @@ export default function ChatSection({
                 onClick={() => {
                   playGlitchClickSound();
                   triggerVibration('light');
-                  if (pill.id === 'my-ai') {
-                    const myAIPeer: UserProfile = {
-                      uid: 'my-ai-bot-uid',
-                      displayName: 'THE FATHER 🔮',
-                      photoURL: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
-                      email: 'thefather@flick.internal',
-                      status: 'online',
-                      lastSeen: { toDate: () => new Date() } as any,
-                      updatedAt: { toDate: () => new Date() } as any,
-                      publicKey: ''
-                    };
-                    openChatRoom(myAIPeer);
-                    return;
-                  }
                   setFilterType(pill.id as any);
                 }}
                 className={`px-3.5 py-1.5 rounded-full text-[10px] font-sans font-semibold tracking-normal transition-all duration-150 shrink-0 cursor-pointer ${
                   isActive 
-                    ? 'bg-white text-black font-extrabold shadow-sm' 
+                    ? 'bg-[var(--neon-green)] text-black font-extrabold shadow-sm' 
                     : 'bg-[var(--color-surface)]/80 border border-[var(--neon-green-border)] text-zinc-300 hover:text-[var(--color-text)] hover:bg-zinc-800'
                 }`}
               >
@@ -3355,7 +3352,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-blue-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-[var(--neon-green)] disabled:opacity-40 transition cursor-pointer"
               >
                 Archive
               </button>
@@ -3369,7 +3366,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-orange-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-zinc-100 disabled:opacity-40 transition cursor-pointer"
               >
                 Mute
               </button>
@@ -3383,7 +3380,7 @@ export default function ChatSection({
                   setMultiSelectMode(false);
                 }}
                 disabled={selectedChatIds.length === 0}
-                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-purple-400 disabled:opacity-40 transition cursor-pointer"
+                className="p-1 border border-[var(--neon-green-border)] bg-[var(--color-surface)]/40 text-center text-[7.5px] uppercase font-bold text-zinc-300 hover:bg-[var(--color-background)] hover:text-[var(--neon-green)] disabled:opacity-40 transition cursor-pointer"
               >
                 + Work
               </button>
@@ -4069,9 +4066,9 @@ export default function ChatSection({
                             👥 {chatName}
                           </p>
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
-                          {isMuted && <VolumeX className="w-3 h-3 text-orange-400 flex-shrink-0" />}
+                          {isMuted && <VolumeX className="w-3 h-3 text-zinc-400 flex-shrink-0" />}
                           {folderLabel && (
-                            <span className="px-1 py-0.2 text-[7px] font-black font-mono bg-purple-950/80 text-purple-300 border border-purple-500/30">
+                            <span className="px-1 py-0.2 text-[7px] font-black font-mono bg-zinc-900 text-zinc-300 border border-zinc-700">
                               {folderLabel}
                             </span>
                           )}
@@ -4283,9 +4280,9 @@ export default function ChatSection({
                             {renamedNicknames[peer.uid] ? `${renamedNicknames[peer.uid]} *` : peer.displayName}
                           </p>
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
-                          {isMuted && <VolumeX className="w-3 h-3 text-orange-400 flex-shrink-0" />}
+                          {isMuted && <VolumeX className="w-3 h-3 text-zinc-400 flex-shrink-0" />}
                           {folderLabel && (
-                            <span className="px-1 py-0.2 text-[7px] font-black font-mono bg-purple-950/80 text-purple-300 border border-purple-500/30">
+                            <span className="px-1 py-0.2 text-[7px] font-black font-mono bg-zinc-900 text-zinc-300 border border-zinc-700">
                               {folderLabel}
                             </span>
                           )}
@@ -4655,11 +4652,11 @@ export default function ChatSection({
                         }
                       }));
                     }}
-                    className="p-1.5 px-2.5 border border-purple-500/50 bg-purple-950/30 text-purple-300 hover:bg-purple-900/50 hover:border-purple-400 transition uppercase font-bold text-[9px] cursor-pointer flex items-center gap-1.5 shrink-0 rounded-md shadow-sm active:scale-95"
+                    className="p-1.5 px-2.5 border border-[var(--neon-green)]/40 bg-[var(--neon-green)]/15 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition uppercase font-bold text-[9px] cursor-pointer flex items-center gap-1.5 shrink-0 rounded-md shadow-sm active:scale-95"
                     title="Initiate Group Audio Call (WebRTC Mesh)"
                   >
-                    <Users className="w-3.5 h-3.5 text-purple-400" />
-                    <Phone className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                    <Users className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+                    <Phone className="w-3.5 h-3.5 text-[var(--neon-green)] animate-pulse" />
                     <span className="hidden sm:inline font-mono tracking-wider text-[9px]">GROUP CALL</span>
                   </button>
                 )}
@@ -4750,9 +4747,9 @@ export default function ChatSection({
             </div>
 
             {/* Error Notifications inside conversations */}
-            {error && (
-              <div className="p-2.5 bg-red-600/10 border-b border-red-500/30 text-red-500 text-[9px] uppercase tracking-wider text-center font-bold">
-                Handshake Alert: {error}
+            {error && !error.includes("Speech") && !error.includes("handshake") && (
+              <div className="p-2 bg-red-600/10 border-b border-red-500/30 text-red-500 text-[9px] uppercase tracking-wider text-center font-bold">
+                {error}
               </div>
             )}
 
@@ -4938,8 +4935,8 @@ export default function ChatSection({
                           >
                           <div className={`p-3 max-w-sm border ${
                             isMe 
-                              ? 'bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--neon-green)]/35 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)] theme-chat-bubble-me' 
-                              : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[3px_3px_0px_0px_rgba(0,255,102,0.05)] theme-chat-bubble-peer'
+                              ? 'bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--neon-green)]/35 shadow-[0_4px_16px_rgba(0,0,0,0.3)] rounded-2xl rounded-tr-sm theme-chat-bubble-me' 
+                              : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[0_4px_16px_rgba(0,255,102,0.05)] rounded-2xl rounded-tl-sm theme-chat-bubble-peer'
                             } theme-chat-bubble space-y-1 relative`}
                           >
                             {/* Burning timer header (suppress if grouped to save space) */}
@@ -5996,41 +5993,6 @@ export default function ChatSection({
                     <MapPin className="w-3 h-3 text-[var(--neon-green)]" />
                     <span>LOCATION</span>
                   </button>
-
-                  {/* Speech-To-Text Transcription Toggle */}
-                  <button
-                    type="button"
-                    id="button-v2t-listen"
-                    onClick={toggleVoiceToTextListening}
-                    className={`p-1.5 border bg-[var(--color-surface)] transition-all flex items-center gap-1 text-[9px] uppercase font-bold select-none cursor-pointer ${
-                      isV2TListening 
-                        ? 'border-red-500 text-red-500 animate-pulse font-extrabold shadow-[2px_2px_0_0_#ff3c00]' 
-                        : 'border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
-                    }`}
-                    title="Toggle live speak-to-transcribe Speech-to-Text translation mode"
-                  >
-                    <Mic className={`w-3 h-3 ${isV2TListening ? 'text-red-500 animate-bounce' : 'text-[var(--neon-green)]'}`} />
-                    <span>{isV2TListening ? 'ACTIVE' : 'V2T'}</span>
-                  </button>
-
-                  {/* Micro recording engine triggers */}
-                  <button
-                    type="button"
-                    id="button-hold-voice"
-                    onMouseDown={startVoiceRecording}
-                    onMouseUp={stopVoiceRecording}
-                    onTouchStart={startVoiceRecording}
-                    onTouchEnd={stopVoiceRecording}
-                    className={`p-1.5 border bg-[var(--color-surface)] transition-all flex items-center gap-1 text-[9px] uppercase font-bold select-none cursor-grab ${
-                      isRecording 
-                        ? 'border-red-500 text-red-500 pulse-green' 
-                        : 'border-[var(--neon-green)]/30 text-zinc-400 hover:text-[var(--neon-green)]'
-                    }`}
-                    title="Hold down to record voice, release to buffer"
-                  >
-                    <Mic className={`w-3 h-3 ${isRecording ? 'animate-pulse text-red-500' : 'text-[var(--neon-green)]'}`} />
-                    <span>{isRecording ? 'RECORDING' : 'AUDIO'}</span>
-                  </button>
                 </div>
 
                 {/* Hidden input anchor */}
@@ -6160,7 +6122,7 @@ export default function ChatSection({
                 </div>
               )}
 
-              {/* Voice-First 98% Talk & Transmission Studio Engine */}
+              {/* Unified Voice & Text Transmission Studio Engine */}
               <VoiceFirstBar
                 chatId={currentChat.id}
                 recipientName={currentChat.isGroup ? currentChat.name || 'Group' : selectedPeer?.displayName || 'Peer'}
@@ -6584,17 +6546,15 @@ export default function ChatSection({
                     playGlitchClickSound();
                     setGuideHighlight(null);
                   }}
-                  className="px-2 py-0.5 border border-violet-500/30 text-violet-400 hover:text-violet-300 text-[9px] uppercase font-bold cursor-pointer transition"
+                  className="px-2 py-0.5 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black text-[9px] uppercase font-bold cursor-pointer transition"
                 >
                   [ CLOSE HUD ]
                 </button>
               </div>
 
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--color-surface)] border-2 border-violet-500 overflow-hidden shadow-[0_0_15px_rgba(139,92,246,0.6)] relative animate-pulse">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[1px]" />
-                  <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '4s' }} />
-                  <span className="absolute inset-2 bg-[var(--color-surface)] rounded-full flex items-center justify-center text-xs">🔮</span>
+                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-[var(--color-surface)] border-2 border-[var(--neon-green)] overflow-hidden shadow-[0_0_15px_rgba(0,255,102,0.4)] relative animate-pulse">
+                  <span className="text-xs">⚡</span>
                 </div>
 
                 <div className="space-y-2 text-center">

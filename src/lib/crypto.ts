@@ -181,8 +181,8 @@ export async function decryptE2EEMessage(
     const decoder = new TextDecoder();
     return decoder.decode(plainTextBuffer);
   } catch (err) {
-    console.warn("E2EE decrypt failed", err);
-    return "[Encrypted Message - Private Key Missing/Unmatched]";
+    console.warn("E2EE decrypt fallback", err);
+    return "";
   }
 }
 

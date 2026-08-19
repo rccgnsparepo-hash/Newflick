@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { HardDrive, Trash2, Clock, RefreshCw, Database, Zap, PieChart as PieIcon } from 'lucide-react';
+import { HardDrive, Trash2, Clock, RefreshCw, Database, Zap, PieChart as PieIcon, ArrowRightLeft, Download, Upload, Shield } from 'lucide-react';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
 import { showBrutalistToast } from '../lib/toast';
 import { UserProfile } from '../types';
+import { DeviceVaultTransferModal } from './DeviceVaultTransferModal';
+import { getDevicePlatform, getOrCreateDeviceId, getDeviceName } from '../lib/deviceStorageEngine';
+import { purgeAllFlickCloudAndLocalData } from '../lib/resetService';
 
 interface StoragePurgeTabProps {
   profile?: UserProfile;
@@ -103,6 +106,9 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
   const [otherBytes, setOtherBytes] = useState<number>(0);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [isPurging, setIsPurging] = useState<boolean>(false);
+  const [isFactoryResetting, setIsFactoryResetting] = useState<boolean>(false);
+  const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
+  const [showVaultModal, setShowVaultModal] = useState<boolean>(false);
 
   // Sync with Firestore on mount if profile exists
   useEffect(() => {
@@ -324,6 +330,66 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
 
   return (
     <div className="space-y-5">
+      {/* FLICK LOCAL-FIRST DEVICE VAULT SECTION */}
+      <div className="p-4 rounded-2xl bg-zinc-950 border border-[var(--neon-green-border)] space-y-4 relative overflow-hidden">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-[var(--neon-green)]/15 border border-[var(--neon-green)] flex items-center justify-center text-[var(--neon-green)]">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-zinc-100 flex items-center gap-2">
+                Flick Device Vault & Multi-Device Sync
+                <span className="text-[8px] font-mono px-2 py-0.5 rounded-full bg-[var(--neon-green)]/20 text-[var(--neon-green)] border border-[var(--neon-green)]/30 font-bold">
+                  User Owns The Data
+                </span>
+              </h4>
+              <p className="text-[10px] text-zinc-400 font-mono">
+                Platform: <span className="text-zinc-200 uppercase font-bold">{getDevicePlatform()}</span> • Device: <span className="text-zinc-200">{getDeviceName()}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-zinc-300 leading-relaxed">
+          Your messages, voice notes, photos, and drafts are stored locally on your device. Firebase only provides identity and delivery bridging. Transfer your vault directly between devices or create an encrypted offline backup archive.
+        </p>
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setShowVaultModal(true);
+            }}
+            className="flex-1 min-w-[140px] py-2.5 px-3 rounded-xl bg-[var(--neon-green)] text-black font-black text-[10.5px] uppercase tracking-wider hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,255,102,0.15)]"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Device-to-Device Sync
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setShowVaultModal(true);
+            }}
+            className="flex-1 min-w-[140px] py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold text-[10.5px] uppercase tracking-wider hover:bg-zinc-800 active:scale-95 transition flex items-center justify-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+            Export / Restore Vault
+          </button>
+        </div>
+      </div>
+
+      {showVaultModal && (
+        <DeviceVaultTransferModal
+          isOpen={showVaultModal}
+          onClose={() => setShowVaultModal(false)}
+          onDataRestored={() => calculateStorage()}
+        />
+      )}
+
       <h3 className="text-xs uppercase tracking-widest font-bold text-[var(--neon-green)] font-mono flex items-center gap-2">
         <HardDrive className="w-4 h-4 text-[var(--neon-green)]" />
         ENCRYPTED STORAGE & AUTO-PURGE CONTROLS
@@ -486,6 +552,76 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
             Purge Read Messages Now
           </button>
         </div>
+      </div>
+
+      {/* COMPLETE FRESH RESTART & PURGE SLATE */}
+      <div className="p-4 rounded-2xl bg-red-950/20 border border-red-500/40 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-4 h-4 text-red-400" />
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-red-400 font-mono">
+              FRESH RESTART & COMPLETE DATABASE PURGE
+            </h4>
+          </div>
+          <span className="text-[8px] font-mono px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-bold">
+            CLEAN SLATE
+          </span>
+        </div>
+
+        <p className="text-[10px] text-zinc-400 leading-relaxed">
+          Wipes all accounts, conversations, messages, and presence from Firebase and purges all local storage and IndexedDB caches across your devices. Starts the application completely fresh from zero.
+        </p>
+
+        {!showConfirmReset ? (
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setShowConfirmReset(true);
+            }}
+            disabled={isFactoryResetting}
+            className="w-full py-2.5 px-4 rounded-xl bg-red-600/20 hover:bg-red-600 border border-red-500/60 text-red-300 hover:text-black font-black text-[10.5px] uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Purge All Accounts & Restart Fresh
+          </button>
+        ) : (
+          <div className="p-3 bg-black/60 border border-red-500/60 rounded-xl space-y-2">
+            <p className="text-[10px] font-bold text-red-400 text-center uppercase font-mono">
+              Are you sure? This deletes ALL user accounts and messages permanently.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmReset(false)}
+                className="flex-1 py-2 rounded-lg bg-zinc-800 text-zinc-300 text-[10px] font-bold uppercase hover:bg-zinc-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isFactoryResetting}
+                onClick={async () => {
+                  setIsFactoryResetting(true);
+                  try {
+                    const result = await purgeAllFlickCloudAndLocalData();
+                    showBrutalistToast('FRESH START COMPLETE', result.message, 'success');
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1200);
+                  } catch (err: any) {
+                    showBrutalistToast('RESET ERROR', err?.message || 'Error executing purge', 'error');
+                    setIsFactoryResetting(false);
+                  }
+                }}
+                className="flex-1 py-2 rounded-lg bg-red-600 text-white text-[10px] font-black uppercase hover:bg-red-500 transition flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-3 h-3" />
+                {isFactoryResetting ? 'Purging All...' : 'Yes, Wipe Everything'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

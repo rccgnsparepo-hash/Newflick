@@ -11,24 +11,13 @@ import {
   Sparkles, 
   Paperclip, 
   Type, 
-  Sliders, 
-  Zap,
-  Radio,
-  FileAudio,
-  Check,
-  RotateCcw,
-  Volume2,
-  Bookmark,
-  ChevronUp,
-  ChevronLeft,
-  Activity,
-  SlidersHorizontal,
-  FastForward
+  Radio, 
+  RotateCcw, 
+  Bookmark 
 } from 'lucide-react';
 import { 
   FlickVoiceRecorder, 
-  VoiceRecordingState, 
-  VoiceEffectPreset 
+  VoiceRecordingState 
 } from '../lib/voiceEngine';
 import { 
   saveVoiceNoteToVault, 
@@ -62,14 +51,6 @@ interface VoiceFirstBarProps {
   disabled?: boolean;
 }
 
-const EFFECT_PRESETS: { id: VoiceEffectPreset; label: string; icon: string; desc: string }[] = [
-  { id: 'natural', label: 'NATURAL', icon: '🎙️', desc: 'Raw lossless capture' },
-  { id: 'studio', label: 'STUDIO', icon: '🎛️', desc: 'Warm broadcast EQ' },
-  { id: 'crisp', label: 'CRISP', icon: '✨', desc: 'High-clarity treble' },
-  { id: 'bass', label: 'BASS', icon: '🔊', desc: 'Deep sub presence' },
-  { id: 'cyber', label: 'CYBER', icon: '🤖', desc: 'Futuristic synth tone' },
-];
-
 export function VoiceFirstBar({
   chatId,
   recipientName,
@@ -101,9 +82,7 @@ export function VoiceFirstBar({
   const [previewPlaybackRate, setPreviewPlaybackRate] = useState<number>(1.0);
   const [isSavedToVault, setIsSavedToVault] = useState<boolean>(false);
 
-  const [showAuxiliaryText, setShowAuxiliaryText] = useState<boolean>(false);
   const [auxiliaryText, setAuxiliaryText] = useState<string>('');
-  const [showEffectsDeck, setShowEffectsDeck] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
 
   // Gesture tracking for Slide-To-Cancel and Slide-Up-To-Lock
@@ -205,6 +184,22 @@ export function VoiceFirstBar({
     playGlitchClickSound();
   };
 
+  const [micPermissionDenied, setMicPermissionDenied] = useState<boolean>(false);
+
+  // Request physical microphone permission
+  const handleRequestMicPermission = async () => {
+    try {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+        setMicPermissionDenied(false);
+        showBrutalistToast('MIC GRANTED', 'Microphone access is now enabled for voice recording.', 'success');
+      }
+    } catch (e) {
+      showBrutalistToast('MIC PERMISSION', 'Please click the lock/settings icon in your browser URL bar to allow microphone access.', 'info');
+    }
+  };
+
   // Start voice recording
   const handleStartRecording = async (lockMode = false) => {
     if (disabled || isSending) return;
@@ -225,9 +220,9 @@ export function VoiceFirstBar({
           rec.setLocked(true);
         }
       }
-    } catch (err) {
-      console.error('Microphone recording error:', err);
-      showBrutalistToast('MIC BLOCKED', 'Microphone access is required to record voice notes.', 'error');
+    } catch (err: any) {
+      console.warn('[VoiceFirstBar] Recording notice:', err?.message || err);
+      setMicPermissionDenied(true);
     }
   };
 
@@ -387,7 +382,7 @@ export function VoiceFirstBar({
       setIsSavedToVault(true);
       triggerVibration('medium');
       playLikeSound();
-      showBrutalistToast('VAULT ARCHIVED', 'Voice note preserved in encrypted offline storage.', 'success');
+      showBrutalistToast('VAULT ARCHIVED', 'Voice note preserved in offline vault.', 'success');
     } catch (e) {
       console.error('Vault save error:', e);
     }
@@ -423,7 +418,6 @@ export function VoiceFirstBar({
       setIsSending(true);
       await onSendTextMessage(auxiliaryText.trim());
       setAuxiliaryText('');
-      setShowAuxiliaryText(false);
     } finally {
       setIsSending(false);
     }
@@ -436,88 +430,33 @@ export function VoiceFirstBar({
   };
 
   return (
-    <div className="w-full bg-[var(--color-surface)] border-t-2 border-[var(--neon-green)]/30 font-mono select-none relative transition-all">
+    <div className="w-full bg-[var(--color-surface)] border-t border-[var(--neon-green)]/20 font-mono select-none relative transition-all">
       
-      {/* Active Speech-to-Text Live Transcript Floating Bar */}
-      {recorderState.isRecording && (recorderState.currentTranscript || recorderState.interimTranscript) && (
-        <div className="px-4 py-2 bg-black/95 border-b border-[var(--neon-green)]/40 flex items-center gap-2.5 text-[10px] text-zinc-300">
-          <Sparkles className="w-3.5 h-3.5 text-[var(--neon-green)] animate-spin" />
-          <span className="text-[8px] font-black uppercase text-[var(--neon-green)] tracking-wider">LIVE SPEECH-TO-TEXT:</span>
-          <span className="font-sans italic text-white truncate flex-1">
-            {recorderState.currentTranscript} <span className="text-[var(--neon-green)]/80 underline">{recorderState.interimTranscript}</span>
-          </span>
-          <span className="text-[8px] font-mono px-1.5 py-0.5 bg-zinc-900 border border-[var(--neon-green)]/30 text-[var(--neon-green)] uppercase">
-            AI READY
-          </span>
-        </div>
-      )}
-
-      {/* Auxiliary Text Input Drawer (2% text support) */}
-      {showAuxiliaryText && (
-        <form onSubmit={handleSendAuxText} className="p-2.5 bg-black/70 border-b border-zinc-800 flex items-center gap-2">
-          <input
-            type="text"
-            value={auxiliaryText}
-            onChange={(e) => {
-              setAuxiliaryText(e.target.value);
-              playTypingSound(e.target.value.slice(-1));
-              if (onTypingStatusChange) onTypingStatusChange(true);
-            }}
-            placeholder="Type optional caption, search query, or link..."
-            className="flex-1 px-3 py-1.5 bg-zinc-950 border border-zinc-700 focus:border-[var(--neon-green)] text-xs text-white placeholder-zinc-500 outline-none font-sans"
-            autoFocus
-          />
+      {/* Microphone Fallback / Permission Notice Banner */}
+      {(recorderState.isSyntheticFallback || micPermissionDenied) && (
+        <div className="px-3 py-1.5 bg-amber-950/90 border-b border-amber-500/40 flex items-center justify-between gap-2 text-[9px] text-amber-200">
+          <div className="flex items-center gap-1.5 truncate">
+            <Radio className="w-3 h-3 text-amber-400 shrink-0" />
+            <span className="truncate">
+              SYNTHETIC AUDIO MODE • Real mic access restricted in this browser session.
+            </span>
+          </div>
           <button
-            type="submit"
-            disabled={!auxiliaryText.trim() || isSending}
-            className="px-3.5 py-1.5 bg-[var(--neon-green)] text-black font-black text-[10px] uppercase hover:bg-white transition cursor-pointer disabled:opacity-30 flex items-center gap-1.5 shadow-[2px_2px_0px_#000000]"
+            type="button"
+            onClick={handleRequestMicPermission}
+            className="px-2 py-0.5 bg-amber-400 hover:bg-white text-black font-black text-[8px] uppercase tracking-wider transition cursor-pointer shrink-0"
           >
-            <Send className="w-3 h-3" />
-            SEND
+            ENABLE MIC
           </button>
-        </form>
-      )}
-
-      {/* Voice DSP Effects Deck Drawer */}
-      {showEffectsDeck && (
-        <div className="p-3 bg-neutral-950 border-b border-[var(--neon-green)]/30 grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {EFFECT_PRESETS.map((fx) => {
-            const isSelected = recorderState.effect === fx.id;
-            return (
-              <button
-                key={fx.id}
-                type="button"
-                onClick={() => {
-                  recorderRef.current?.setEffect(fx.id);
-                  playGlitchClickSound();
-                  triggerVibration('light');
-                }}
-                className={`p-2 border text-left flex flex-col justify-between transition cursor-pointer ${
-                  isSelected
-                    ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-white shadow-[0_0_10px_rgba(0,255,102,0.2)]'
-                    : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 text-zinc-400'
-                }`}
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span>{fx.icon}</span>
-                  {isSelected && <span className="text-[8px] font-black text-[var(--neon-green)]">ACTIVE</span>}
-                </div>
-                <div className="mt-1.5">
-                  <span className="text-[9.5px] font-black uppercase tracking-wider block">{fx.label}</span>
-                  <span className="text-[7.5px] text-zinc-400 block truncate">{fx.desc}</span>
-                </div>
-              </button>
-            );
-          })}
         </div>
       )}
 
       {/* Main Bar Content */}
-      <div className="p-3">
+      <div className="p-2.5 sm:p-3">
         
         {/* CASE 1: AUDITION / PREVIEW DRAFT MODE */}
         {previewAudioUrl ? (
-          <div className="p-3 bg-black/95 border-2 border-[var(--neon-green)] shadow-[0_0_20px_rgba(0,255,102,0.25)] space-y-3">
+          <div className="p-3.5 bg-black/95 rounded-2xl border-2 border-[var(--neon-green)]/70 shadow-[0_0_20px_rgba(0,255,102,0.2)] space-y-3">
             <audio 
               ref={previewAudioElRef} 
               src={previewAudioUrl} 
@@ -526,8 +465,8 @@ export function VoiceFirstBar({
             {/* Header info */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-[var(--neon-green)] text-black text-[9px] font-black uppercase tracking-wider">
-                  FLICK DRAFT
+                <span className="px-2.5 py-0.5 rounded-full bg-[var(--neon-green)] text-black text-[9px] font-black uppercase tracking-wider">
+                  VOICE NOTE DRAFT
                 </span>
                 <span className="text-[11px] font-black text-white font-mono">
                   {formatSecs(previewCurrentTime)} / {formatSecs(previewDuration)}
@@ -539,7 +478,7 @@ export function VoiceFirstBar({
                 <button
                   type="button"
                   onClick={cyclePlaybackRate}
-                  className="px-2 py-0.5 border border-zinc-700 hover:border-[var(--neon-green)] bg-zinc-900 text-zinc-300 hover:text-[var(--neon-green)] text-[9px] font-black uppercase transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg border border-zinc-700 hover:border-[var(--neon-green)] bg-zinc-900 text-zinc-300 hover:text-[var(--neon-green)] text-[9px] font-black uppercase transition cursor-pointer"
                   title="Cycle playback speed"
                 >
                   {previewPlaybackRate}x
@@ -549,7 +488,7 @@ export function VoiceFirstBar({
                   type="button"
                   onClick={handleSaveToVault}
                   disabled={isSavedToVault}
-                  className={`px-2 py-0.5 border text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer ${
                     isSavedToVault
                       ? 'border-purple-500 bg-purple-950 text-purple-300'
                       : 'border-zinc-700 hover:border-purple-500 bg-zinc-900 text-zinc-300 hover:text-purple-300'
@@ -570,7 +509,7 @@ export function VoiceFirstBar({
                 const frac = Math.max(0, Math.min(1, clickX / rect.width));
                 handleScrub(frac);
               }}
-              className="h-12 bg-zinc-950 border border-zinc-800 hover:border-[var(--neon-green)]/60 px-2 flex items-center justify-between gap-[2px] cursor-pointer relative group"
+              className="h-12 bg-zinc-950 rounded-xl border border-zinc-800 hover:border-[var(--neon-green)]/60 px-2 flex items-center justify-between gap-[2px] cursor-pointer relative group overflow-hidden"
             >
               {/* Playback progress cursor line */}
               <div 
@@ -607,7 +546,7 @@ export function VoiceFirstBar({
                 <button
                   type="button"
                   onClick={togglePreviewPlay}
-                  className="px-4 py-2 bg-[var(--neon-green)] text-black border border-[var(--neon-green)] hover:bg-white font-black text-xs uppercase flex items-center gap-1.5 transition cursor-pointer shadow-[2px_2px_0px_#000000]"
+                  className="px-4 py-2 rounded-xl bg-[var(--neon-green)] text-black border border-[var(--neon-green)] hover:bg-white font-black text-xs uppercase flex items-center gap-1.5 transition cursor-pointer shadow-[0_0_12px_rgba(0,255,102,0.3)]"
                 >
                   {isPreviewPlaying ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current translate-x-0.5" />}
                   <span>{isPreviewPlaying ? 'PAUSE' : 'PLAY'}</span>
@@ -617,7 +556,7 @@ export function VoiceFirstBar({
                 <button
                   type="button"
                   onClick={handleCancelRecording}
-                  className="px-3 py-2 border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-400 text-[10px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
+                  className="px-3 py-2 rounded-xl border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-400 text-[10px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
                   title="Discard voice draft"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -630,17 +569,17 @@ export function VoiceFirstBar({
                 type="button"
                 onClick={handleSendPreviewedVoice}
                 disabled={isSending}
-                className="px-5 py-2 bg-[var(--neon-green)] text-black font-black text-xs uppercase hover:bg-white shadow-[3px_3px_0px_#ffffff] transition cursor-pointer flex items-center gap-2"
+                className="px-5 py-2 rounded-xl bg-[var(--neon-green)] text-black font-black text-xs uppercase hover:bg-white shadow-[0_0_15px_rgba(0,255,102,0.35)] transition cursor-pointer flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
-                TRANSMIT FLICK
+                TRANSMIT
               </button>
             </div>
           </div>
         ) : recorderState.isRecording ? (
           
           /* CASE 2: ACTIVE VOICE RECORDING STUDIO (Live Waveform & Hands-Free) */
-          <div className="p-3.5 bg-black/95 border-2 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.3)] space-y-3 animate-fadeIn relative overflow-hidden">
+          <div className="p-3.5 bg-black/95 rounded-2xl border-2 border-red-500/80 shadow-[0_0_25px_rgba(239,68,68,0.25)] space-y-3 animate-fadeIn relative overflow-hidden">
             
             {/* Ambient Background Matrix Grid */}
             <div className="absolute top-0 right-0 w-32 h-full bg-[radial-gradient(#ef4444_1px,transparent_1px)] [background-size:8px_8px] opacity-15 pointer-events-none" />
@@ -648,36 +587,36 @@ export function VoiceFirstBar({
             <div className="flex items-center justify-between">
               {/* Recording indicator & timer */}
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
                 <span className="text-xs font-black uppercase text-red-400 tracking-wider">
-                  RECORDING ENCRYPTED FLICK
+                  RECORDING
                 </span>
-                <span className="text-xs font-black text-white px-2 py-0.5 bg-zinc-900 border border-zinc-700">
+                <span className="text-xs font-black text-white px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700">
                   {formatSecs(recorderState.durationSeconds)}
                 </span>
               </div>
 
-              {/* Hands-Free Lock Status & VU dB */}
+              {/* Hands-Free Lock Status & Codec */}
               <div className="flex items-center gap-2">
-                <span className="text-[8px] font-mono px-2 py-0.5 bg-zinc-950 border border-zinc-800 text-zinc-400 uppercase">
-                  OPUS • 48kHz
+                <span className="text-[8px] font-mono px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400 uppercase">
+                  OPUS HD
                 </span>
                 {recorderState.isLocked ? (
-                  <span className="px-2 py-0.5 border border-[var(--neon-green)] text-[var(--neon-green)] bg-[var(--neon-green)]/15 flex items-center gap-1 text-[9px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full border border-[var(--neon-green)] text-[var(--neon-green)] bg-[var(--neon-green)]/15 flex items-center gap-1 text-[9px] font-bold">
                     <Lock className="w-2.5 h-2.5" />
-                    HANDS-FREE LOCKED
+                    HANDS-FREE
                   </span>
                 ) : (
                   <span className="text-zinc-500 flex items-center gap-1 text-[9px] font-bold">
                     <Unlock className="w-2.5 h-2.5" />
-                    PUSH TO TALK
+                    HOLDING
                   </span>
                 )}
               </div>
             </div>
 
             {/* Dynamic Real-Time Live Waveform Visualizer */}
-            <div className="h-12 px-2.5 bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-[2px]">
+            <div className="h-12 px-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between gap-[2px] overflow-hidden">
               {recorderState.liveAmplitudes.map((amp, i) => {
                 const heightPct = Math.max(12, Math.min(100, Math.round(amp * 100)));
                 const isPeak = heightPct > 75;
@@ -701,7 +640,7 @@ export function VoiceFirstBar({
               <button
                 type="button"
                 onClick={handleCancelRecording}
-                className="px-3.5 py-1.5 border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-400 text-[10px] font-black uppercase flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-400 text-[10px] font-black uppercase flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 CANCEL
@@ -720,7 +659,7 @@ export function VoiceFirstBar({
                       }
                       triggerVibration('light');
                     }}
-                    className="px-3 py-1.5 border border-zinc-700 bg-zinc-900 text-zinc-200 text-[10px] font-black uppercase flex items-center gap-1 cursor-pointer hover:border-zinc-500"
+                    className="px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-200 text-[10px] font-black uppercase flex items-center gap-1 cursor-pointer hover:border-zinc-500"
                   >
                     {recorderState.isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
                     {recorderState.isPaused ? 'RESUME' : 'PAUSE'}
@@ -731,10 +670,10 @@ export function VoiceFirstBar({
                 <button
                   type="button"
                   onClick={handleStopAndPreview}
-                  className="px-3.5 py-1.5 border border-[var(--neon-green)]/60 text-[var(--neon-green)] hover:bg-[var(--neon-green)]/15 text-[10px] font-black uppercase flex items-center gap-1.5 cursor-pointer transition"
+                  className="px-3.5 py-1.5 rounded-xl border border-[var(--neon-green)]/60 text-[var(--neon-green)] hover:bg-[var(--neon-green)]/15 text-[10px] font-black uppercase flex items-center gap-1.5 cursor-pointer transition"
                 >
                   <Square className="w-3.5 h-3.5" />
-                  AUDITION DRAFT
+                  AUDITION
                 </button>
 
                 {/* Transmit Immediately Button */}
@@ -742,7 +681,7 @@ export function VoiceFirstBar({
                   type="button"
                   onClick={handleStopAndSend}
                   disabled={isSending}
-                  className="px-5 py-1.5 bg-[var(--neon-green)] text-black font-black text-xs uppercase hover:bg-white shadow-[2px_2px_0px_#ffffff] flex items-center gap-1.5 cursor-pointer transition"
+                  className="px-5 py-1.5 rounded-xl bg-[var(--neon-green)] text-black font-black text-xs uppercase hover:bg-white shadow-[0_0_15px_rgba(0,255,102,0.35)] flex items-center gap-1.5 cursor-pointer transition"
                 >
                   <Send className="w-3.5 h-3.5" />
                   TRANSMIT
@@ -752,45 +691,11 @@ export function VoiceFirstBar({
           </div>
         ) : (
 
-          /* CASE 3: DEFAULT 98% VOICE-FIRST TALK ENGINE (Standard Idle State) */
-          <div className="flex items-center justify-between gap-2 sm:gap-3">
+          /* CASE 3: TEXT-FIRST UNIFIED CHAT INPUT BAR WITH INTEGRATED HOLD TO TALK / TAP TO RECORD */
+          <div className="flex items-center gap-2">
             
             {/* Supporting Accessories (Left Side) */}
-            <div className="flex items-center gap-1.5">
-              {/* Optional Text input toggle */}
-              <button
-                type="button"
-                onClick={() => {
-                  playGlitchClickSound();
-                  setShowAuxiliaryText(!showAuxiliaryText);
-                }}
-                className={`p-2.5 border transition cursor-pointer ${
-                  showAuxiliaryText
-                    ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] font-black shadow-[2px_2px_0px_#ffffff]'
-                    : 'border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 bg-zinc-900/60'
-                }`}
-                title="Toggle Text Input (Captions/Queries)"
-              >
-                <Type className="w-4 h-4" />
-              </button>
-
-              {/* DSP Voice Filters button */}
-              <button
-                type="button"
-                onClick={() => {
-                  playGlitchClickSound();
-                  setShowEffectsDeck(!showEffectsDeck);
-                }}
-                className={`p-2.5 border transition cursor-pointer ${
-                  showEffectsDeck
-                    ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] font-black shadow-[2px_2px_0px_#ffffff]'
-                    : 'border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 bg-zinc-900/60'
-                }`}
-                title="Audio Filters & Voice DSP Effects"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-
+            <div className="flex items-center gap-1">
               {/* Attachment Picker */}
               {onPickAttachment && (
                 <button
@@ -799,7 +704,7 @@ export function VoiceFirstBar({
                     playGlitchClickSound();
                     onPickAttachment();
                   }}
-                  className="p-2.5 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 bg-zinc-900/60 transition cursor-pointer"
+                  className="p-2.5 rounded-xl border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 bg-zinc-900/60 transition cursor-pointer"
                   title="Attach Media or Documents"
                 >
                   <Paperclip className="w-4 h-4" />
@@ -807,44 +712,71 @@ export function VoiceFirstBar({
               )}
             </div>
 
-            {/* THE CENTERPIECE: HUGE VOICE TALK BUTTON (98% VOICE INTERACTION) */}
-            <div className="flex-1 flex items-center justify-center relative">
-              <button
-                type="button"
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-                className="w-full max-w-md py-3.5 px-6 bg-[var(--neon-green)] hover:bg-white text-black border-2 border-[var(--neon-green)] hover:border-white shadow-[4px_4px_0px_#ffffff] active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center justify-center gap-3.5 cursor-pointer group touch-none"
-                aria-label="Hold to Talk or Tap to Record Voice"
-              >
-                <div className="relative">
-                  <Mic className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-black animate-ping" />
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs sm:text-sm font-black uppercase tracking-wider leading-none">
-                    HOLD TO TALK • TAP TO RECORD
-                  </span>
-                  <span className="block text-[8px] sm:text-[8.5px] uppercase tracking-widest text-zinc-800 font-bold mt-0.5">
-                    98% VOICE • SLIDE LEFT TO CANCEL
-                  </span>
-                </div>
-              </button>
-            </div>
+            {/* TEXT INPUT FIELD (Primary Text-First Interface) */}
+            <form onSubmit={handleSendAuxText} className="flex-1 flex items-center relative">
+              <input
+                type="text"
+                value={auxiliaryText}
+                onChange={(e) => {
+                  setAuxiliaryText(e.target.value);
+                  playTypingSound(e.target.value.slice(-1));
+                  if (onTypingStatusChange) onTypingStatusChange(true, 'text');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendAuxText(e);
+                  }
+                }}
+                placeholder="Type a message or hold mic to talk..."
+                className="w-full px-4 py-2.5 rounded-2xl bg-zinc-900/80 border border-zinc-700/60 focus:border-[var(--neon-green)] text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans transition-all duration-200 shadow-inner"
+              />
+            </form>
 
-            {/* Hands-Free 1-Tap Lock (Right Side) */}
-            <div className="flex items-center gap-1.5">
+            {/* RIGHT SIDE: SEND BUTTON (When typing) OR HOLD TO TALK / TAP TO RECORD (When idle) */}
+            {auxiliaryText.trim().length > 0 ? (
               <button
                 type="button"
-                onClick={() => handleStartRecording(true)}
-                className="p-2.5 border border-zinc-800 hover:border-[var(--neon-green)] text-zinc-400 hover:text-[var(--neon-green)] bg-zinc-900/60 transition cursor-pointer flex items-center gap-1.5"
-                title="Tap for Hands-Free Recording Studio"
+                onClick={handleSendAuxText}
+                disabled={isSending}
+                className="px-4 py-2.5 rounded-2xl bg-[var(--neon-green)] hover:bg-white text-black font-black text-xs uppercase shadow-[0_0_15px_rgba(0,255,102,0.4)] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <Lock className="w-4 h-4" />
-                <span className="hidden xl:inline text-[9px] font-black uppercase">HANDS-FREE</span>
+                <Send className="w-4 h-4" />
+                <span className="hidden sm:inline">SEND</span>
               </button>
-            </div>
+            ) : (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* THE MIC BUTTON: HOLD TO TALK / TAP TO RECORD */}
+                <button
+                  type="button"
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerCancel={handlePointerUp}
+                  className="py-2.5 px-3.5 sm:px-4 rounded-2xl bg-[var(--neon-green)] hover:bg-white text-black border border-[var(--neon-green)] hover:border-white shadow-[0_0_15px_rgba(0,255,102,0.3)] active:scale-95 transition-all flex items-center gap-2 cursor-pointer group touch-none select-none"
+                  aria-label="Hold to Talk or Tap to Record Voice"
+                >
+                  <div className="relative">
+                    <Mic className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-black animate-ping" />
+                  </div>
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider leading-none">
+                    <span className="hidden sm:inline">HOLD TO TALK</span>
+                    <span className="sm:hidden">TALK</span>
+                  </span>
+                </button>
+
+                {/* Hands-Free 1-Tap Lock Button */}
+                <button
+                  type="button"
+                  onClick={() => handleStartRecording(true)}
+                  className="p-2.5 rounded-2xl border border-zinc-800 hover:border-[var(--neon-green)] text-zinc-400 hover:text-[var(--neon-green)] bg-zinc-900/60 transition cursor-pointer"
+                  title="Tap for Hands-Free Recording Studio"
+                >
+                  <Lock className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
           </div>
         )}
