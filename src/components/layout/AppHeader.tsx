@@ -72,8 +72,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <header className="border-b-2 border-[var(--neon-green)]/30 shrink-0 h-20 z-40 bg-[var(--color-background)]/90 backdrop-blur-md font-mono relative">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
+    <header className="border-b-2 border-[var(--neon-green)]/30 shrink-0 h-20 z-40 bg-[var(--color-background)]/90 backdrop-blur-md font-mono relative w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
         {/* Logo and branding */}
         <div 

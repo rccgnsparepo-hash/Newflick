@@ -13,7 +13,6 @@ import { UnifiedNavigation } from './components/layout/UnifiedNavigation';
 import { AppHeader } from './components/layout/AppHeader';
 import { applyFont, getSavedFont } from './lib/theme';
 import { initGSAPScrollTriggers, refreshScrollTrigger } from './lib/gsapAnimations';
-import SecureNewsFlow from './components/SecureNewsFlow';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
 import { CinematicIntroModal } from './components/CinematicIntroModal';
@@ -1131,9 +1130,9 @@ function Dashboard() {
   const unreadE2EECount = notifications.filter(n => n.type === 'message').length;
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
+    <div className="h-screen h-[100dvh] w-full flex flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
       {/* Main Dashboard Container - Dynamically blurred & dimmed when CallOverlay is active to focus user attention */}
-      <div className={`h-full w-full flex flex-col overflow-hidden transition-all duration-500 ease-out ${
+      <div className={`h-full flex-1 min-h-0 w-full flex flex-col overflow-hidden transition-all duration-500 ease-out ${
         ongoingCall ? 'filter blur-[12px] brightness-[0.20] scale-[0.985] pointer-events-none select-none' : 'filter-none brightness-100 scale-100'
       }`}>
         {/* Main Responsive App Header */}

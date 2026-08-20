@@ -89,7 +89,7 @@ export function UnifiedNavigation({
     <>
       {/* DESKTOP SIDEBAR RAIL (md:flex) */}
       <aside
-        className={`hidden md:flex flex-col justify-between shrink-0 h-full z-40 select-none glass-panel border-r border-[var(--glass-border)] py-5 transition-all duration-300 ease-in-out relative ${
+        className={`hidden md:flex flex-col justify-between shrink-0 h-full z-40 select-none bg-[var(--color-background)]/85 backdrop-blur-xl border-r border-[var(--glass-border)] py-5 transition-all duration-300 ease-in-out relative rounded-none ${
           sidebarExpanded ? 'w-64 px-4' : 'w-20 px-2.5'
         }`}
       >

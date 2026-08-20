@@ -1215,7 +1215,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
                 }}
                 className={`min-h-[52px] px-4 py-2.5 rounded-none flex items-center justify-center gap-2.5 transition-all border-2 cursor-pointer select-none active:scale-95 ${
                   isMuted 
-                    ? 'bg-rose-950/90 text-rose-400 border-rose-500 hover:bg-rose-900 shadow-[0_0_15px_rgba(244,63,94,0.35)]' 
+                    ? 'bg-rose-950/90 text-rose-400 border-rose-500 hover:bg-rose-900 shadow-[0_0_15px_rgba(244,63,94,0.45)] animate-pulse' 
                     : 'bg-emerald-950/40 text-[var(--neon-green)] border-[var(--neon-green)] hover:bg-emerald-900/60 shadow-[0_0_15px_rgba(0,255,102,0.2)]'
                 }`}
                 title={isMuted ? "Microphone is muted - Click to unmute" : "Microphone is live - Click to mute"}
@@ -1241,7 +1241,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
                 }}
                 className={`min-h-[52px] px-4 py-2.5 rounded-none flex items-center justify-center gap-2.5 transition-all border-2 cursor-pointer select-none active:scale-95 ${
                   isSpeakerOn 
-                    ? 'bg-[var(--neon-green)]/20 text-[var(--neon-green)] border-[var(--neon-green)] hover:bg-[var(--neon-green)]/30 shadow-[0_0_15px_rgba(0,255,102,0.25)]' 
+                    ? 'bg-[var(--neon-green)]/20 text-[var(--neon-green)] border-[var(--neon-green)] hover:bg-[var(--neon-green)]/30 shadow-[0_0_15px_rgba(0,255,102,0.35)] animate-pulse' 
                     : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-white'
                 }`}
                 title={isSpeakerOn ? "Loudspeaker Active - Click for Earpiece / Headphone mode" : "Earpiece Mode - Click for Loudspeaker"}

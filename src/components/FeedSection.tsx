@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Post, DirectChat, UserProfile, Story } from '../types';
 import ChatSection from './ChatSection';
 import VoiceFirstHomeScreen from './VoiceFirstHomeScreen';
-import SecureNewsFlow from './SecureNewsFlow';
+import { NewsSection } from './news/NewsSection';
 import LiveSportsHub from './LiveSportsHub';
 import { triggerVibration, triggerEventVibration } from '../lib/haptics';
 import WorkspaceHub from "./WorkspaceHub";
@@ -1956,7 +1956,7 @@ export default function FeedSection({
           </motion.div>
         )}
 
-        {/* ==================== CAMPUS NEWS WIRE TAB ==================== */}
+        {/* ==================== FLICK REAL NEWS WIRE TAB (NO AI) ==================== */}
         {activeTab === 'news' && (
           <motion.div
             key="news"
@@ -1964,10 +1964,27 @@ export default function FeedSection({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.995 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
+            className="w-full h-full overflow-y-auto flex flex-col p-0 pb-20 md:pb-4"
           >
             <div className="flex-1 flex flex-col">
-              <SecureNewsFlow />
+              <NewsSection
+                currentUser={profile}
+                onShareToTimeline={async (article, comment) => {
+                  try {
+                    await createPost({
+                      authorId: profile?.uid || 'anon',
+                      authorName: profile?.displayName || 'Citizen',
+                      authorPhoto: profile?.photoURL || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120',
+                      content: `[REPOST FROM FLICK NEWS: ${article.sourceName}]\n${article.title}\n\n${comment ? `"${comment}"\n\n` : ''}${article.excerpt}\n\nRead original: ${article.articleUrl}`,
+                      imageUrl: article.imageUrl || undefined,
+                      mediaType: article.imageUrl ? 'image' : 'none'
+                    });
+                    showBrutalistToast('DEPLOYED ✓', 'News repost deployed to FLICK social feed!', 'success');
+                  } catch (e) {
+                    console.warn('Failed to repost news article to timeline:', e);
+                  }
+                }}
+              />
             </div>
           </motion.div>
         )}

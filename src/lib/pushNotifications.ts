@@ -686,18 +686,18 @@ export async function sendOneSignalPush(recipientId: string, title: string, body
       payload.android_group = extraData.chatId;
     }
 
-    payload.include_aliases = { external_id: [recipientId] };
-    payload.include_external_user_ids = [recipientId];
-    payload.target_channel = "push";
-    payload.isAndroid = true;
-    payload.isIos = true;
-    payload.isAnyWeb = true;
-
     if (playerIds.length > 0) {
+      payload.include_subscription_ids = playerIds;
+      payload.include_player_ids = playerIds;
       payload.fallback_subscription_ids = playerIds;
-      addPushDebugLog('info', `Targeting recipient ${recipientId} with aliases and ${playerIds.length} subscription fallback(s).`);
+      addPushDebugLog('info', `Targeting recipient ${recipientId} via ${playerIds.length} subscription token(s).`);
     } else {
-      addPushDebugLog('info', `Targeting alias external_id: ${recipientId}`);
+      payload.include_aliases = { external_id: [recipientId] };
+      payload.target_channel = "push";
+      payload.isAndroid = true;
+      payload.isIos = true;
+      payload.isAnyWeb = true;
+      addPushDebugLog('info', `Targeting recipient alias external_id: ${recipientId}`);
     }
 
     // Call the server API proxy (never expose REST keys on client browser!)
