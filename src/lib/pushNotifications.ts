@@ -221,7 +221,7 @@ export function validatePushNotificationPayload(payload: any): boolean {
 /**
  * Dynamically resolves OneSignal from window script injection or Cordova plugin
  */
-async function getOneSignal(): Promise<any> {
+export async function getOneSignal(): Promise<any> {
   if (typeof window === 'undefined') return null;
 
   const uWindow = window as any;

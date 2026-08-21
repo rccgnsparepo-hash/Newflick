@@ -22,6 +22,7 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
       items: [
         { keys: ["Shift + S", "Alt + S"], desc: "Open Profile & Node Settings" },
         { keys: ["Shift + E", "Alt + E"], desc: "Open Decentralized Feedback Portal" },
+        { keys: ["Shift + M", "Alt + M"], desc: "Toggle FLICK Microphone Diagnostics (Dev)" },
         { keys: ["Shift + K", "Alt + K", "?"], desc: "Toggle Shortcuts Overlay (This menu)" },
       ]
     },

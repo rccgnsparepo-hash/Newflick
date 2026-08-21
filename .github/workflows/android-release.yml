@@ -62,19 +62,36 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleDebug --stacktrace
 
+      - name: Stage APK with Release Version Name
+        run: |
+          mkdir -p release-apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-apk/Flick-Android-v1.0.${{ github.run_number }}.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-apk/app-debug.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: flick-android-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          name: flick-android-apk-v1.0.${{ github.run_number }}
+          path: release-apk/*.apk
+          retention-days: 30
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: android-v${{ github.run_number }}
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: android-v1.0.${{ github.run_number }}
+          name: "Flick Android APK v1.0.${{ github.run_number }}"
+          body: |
+            ### 🚀 Flick Android Release v1.0.${{ github.run_number }}
+            
+            #### ⚡ Push Notification & Audio Enhancements:
+            - **Android 13+ Notification Permissions (`POST_NOTIFICATIONS`)**: Full native runtime permission dialog integration and channel registration.
+            - **OneSignal & FCM Synchronization**: Auto-binds user tokens to Firestore on sign-in and ensures background wakeups even when closed.
+            - **Native Push Diagnostics Suite**: In-app audit tool to verify permissions, device subscription IDs, and Firestore token alignment with auto-repair.
+            - **Deep Link Navigation**: Instant routing on notification clicks (`flick://`, `faraflick://`) directly to specific chats, groups, and call rooms.
+            - **Microphone & Voice Permission Engine**: Standardized audio permission handler with real-time hardware diagnostics and loopback testing.
+          files: release-apk/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

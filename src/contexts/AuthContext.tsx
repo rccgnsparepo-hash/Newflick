@@ -270,6 +270,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           setCurrentUser(user);
 
+          // Ensure OneSignal and native FCM push services are bound to authenticated UID
+          import('../lib/pushNotifications').then(({ registerCapacitorPushNotifications }) => {
+            registerCapacitorPushNotifications(user.uid).catch((err) => {
+              console.warn('[AuthContext] registerCapacitorPushNotifications warning:', err);
+            });
+          }).catch(() => {});
+
           // Prevent race conditions and duplicate concurrent verification runs
           if (verifyingUidRef.current !== user.uid) {
             verifyingUidRef.current = user.uid;
@@ -283,6 +290,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           verifyingUidRef.current = null;
+          // Clear push notification bindings on sign-out
+          import('../lib/pushNotifications').then(({ logoutPushNotificationsCleanup }) => {
+            logoutPushNotificationsCleanup('').catch(() => {});
+          }).catch(() => {});
+
           // Clear cache if session is explicitly cleared / logged out
           try {
             localStorage.removeItem('flick_cached_user');

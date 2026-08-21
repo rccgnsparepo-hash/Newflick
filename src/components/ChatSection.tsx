@@ -6,6 +6,7 @@ import { doc, setDoc, collection, serverTimestamp, updateDoc, deleteDoc, deleteF
 import { UserProfile, ChatMessage, DirectChat, MessageReaction, InAppNotification } from '../types';
 import {
   subscribeToUsers,
+  getUserProfile,
   getOrCreateDirectChat,
   sendE2EEMessage,
   subscribeToMessages,
@@ -1474,27 +1475,57 @@ export default function ChatSection({
     setIsChatInfoOpen(false);
   }, [currentChat?.id]);
 
-  // Handle external / priority deep-linking directly into an active secure chat
-  useEffect(() => {
-    if (deepLinkedPeerId && users.length > 0) {
-      const match = users.find(u => u.uid === deepLinkedPeerId);
-      if (match) {
-        openChatRoom(match);
-      }
-      if (onClearDeepLink) {
-        onClearDeepLink();
-      }
-    }
-  }, [deepLinkedPeerId, users]);
-
-  const [rtdbStatuses, setRtdbStatuses] = useState<Record<string, { state: string; lastChanged: any }>>({});
-
   // Active chat tunnels and search filter type states
   const [activeChatTunnels, setActiveChatTunnels] = useState<DirectChat[]>([]);
   const [isChatsLoading, setIsChatsLoading] = useState<boolean>(true);
   const [isChatsPendingLong, setIsChatsPendingLong] = useState<boolean>(false);
   const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false);
   const [isMessagesPendingLong, setIsMessagesPendingLong] = useState<boolean>(false);
+  const [rtdbStatuses, setRtdbStatuses] = useState<Record<string, { state: string; lastChanged: any }>>({});
+
+  // Handle external / priority deep-linking directly into an active secure chat
+  useEffect(() => {
+    if (deepLinkedPeerId) {
+      // 1. Check if deepLinkedPeerId matches an active chat tunnel (direct or group)
+      if (activeChatTunnels.length > 0) {
+        const tunnelMatch = activeChatTunnels.find(chat => chat.id === deepLinkedPeerId);
+        if (tunnelMatch) {
+          if (tunnelMatch.isGroup) {
+            setSelectedGroup(tunnelMatch);
+            setSelectedPeer(null);
+            setCurrentChat(tunnelMatch);
+            if (onClearDeepLink) onClearDeepLink();
+            return;
+          } else {
+            const otherUid = tunnelMatch.participantIds.find(p => p !== profile?.uid);
+            const peerMatch = otherUid ? users.find(u => u.uid === otherUid) : null;
+            if (peerMatch) {
+              openChatRoom(peerMatch);
+              if (onClearDeepLink) onClearDeepLink();
+              return;
+            }
+          }
+        }
+      }
+
+      // 2. Check if deepLinkedPeerId matches a user in the loaded users list
+      const match = users.find(u => u.uid === deepLinkedPeerId);
+      if (match) {
+        openChatRoom(match);
+        if (onClearDeepLink) onClearDeepLink();
+      } else {
+        // 3. Fallback: Fetch user profile directly from Firestore (supports cold starts and direct clicks)
+        getUserProfile(deepLinkedPeerId).then((fetchedUser) => {
+          if (fetchedUser) {
+            openChatRoom(fetchedUser);
+            if (onClearDeepLink) onClearDeepLink();
+          }
+        }).catch((err) => {
+          console.warn('[DeepLink] Failed to load deep-linked peer profile:', err);
+        });
+      }
+    }
+  }, [deepLinkedPeerId, users, activeChatTunnels]);
 
   // Trigger explicit status message when Firestore chats retrieval is pending for > 2 seconds
   useEffect(() => {

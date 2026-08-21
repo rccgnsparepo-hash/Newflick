@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Clock, Smartphone, Zap, ShieldAlert, Volume2, VolumeX, Keyboard, Send, CheckCheck, Sparkles } from 'lucide-react';
+import { Bell, Clock, Smartphone, Zap, ShieldAlert, Volume2, VolumeX, Keyboard, Send, CheckCheck, Sparkles, Activity, ShieldCheck } from 'lucide-react';
 import { UserProfile } from '../types';
 import { 
   playGroupNotificationSound,
@@ -14,9 +14,11 @@ import {
   isReceiveMessageSoundEnabled,
   isReadMessageSoundEnabled,
   setSoundSetting,
-  TypingSoundStyle
+  TypingSoundStyle,
+  playGlitchClickSound
 } from '../lib/sounds';
 import { NativePushDebugger } from './NativePushDebugger';
+import { NotificationDiagnosticModal } from './NotificationDiagnosticModal';
 import {
   getHapticPatternForMessageType,
   setHapticPatternForMessageType,
@@ -77,6 +79,7 @@ export function SettingsNotificationsTab({
   profile
 }: NotificationsTabProps) {
   const [, setSoundsUpdateToken] = useState(0);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
 
   // Message Audio & Typing local state
   const [typingSoundEnabled, setTypingSoundEnabledState] = useState<boolean>(isTypingSoundEnabled);
@@ -726,18 +729,42 @@ export function SettingsNotificationsTab({
       </div>
 
       {/* Native Push Diagnostic & Push Test Dispatcher */}
-      <div className="space-y-2 border-t border-dashed border-[var(--neon-green)]/20 pt-4">
-        <label className="text-[10px] uppercase tracking-widest font-extrabold text-[var(--neon-green)] font-mono block">
-          ⚡ NATIVE PUSH TEST & DISPATCHER
-        </label>
-        <p className="text-[8.5px] text-zinc-500 leading-normal mb-2 font-mono">
-          Dispatch live native push notifications to your registered devices (APK & Web):
-        </p>
+      <div className="space-y-3 border-t border-dashed border-[var(--neon-green)]/20 pt-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest font-extrabold text-[var(--neon-green)] font-mono block">
+              ⚡ NATIVE PUSH ARCHITECTURE & DISPATCHER
+            </label>
+            <p className="text-[8.5px] text-zinc-500 leading-normal font-mono">
+              Audit Android 13+ background tokens, OneSignal synchronization, and FCM routing:
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setIsDiagnosticOpen(true);
+            }}
+            className="px-3 py-1.5 bg-[var(--neon-green)]/15 border border-[var(--neon-green)] hover:bg-[var(--neon-green)] text-[var(--neon-green)] hover:text-black font-mono text-[9px] font-black uppercase transition cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,255,102,0.15)]"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Run Push Diagnostic
+          </button>
+        </div>
+
         <NativePushDebugger 
           uid={profile?.uid} 
           oneSignalSubscriptionId={profile?.oneSignalSubscriptionId || profile?.oneSignalId} 
         />
       </div>
+
+      {/* Diagnostic Modal */}
+      <NotificationDiagnosticModal
+        isOpen={isDiagnosticOpen}
+        onClose={() => setIsDiagnosticOpen(false)}
+        uid={profile?.uid}
+      />
     </div>
   );
 }

@@ -7,6 +7,9 @@
 export interface DeepLinkPayload {
   route: string;                  // Target screen identifier (e.g. 'chat', 'feed', 'settings')
   senderId?: string;              // Target peer ID parameter (specifically for direct message deep links)
+  conversationId?: string;        // Target conversation or chat ID
+  messageId?: string;             // Specific message ID for focus / highlight
+  groupId?: string;               // Target group ID
   params?: Record<string, string>; // Auxiliary payload options
   id?: string;                    // Unique notification or payload telemetry identifier
 }
@@ -188,10 +191,14 @@ class DeepLinkManager {
         }
       }
 
-      // If still empty but we have a senderId, default route to chat
-      const senderId = rawData.senderId || rawData.sender_id || rawData.callerId;
-      if (!route && senderId) {
-        route = 'chat';
+      // If still empty but we have a senderId, conversationId, or chatId, default route to chat
+      const conversationId = rawData.conversationId || rawData.chatId || rawData.chat_id || undefined;
+      const messageId = rawData.messageId || rawData.message_id || undefined;
+      const groupId = rawData.groupId || rawData.group_id || undefined;
+      const senderId = rawData.senderId || rawData.sender_id || rawData.callerId || conversationId;
+      
+      if (!route && (senderId || conversationId || groupId)) {
+        route = groupId ? 'group' : 'chat';
       }
 
       if (!route) {
@@ -207,9 +214,16 @@ class DeepLinkManager {
         }
       });
 
+      if (conversationId && !params.conversationId) params.conversationId = conversationId;
+      if (messageId && !params.messageId) params.messageId = messageId;
+      if (groupId && !params.groupId) params.groupId = groupId;
+
       return {
         route,
         senderId,
+        conversationId,
+        messageId,
+        groupId,
         params,
         id: rawData.id || rawData.notification_id || `${Date.now()}-${Math.random()}`
       };

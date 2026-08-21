@@ -14,7 +14,8 @@ import {
   Play,
   Mic,
   Activity,
-  ShieldCheck
+  ShieldCheck,
+  Terminal
 } from 'lucide-react';
 import { 
   isInteractionSoundsEnabled, 
@@ -36,6 +37,7 @@ import {
 } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
 import { MicrophoneDiagnosticPanel } from './MicrophoneDiagnosticPanel';
+import { FlickMicrophoneDiagnostics } from './FlickMicrophoneDiagnostics';
 import { microphoneService, MicrophoneStatusInfo } from '../lib/microphoneService';
 
 interface SettingsAudioTabProps {
@@ -54,6 +56,7 @@ export function SettingsAudioTab({
   const [receiveSoundEnabled, setReceiveSoundEnabled] = useState<boolean>(() => isReceiveMessageSoundEnabled());
   const [readSoundEnabled, setReadSoundEnabled] = useState<boolean>(() => isReadMessageSoundEnabled());
   const [showDiagModal, setShowDiagModal] = useState<boolean>(false);
+  const [showDevDiagModal, setShowDevDiagModal] = useState<boolean>(false);
   const [micStatus, setMicStatus] = useState<MicrophoneStatusInfo>(microphoneService.getStatus());
 
   useEffect(() => {
@@ -399,17 +402,31 @@ export function SettingsAudioTab({
           <p className="text-[9px] text-zinc-400 leading-relaxed">
             Test active audio input frequencies, view platform security policies, detect connected input devices, or reset blocked browser/Electron microphone states.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              playGlitchClickSound();
-              setShowDiagModal(true);
-            }}
-            className="w-full py-2 bg-[var(--neon-green)] text-black font-black uppercase text-[9.5px] tracking-wider rounded-lg hover:bg-white transition cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(0,255,102,0.2)]"
-          >
-            <Activity className="w-3.5 h-3.5" />
-            Launch Hardware & Mic Diagnostic Test
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                playGlitchClickSound();
+                setShowDiagModal(true);
+              }}
+              className="py-2 bg-[var(--neon-green)] text-black font-black uppercase text-[9.5px] tracking-wider rounded-lg hover:bg-white transition cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(0,255,102,0.2)]"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              Hardware Test Suite
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playGlitchClickSound();
+                setShowDevDiagModal(true);
+              }}
+              className="py-2 bg-zinc-900 border border-[var(--neon-green)]/40 hover:bg-zinc-800 text-[var(--neon-green)] font-black uppercase text-[9.5px] tracking-wider rounded-lg transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              FLICK Diagnostics (Dev)
+            </button>
+          </div>
         </div>
 
       </div>
@@ -418,6 +435,13 @@ export function SettingsAudioTab({
         <MicrophoneDiagnosticPanel
           isOpen={showDiagModal}
           onClose={() => setShowDiagModal(false)}
+        />
+      )}
+
+      {showDevDiagModal && (
+        <FlickMicrophoneDiagnostics
+          isOpen={showDevDiagModal}
+          onClose={() => setShowDevDiagModal(false)}
         />
       )}
     </div>

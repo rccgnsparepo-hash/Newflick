@@ -3,6 +3,11 @@ productName: Flick
 compression: maximum
 directories:
   output: release
+protocols:
+  - name: Flick Deep Link Protocol
+    schemes:
+      - flick
+      - faraflick
 publish:
   provider: github
   releaseType: release
@@ -26,9 +31,16 @@ linux:
     - deb
     - AppImage
   icon: public/icon.png
-  category: Network;Chat
+  category: Network;Chat;InstantMessaging
   maintainer: Faratech <boboyaga78@gmail.com>
-  synopsis: Flick - Secure Encrypted Chat
+  synopsis: Flick - Secure Encrypted Chat & Social
+  description: "Flick encrypted communication and social platform with native push notifications, calls, and offline sync."
+  desktop:
+    Name: Flick
+    Comment: Flick Secure Chat & Social Platform
+    Categories: Network;Chat;InstantMessaging;
+    StartupNotify: "true"
+    MimeType: x-scheme-handler/flick;x-scheme-handler/faraflick;
   artifactName: Flick-${version}.${ext}
 deb:
   depends:
@@ -38,3 +50,4 @@ deb:
     - libappindicator1
     - libxtst6
     - nss
+

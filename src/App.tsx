@@ -19,6 +19,7 @@ import { CinematicIntroModal } from './components/CinematicIntroModal';
 import AppTour from './components/AppTour';
 import ProfileSettingsModal from './components/ProfileSettingsModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import { FlickMicrophoneDiagnostics } from './components/FlickMicrophoneDiagnostics';
 import HorizontalTicker from './components/HorizontalTicker';
 import { ConnectionStatusBadge } from './components/ConnectionStatusBadge';
 import UserProfileModal from './components/UserProfileModal';
@@ -116,12 +117,14 @@ function Dashboard() {
   const [ongoingCall, setOngoingCall] = useState<any | null>(null);
   const [showCinematicIntro, setShowCinematicIntro] = useState(false);
   const [isCallHistoryOpen, setIsCallHistoryOpen] = useState(false);
+  const [isMicDiagnosticsOpen, setIsMicDiagnosticsOpen] = useState(false);
 
   // Programmatically lock scrolling when any overlay/modal/sheet is open, preserving vertical scroll offsets
   const isAnyOverlayOpen = 
     isSettingsOpen || 
     isFeedbackOpen || 
     isShortcutsOpen || 
+    isMicDiagnosticsOpen ||
     viewedProfileId !== null || 
     showOnboarding || 
     showCinematicIntro ||
@@ -642,8 +645,12 @@ function Dashboard() {
       const route = payload.route?.toLowerCase().trim();
 
       if (route === 'chat') {
-        if (targetId) {
-          setDeepLinkedPeerId(targetId);
+        const conversationId = payload.conversationId || payload.params?.conversationId || payload.params?.chatId || payload.senderId || targetId;
+        const groupId = payload.groupId || payload.params?.groupId;
+        if (groupId) {
+          setDeepLinkedGroupId(groupId);
+        } else if (conversationId) {
+          setDeepLinkedPeerId(conversationId);
         }
         setActiveTab('chat');
         setIsMobileMenuOpen(false);
@@ -667,8 +674,9 @@ function Dashboard() {
         setIsMobileMenuOpen(false);
         setIsSettingsOpen(false);
       } else if (route === 'group') {
-        if (targetId) {
-          setDeepLinkedGroupId(targetId);
+        const grpId = payload.groupId || payload.params?.groupId || targetId;
+        if (grpId) {
+          setDeepLinkedGroupId(grpId);
         }
         setActiveTab('chat');
         setIsMobileMenuOpen(false);
@@ -1031,6 +1039,7 @@ function Dashboard() {
         setIsFeedbackOpen(false);
         setIsSettingsOpen(false);
         setIsShortcutsOpen(false);
+        setIsMicDiagnosticsOpen(false);
         setViewedProfileId(null);
         e.preventDefault();
         return;
@@ -1062,6 +1071,10 @@ function Dashboard() {
           setIsShortcutsOpen(prev => !prev);
           playGlitchClickSound();
           e.preventDefault();
+        } else if (keyLower === 'm') {
+          setIsMicDiagnosticsOpen(prev => !prev);
+          playGlitchClickSound();
+          e.preventDefault();
         }
       } else {
         if (e.key === '?') {
@@ -1072,8 +1085,19 @@ function Dashboard() {
       }
     };
 
+    const handleCustomToggle = () => {
+      setIsMicDiagnosticsOpen(prev => !prev);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('faraflick-toggle-mic-diagnostics', handleCustomToggle);
+    (window as any).__flickToggleMicDiagnostics = handleCustomToggle;
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('faraflick-toggle-mic-diagnostics', handleCustomToggle);
+      delete (window as any).__flickToggleMicDiagnostics;
+    };
   }, []);
 
   const handleClearNotification = async (id: string) => {
@@ -1187,6 +1211,8 @@ function Dashboard() {
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
 
       <KeyboardShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+
+      <FlickMicrophoneDiagnostics isOpen={isMicDiagnosticsOpen} onClose={() => setIsMicDiagnosticsOpen(false)} />
 
       <ProfileSettingsModal 
         isOpen={isSettingsOpen} 

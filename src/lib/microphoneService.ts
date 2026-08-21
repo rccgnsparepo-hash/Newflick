@@ -54,7 +54,7 @@ export interface MicrophoneStatusInfo {
 
 export type MicrophoneStatusListener = (status: MicrophoneStatusInfo) => void;
 
-class MicrophonePermissionService {
+export class MicrophonePermissionService {
   private static instance: MicrophonePermissionService | null = null;
   private currentStatus: MicrophoneStatusInfo;
   private listeners: Set<MicrophoneStatusListener> = new Set();
@@ -655,4 +655,15 @@ class MicrophonePermissionService {
 }
 
 export const microphoneService = MicrophonePermissionService.getInstance();
+export const checkMicrophonePermission = () => microphoneService.checkMicrophonePermission();
+export const requestMicrophonePermission = (customConstraints?: MediaStreamConstraints) => microphoneService.requestMicrophonePermission(customConstraints);
+export const createAudioStream = (options?: {
+  echoCancellation?: boolean;
+  noiseSuppression?: boolean;
+  autoGainControl?: boolean;
+  deviceId?: string;
+}) => microphoneService.createAudioStream(options);
+export const releaseAudioStream = (stream?: MediaStream | null) => microphoneService.releaseAudioStream(stream);
+export const releaseAllStreams = () => microphoneService.releaseAllStreams();
+
 export default microphoneService;

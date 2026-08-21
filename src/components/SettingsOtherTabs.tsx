@@ -1,9 +1,10 @@
-import React from 'react';
-import { HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Flame, Info, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Flame, Info, Search, Mic } from 'lucide-react';
 import { UserProfile } from '../types';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
 import { NativePushDebugger } from './NativePushDebugger';
+import { FlickMicrophoneDiagnostics } from './FlickMicrophoneDiagnostics';
 import { showBrutalistToast } from '../lib/toast';
 
 interface OtherTabsProps {
@@ -55,6 +56,8 @@ export function SettingsOtherTabs({
   handleCloudTestCall,
   profile
 }: OtherTabsProps) {
+  const [showMicDebugger, setShowMicDebugger] = useState(false);
+
   return (
     <>
       {/* ADD FLICK FRIEND TAB PANEL */}
@@ -253,13 +256,32 @@ export function SettingsOtherTabs({
             </div>
           </div>
 
-          <div className="border-t border-zinc-950 pt-2">
+          <div className="border-t border-zinc-950 pt-2 space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                playGlitchClickSound();
+                setShowMicDebugger(true);
+              }}
+              className="w-full py-2 bg-zinc-900 border border-[var(--neon-green)]/40 hover:bg-zinc-800 text-[var(--neon-green)] font-black uppercase text-[9.5px] font-mono tracking-wider rounded-lg transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              FLICK MICROPHONE DIAGNOSTICS (DEV)
+            </button>
+
             <NativePushDebugger 
               uid={profile?.uid} 
               oneSignalSubscriptionId={profile?.oneSignalSubscriptionId || profile?.oneSignalId} 
             />
           </div>
         </div>
+      )}
+
+      {showMicDebugger && (
+        <FlickMicrophoneDiagnostics
+          isOpen={showMicDebugger}
+          onClose={() => setShowMicDebugger(false)}
+        />
       )}
     </>
   );

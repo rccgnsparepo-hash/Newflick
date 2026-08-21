@@ -1,6 +1,6 @@
-import { microphoneService, MicrophoneStatusInfo } from './microphoneService';
+import { microphoneService, MicrophoneStatusInfo, MicrophonePermissionService, checkMicrophonePermission } from './microphoneService';
 
-export { microphoneService };
+export { microphoneService, MicrophonePermissionService, checkMicrophonePermission };
 export type { MicrophoneStatusInfo, MicrophoneState, RawAudioErrorInfo } from './microphoneService';
 
 export interface PermissionStatusResult {
