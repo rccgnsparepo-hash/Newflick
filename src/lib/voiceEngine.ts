@@ -1,10 +1,11 @@
 /**
  * Voice Capture Engine for Flick
- * Real-time amplitude metering, audio recording, hands-free locking,
- * live speech-to-text transcription, and audio processing.
+ * Real-time amplitude metering, high-fidelity audio recording, hands-free locking,
+ * live speech-to-text transcription, and studio audio effects processing.
  */
 
-import { requestMicrophonePermission, getOptimalAudioMimeType, createSpeechRecognitionInstance } from './permissions';
+import { microphoneService, RawAudioErrorInfo } from './microphoneService';
+import { getOptimalAudioMimeType } from './permissions';
 
 export type VoiceEffectPreset = 'natural' | 'studio' | 'crisp' | 'bass' | 'cyber';
 
@@ -13,73 +14,23 @@ export interface VoiceRecordingState {
   isPaused: boolean;
   isLocked: boolean;
   durationSeconds: number;
-  liveAmplitudes: number[]; // Rolling 30-amplitude array for real-time visualizer
+  liveAmplitudes: number[]; // Rolling 36-amplitude array for real-time visualizer
   currentTranscript: string;
   interimTranscript: string;
   effect: VoiceEffectPreset;
-  isSyntheticFallback?: boolean;
-}
-
-function generateSyntheticWavBlob(durationSeconds: number): { blob: Blob; dataUrl: string } {
-  const sampleRate = 22050;
-  const numChannels = 1;
-  const safeDuration = Math.max(1, Math.min(60, durationSeconds));
-  const totalSamples = Math.floor(sampleRate * safeDuration);
-  const buffer = new ArrayBuffer(44 + totalSamples * 2);
-  const view = new DataView(buffer);
-
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + totalSamples * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM format
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * 2, true);
-  view.setUint16(32, numChannels * 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, totalSamples * 2, true);
-
-  let offset = 44;
-  for (let i = 0; i < totalSamples; i++) {
-    const t = i / sampleRate;
-    const fundamental = Math.sin(2 * Math.PI * 220 * t);
-    const harmonic1 = 0.4 * Math.sin(2 * Math.PI * 440 * t);
-    const mod = (Math.sin(2 * Math.PI * 4 * t) + 1.2) * 0.3;
-    const sample = Math.max(-1, Math.min(1, (fundamental + harmonic1) * mod * 0.4));
-    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-    offset += 2;
-  }
-
-  const blob = new Blob([buffer], { type: 'audio/wav' });
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const dataUrl = `data:audio/wav;base64,${btoa(binary)}`;
-  return { blob, dataUrl };
+  isSynthetic?: boolean;
+  rawError?: RawAudioErrorInfo | null;
 }
 
 export class FlickVoiceRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private audioStream: MediaStream | null = null;
+  private processedStream: MediaStream | null = null;
   private audioCtx: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private animFrameId: number | null = null;
   private timerInterval: any = null;
   private recognition: any = null;
-  private synthOscillator: OscillatorNode | null = null;
-  private synthGain: GainNode | null = null;
   
   private audioChunks: Blob[] = [];
   private capturedAmplitudes: number[] = [];
@@ -87,10 +38,11 @@ export class FlickVoiceRecorder {
   private isRecording: boolean = false;
   private isPaused: boolean = false;
   private isLocked: boolean = false;
-  private isSyntheticFallback: boolean = false;
+  private isSynthetic: boolean = false;
   private effect: VoiceEffectPreset = 'natural';
   private transcript: string = '';
   private interimTranscript: string = '';
+  private rawError: RawAudioErrorInfo | null = null;
 
   private onStateChange: ((state: VoiceRecordingState) => void) | null = null;
 
@@ -119,11 +71,17 @@ export class FlickVoiceRecorder {
         currentTranscript: this.transcript,
         interimTranscript: this.interimTranscript,
         effect: this.effect,
-        isSyntheticFallback: this.isSyntheticFallback,
+        isSynthetic: this.isSynthetic,
+        rawError: this.rawError
       });
     }
   }
 
+  /**
+   * Starts recording from the physical microphone.
+   * If physical mic is restricted by the browser/iframe, seamlessly falls back
+   * to a rich Web Audio synthesizer so audio recording never crashes.
+   */
   public async startRecording(): Promise<void> {
     this.cleanup();
     this.audioChunks = [];
@@ -131,109 +89,133 @@ export class FlickVoiceRecorder {
     this.durationSeconds = 0;
     this.transcript = '';
     this.interimTranscript = '';
-    this.isRecording = true;
     this.isPaused = false;
     this.isLocked = false;
-    this.isSyntheticFallback = false;
+    this.isSynthetic = false;
+    this.rawError = null;
 
     let stream: MediaStream | null = null;
 
+    // 1. Attempt to acquire physical microphone stream
     try {
-      const permResult = await requestMicrophonePermission();
-      if (permResult.granted && permResult.stream) {
-        stream = permResult.stream;
-      } else {
-        console.warn('[FlickVoiceRecorder] Hardware mic unavailable (' + permResult.error + '), utilizing audio synthesizer fallback');
-        this.isSyntheticFallback = true;
+      stream = await microphoneService.createAudioStream({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      });
+      this.isSynthetic = false;
+    } catch (micErr: any) {
+      console.warn('[FlickVoiceRecorder] Physical mic unavailable, switching to synthetic voice engine fallback:', micErr?.message || micErr);
+      this.isSynthetic = true;
+      this.rawError = microphoneService.getStatus().lastError;
+      
+      // Build robust synthetic audio stream with Web Audio API
+      const syntheticGraph = this.createSyntheticAudioStream();
+      if (syntheticGraph) {
+        stream = syntheticGraph.stream;
+        this.audioCtx = syntheticGraph.audioCtx;
+        this.analyser = syntheticGraph.analyser;
       }
-    } catch (micErr) {
-      console.warn('[FlickVoiceRecorder] Physical mic error, using audio synthesizer fallback:', micErr);
-      this.isSyntheticFallback = true;
     }
 
+    if (!stream) {
+      throw new Error('Unable to initialize audio capture engine.');
+    }
+
+    this.audioStream = stream;
+    this.isRecording = true;
+
     try {
-      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = AudioCtxClass ? new AudioCtxClass() : null;
-      this.audioCtx = ctx;
+      // 2. Set up Web Audio processing graph for physical mic (if not synthetic)
+      if (!this.isSynthetic) {
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtxClass) {
+          const ctx = new AudioCtxClass();
+          this.audioCtx = ctx;
 
-      if (!stream) {
-        // Build synthetic voice stream using Web Audio API MediaStreamDestination
-        this.isSyntheticFallback = true;
-        if (ctx && typeof ctx.createMediaStreamDestination === 'function') {
-          const destination = ctx.createMediaStreamDestination();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const filter = ctx.createBiquadFilter();
-
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(220, ctx.currentTime);
-
-          // Subtle natural vocal frequency modulation
-          const lfo = ctx.createOscillator();
-          const lfoGain = ctx.createGain();
-          lfo.frequency.setValueAtTime(5, ctx.currentTime);
-          lfoGain.gain.setValueAtTime(25, ctx.currentTime);
-          lfo.connect(osc.frequency);
-          lfo.start();
-
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(800, ctx.currentTime);
-          filter.Q.setValueAtTime(3, ctx.currentTime);
-
-          gain.gain.setValueAtTime(0.3, ctx.currentTime);
-
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(destination);
-
-          osc.start();
-          this.synthOscillator = osc;
-          this.synthGain = gain;
-
-          stream = destination.stream;
-        }
-      }
-
-      this.audioStream = stream;
-
-      // Audio Context for live waveform amplitude analysis
-      if (ctx && stream) {
-        const source = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 128;
-        analyser.smoothingTimeConstant = 0.6;
-        source.connect(analyser);
-        this.analyser = analyser;
-
-        this.startAmplitudeLoop();
-      } else {
-        // Fallback amplitude loop if Web Audio context is not allowed
-        this.startSimulatedAmplitudeLoop();
-      }
-
-      // MediaRecorder with best supported mimeType
-      if (stream && typeof MediaRecorder !== 'undefined') {
-        const mimeType = getOptimalAudioMimeType();
-        const recorder = new MediaRecorder(stream, { mimeType });
-        this.mediaRecorder = recorder;
-
-        recorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) {
-            this.audioChunks.push(e.data);
+          if (ctx.state === 'suspended') {
+            await ctx.resume().catch(() => {});
           }
-        };
 
-        recorder.start(100); // 100ms time slices
+          const source = ctx.createMediaStreamSource(stream);
+          const destination = ctx.createMediaStreamDestination();
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 128;
+          analyser.smoothingTimeConstant = 0.5;
+
+          // Build Audio Effect Chain based on preset
+          let lastNode: AudioNode = source;
+
+          if (this.effect === 'studio') {
+            const lowCut = ctx.createBiquadFilter();
+            lowCut.type = 'highpass';
+            lowCut.frequency.value = 80;
+
+            const presence = ctx.createBiquadFilter();
+            presence.type = 'peaking';
+            presence.frequency.value = 3500;
+            presence.gain.value = 3.5;
+
+            lastNode.connect(lowCut);
+            lowCut.connect(presence);
+            lastNode = presence;
+          } else if (this.effect === 'crisp') {
+            const highShelf = ctx.createBiquadFilter();
+            highShelf.type = 'highshelf';
+            highShelf.frequency.value = 4000;
+            highShelf.gain.value = 5.0;
+
+            lastNode.connect(highShelf);
+            lastNode = highShelf;
+          } else if (this.effect === 'bass') {
+            const bassBoost = ctx.createBiquadFilter();
+            bassBoost.type = 'lowshelf';
+            bassBoost.frequency.value = 250;
+            bassBoost.gain.value = 6.0;
+
+            lastNode.connect(bassBoost);
+            lastNode = bassBoost;
+          } else if (this.effect === 'cyber') {
+            const bandpass = ctx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.value = 1400;
+            bandpass.Q.value = 2.5;
+
+            lastNode.connect(bandpass);
+            lastNode = bandpass;
+          }
+
+          lastNode.connect(analyser);
+          this.analyser = analyser;
+
+          lastNode.connect(destination);
+          this.processedStream = destination.stream;
+        }
       }
 
-      // Live Speech-to-Text transcription if physical mic is active
-      if (!this.isSyntheticFallback) {
+      this.startAmplitudeLoop();
+
+      // 3. Initialize MediaRecorder with the best supported audio mimeType
+      const streamToRecord = this.processedStream || stream;
+      const mimeType = getOptimalAudioMimeType();
+      
+      const recorder = new MediaRecorder(streamToRecord, { mimeType });
+      this.mediaRecorder = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          this.audioChunks.push(e.data);
+        }
+      };
+
+      recorder.start(100); // 100ms time slice chunks
+
+      // 4. Start live speech recognition if physical mic is active
+      if (!this.isSynthetic) {
         this.startSpeechRecognition();
-      } else {
-        this.transcript = 'Voice encrypted note';
       }
 
-      // Duration counter
+      // 5. Active Duration Timer
       this.timerInterval = setInterval(() => {
         if (!this.isPaused) {
           this.durationSeconds += 1;
@@ -242,37 +224,58 @@ export class FlickVoiceRecorder {
       }, 1000);
 
       this.emitState();
-    } catch (err) {
-      console.warn('[FlickVoiceRecorder] Recording init notice:', err);
-      // Ensure we don't crash - emit state
-      this.startSimulatedAmplitudeLoop();
-      this.timerInterval = setInterval(() => {
-        if (!this.isPaused) {
-          this.durationSeconds += 1;
-          this.emitState();
-        }
-      }, 1000);
-      this.emitState();
+    } catch (setupErr) {
+      console.error('[FlickVoiceRecorder] Failed initializing audio processing graph:', setupErr);
+      this.cleanup();
+      throw setupErr;
     }
   }
 
-  private startSimulatedAmplitudeLoop() {
-    let tick = 0;
-    const interval = setInterval(() => {
-      if (!this.isRecording) {
-        clearInterval(interval);
-        return;
-      }
-      if (!this.isPaused) {
-        tick++;
-        const val = 0.25 + Math.sin(tick * 0.4) * 0.35 + Math.random() * 0.2;
-        this.capturedAmplitudes.push(Number(Math.max(0.1, Math.min(1.0, val)).toFixed(2)));
-        if (this.capturedAmplitudes.length > 80) {
-          this.capturedAmplitudes.shift();
-        }
-        this.emitState();
-      }
-    }, 100);
+  private createSyntheticAudioStream(): { stream: MediaStream; audioCtx: AudioContext; analyser: AnalyserNode } | null {
+    try {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtxClass) return null;
+      const ctx = new AudioCtxClass();
+      const destination = ctx.createMediaStreamDestination();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.5;
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(210, ctx.currentTime);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1400, ctx.currentTime);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+
+      const lfo = ctx.createOscillator();
+      lfo.frequency.setValueAtTime(4.2, ctx.currentTime);
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.setValueAtTime(18, ctx.currentTime);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start();
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(analyser);
+      gain.connect(destination);
+
+      osc.start();
+
+      return {
+        stream: destination.stream,
+        audioCtx: ctx,
+        analyser
+      };
+    } catch (e) {
+      console.warn('[FlickVoiceRecorder] Synthetic stream generator fallback error:', e);
+      return null;
+    }
   }
 
   private startAmplitudeLoop() {
@@ -289,8 +292,8 @@ export class FlickVoiceRecorder {
           sum += dataArray[i];
         }
         const avg = sum / bufferLength;
-        // Normalize between 0.1 and 1.0
-        const norm = Math.max(0.1, Math.min(1.0, avg / 120));
+        // Normalize between 0.12 and 1.0
+        const norm = Math.max(0.12, Math.min(1.0, avg / 110));
         this.capturedAmplitudes.push(Number(norm.toFixed(2)));
         if (this.capturedAmplitudes.length > 80) {
           this.capturedAmplitudes.shift();
@@ -303,6 +306,7 @@ export class FlickVoiceRecorder {
   }
 
   private startSpeechRecognition() {
+    if (typeof window === 'undefined') return;
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) return;
 
@@ -328,7 +332,7 @@ export class FlickVoiceRecorder {
       };
 
       recognition.onerror = (e: any) => {
-        console.log('[SpeechRecognition] non-fatal notice:', e.error);
+        console.log('[SpeechRecognition] notice:', e?.error);
       };
 
       recognition.start();
@@ -361,7 +365,7 @@ export class FlickVoiceRecorder {
     waveform: number[];
     transcript: string;
   }> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const getWaveform = () => {
         let waveform: number[] = [];
         if (this.capturedAmplitudes.length >= 10) {
@@ -372,44 +376,30 @@ export class FlickVoiceRecorder {
             waveform.push(this.capturedAmplitudes[idx] || 0.2);
           }
         } else {
-          waveform = Array(40).fill(0.35);
+          waveform = Array(40).fill(0.3);
         }
         return waveform;
       };
 
-      const finalizeWithFallback = () => {
-        const duration = Math.max(1, this.durationSeconds);
-        const { blob, dataUrl } = generateSyntheticWavBlob(duration);
-        const fullTranscript = (this.transcript + ' ' + this.interimTranscript).trim() || 'Encrypted Voice Note';
-        const waveform = getWaveform();
-        this.cleanup();
-        resolve({
-          audioDataUrl: dataUrl,
-          blob,
-          duration,
-          waveform,
-          transcript: fullTranscript,
-        });
-      };
-
       if (!this.mediaRecorder) {
-        finalizeWithFallback();
+        this.cleanup();
+        reject(new Error('MediaRecorder is not active.'));
         return;
       }
 
       this.mediaRecorder.onstop = async () => {
         try {
           if (this.audioChunks.length === 0) {
-            finalizeWithFallback();
+            this.cleanup();
+            reject(new Error('No audio data captured during session.'));
             return;
           }
 
           const mime = this.mediaRecorder?.mimeType || 'audio/webm';
           const blob = new Blob(this.audioChunks, { type: mime });
           
-          // Convert to Data URL
           const reader = new FileReader();
-          reader.onload = async () => {
+          reader.onload = () => {
             const audioDataUrl = reader.result as string;
             const waveform = getWaveform();
             const fullTranscript = (this.transcript + ' ' + this.interimTranscript).trim();
@@ -424,12 +414,14 @@ export class FlickVoiceRecorder {
               transcript: fullTranscript,
             });
           };
-          reader.onerror = () => {
-            finalizeWithFallback();
+          reader.onerror = (readErr) => {
+            this.cleanup();
+            reject(readErr);
           };
           reader.readAsDataURL(blob);
         } catch (e) {
-          finalizeWithFallback();
+          this.cleanup();
+          reject(e);
         }
       };
 
@@ -437,10 +429,12 @@ export class FlickVoiceRecorder {
         if (this.mediaRecorder.state !== 'inactive') {
           this.mediaRecorder.stop();
         } else {
-          finalizeWithFallback();
+          this.cleanup();
+          reject(new Error('MediaRecorder already inactive.'));
         }
-      } catch {
-        finalizeWithFallback();
+      } catch (err) {
+        this.cleanup();
+        reject(err);
       }
     });
   }
@@ -449,7 +443,7 @@ export class FlickVoiceRecorder {
     this.cleanup();
   }
 
-  private cleanup() {
+  public cleanup() {
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
@@ -465,8 +459,12 @@ export class FlickVoiceRecorder {
       this.recognition = null;
     }
     if (this.audioStream) {
-      this.audioStream.getTracks().forEach(t => t.stop());
+      microphoneService.releaseAudioStream(this.audioStream);
       this.audioStream = null;
+    }
+    if (this.processedStream) {
+      microphoneService.releaseAudioStream(this.processedStream);
+      this.processedStream = null;
     }
     if (this.audioCtx) {
       this.audioCtx.close().catch(() => {});

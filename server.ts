@@ -21,7 +21,7 @@ async function startServer() {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.raw({ limit: '100mb', type: 'application/octet-stream' }));
 
-  // Enable CORS securely for all origins to allow standalone desktop/mobile clients to access the config tunnel
+  // Enable CORS & Media Permissions Policy for web and desktop clients
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin) {
@@ -32,6 +32,7 @@ async function startServer() {
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Permissions-Policy', 'microphone=*, camera=*, display-capture=*, autoplay=*');
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }

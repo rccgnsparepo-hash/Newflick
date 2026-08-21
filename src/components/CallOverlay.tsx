@@ -17,6 +17,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { updateGroupParticipantState, leaveGroupCall, joinGroupCall, sendQuickReplyAndEndCall, endActiveCall } from '../lib/services';
 import { startWebRTCSession, WebRTCSession } from '../lib/webrtcService';
+import { microphoneService } from '../lib/microphoneService';
 
 export interface CallState {
   id?: string;
@@ -239,13 +240,24 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
     async function initMedia() {
       try {
         const constraints: MediaStreamConstraints = {
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
           video: call.type === 'video' ? { width: { ideal: 640 }, height: { ideal: 480 } } : false
         };
 
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const result = await microphoneService.requestMicrophonePermission(constraints);
+        if (result.granted && result.stream) {
+          stream = result.stream;
+        } else {
+          // Fallback to direct navigator request if needed
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        }
+
         if (isCancelled) {
-          stream.getTracks().forEach(t => t.stop());
+          microphoneService.releaseAudioStream(stream);
           return;
         }
 
@@ -258,7 +270,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
 
         // Initialize Web Audio API Analyser for live speech detection
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
+        if (AudioCtx && stream) {
           const audioCtx = new AudioCtx();
           audioContextRef.current = audioCtx;
           const analyser = audioCtx.createAnalyser();
@@ -292,7 +304,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
     return () => {
       isCancelled = true;
       if (stream) {
-        stream.getTracks().forEach(t => t.stop());
+        microphoneService.releaseAudioStream(stream);
       }
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);

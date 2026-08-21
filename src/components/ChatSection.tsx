@@ -1080,20 +1080,25 @@ export default function ChatSection({
         return;
       }
 
+      const isChatActive = !!currentChat;
+
       if (window.visualViewport) {
         const windowHeight = window.innerHeight;
         const viewportHeight = window.visualViewport.height;
         const keyboardHeight = Math.max(0, windowHeight - viewportHeight);
 
-        // If keyboard is expanded (>50px), pad by keyboard height to lift input above keyboard
-        // If keyboard is idle on mobile, pad by 64px to clear mobile bottom navigation bar
+        // If mobile keyboard is open (>50px), pad by keyboard height to lift input above keyboard
         if (keyboardHeight > 50) {
           setMobileBottomPadding(keyboardHeight);
+        } else if (!isChatActive) {
+          // On mobile list view without open chat, reserve space for mobile bottom nav bar
+          setMobileBottomPadding(56);
         } else {
-          setMobileBottomPadding(64);
+          // Inside active chat on mobile, bottom nav is hidden, so input fits flush to bottom
+          setMobileBottomPadding(0);
         }
       } else {
-        setMobileBottomPadding(window.innerWidth < 768 ? 64 : 0);
+        setMobileBottomPadding(isMobile && !isChatActive ? 56 : 0);
       }
     };
 
@@ -1111,7 +1116,7 @@ export default function ChatSection({
         window.visualViewport.removeEventListener('scroll', calculateMobilePadding);
       }
     };
-  }, []);
+  }, [currentChat]);
 
   // =================== FLICK COMM UPGRADES STATES ===================
   const [isEmoStickerOpen, setIsEmoStickerOpen] = useState(false);

@@ -1,12 +1,11 @@
-/**
- * Universal Permission & Hardware Bridge Manager for Flick
- * Handles cross-platform permissions: Android APK (WebView/Capacitor/Cordova),
- * Electron Desktop, iOS Safari, and Browser Web standards.
- */
+import { microphoneService, MicrophoneStatusInfo } from './microphoneService';
+
+export { microphoneService };
+export type { MicrophoneStatusInfo, MicrophoneState, RawAudioErrorInfo } from './microphoneService';
 
 export interface PermissionStatusResult {
   granted: boolean;
-  state: 'granted' | 'denied' | 'prompt' | 'unavailable';
+  state: 'granted' | 'denied' | 'prompt' | 'unavailable' | 'blocked' | 'error';
   stream?: MediaStream;
   error?: string;
 }
@@ -15,78 +14,32 @@ export interface PermissionStatusResult {
  * Checks platform environment
  */
 export function getPlatformEnvironment() {
-  if (typeof window === 'undefined') {
-    return { isAndroid: false, isCapacitor: false, isCordova: false, isElectron: false, isWebView: false };
-  }
-
-  const ua = navigator.userAgent || '';
-  const isAndroid = /Android/i.test(ua);
-  const isElectron = /Electron/i.test(ua) || !!(window as any).electronAPI || !!(window as any).flickDesktop;
-  const isCapacitor = !!(window as any).Capacitor;
-  const isCordova = !!(window as any).cordova;
-  const isWebView = isAndroid && (/wv/i.test(ua) || isCapacitor || isCordova || !!(window as any).Android || !!(window as any).AndroidInterface);
-
-  return { isAndroid, isCapacitor, isCordova, isElectron, isWebView };
+  const status = microphoneService.getStatus();
+  return status.platform;
 }
 
 /**
  * Trigger Android Native Permission Bridges (if hosted inside Android APK or WebView)
  */
 export async function triggerAndroidNativePermissions(permissionType: 'audio' | 'camera' | 'all' = 'all'): Promise<boolean> {
+  if (permissionType === 'audio' || permissionType === 'all') {
+    await microphoneService.triggerAndroidBridges();
+  }
+
   if (typeof window === 'undefined') return false;
   const w = window as any;
 
   try {
-    // 1. Android Native Javascript Interface
-    if (w.AndroidInterface) {
-      if (permissionType === 'audio' && typeof w.AndroidInterface.requestAudioPermission === 'function') {
-        w.AndroidInterface.requestAudioPermission();
-        return true;
-      }
-      if (permissionType === 'camera' && typeof w.AndroidInterface.requestCameraPermission === 'function') {
-        w.AndroidInterface.requestCameraPermission();
-        return true;
-      }
-      if (typeof w.AndroidInterface.requestAllPermissions === 'function') {
-        w.AndroidInterface.requestAllPermissions();
-        return true;
-      }
-    }
-
-    // 2. Generic Android bridge
-    if (w.Android) {
-      if (typeof w.Android.requestMicrophonePermission === 'function') {
-        w.Android.requestMicrophonePermission();
-        return true;
-      }
-      if (typeof w.Android.requestPermissions === 'function') {
-        w.Android.requestPermissions();
-        return true;
-      }
-    }
-
-    // 3. AndroidPush bridge
-    if (w.AndroidPush && typeof w.AndroidPush.requestPermissions === 'function') {
-      w.AndroidPush.requestPermissions();
+    if (w.AndroidInterface?.requestCameraPermission && (permissionType === 'camera' || permissionType === 'all')) {
+      w.AndroidInterface.requestCameraPermission();
       return true;
     }
-
-    // 4. Capacitor native plugins
-    if (w.Capacitor && w.Capacitor.Plugins) {
-      const { Permissions, Camera } = w.Capacitor.Plugins;
-      if (Permissions && typeof Permissions.request === 'function') {
-        await Permissions.request({ name: permissionType === 'camera' ? 'camera' : 'microphone' });
-        return true;
-      }
-    }
-
-    // 5. iOS WebKit message handlers
-    if (w.webkit?.messageHandlers?.permission?.postMessage) {
-      w.webkit.messageHandlers.permission.postMessage({ type: permissionType });
+    if (w.Capacitor?.Plugins?.Permissions?.request) {
+      await w.Capacitor.Plugins.Permissions.request({ name: permissionType === 'camera' ? 'camera' : 'microphone' });
       return true;
     }
   } catch (err) {
-    console.warn('[Permissions] Native Android bridge trigger notice:', err);
+    console.warn('[Permissions] Native bridge trigger notice:', err);
   }
 
   return false;
@@ -94,66 +47,16 @@ export async function triggerAndroidNativePermissions(permissionType: 'audio' | 
 
 /**
  * Universal Microphone Permission & Stream Acquisition
- * Implements multi-tier fallback for Android APKs, WebViews, and sandboxed iframes.
+ * Uses the central MicrophonePermissionService
  */
 export async function requestMicrophonePermission(): Promise<PermissionStatusResult> {
-  if (typeof window === 'undefined') {
-    return { granted: false, state: 'unavailable', error: 'Window context missing' };
-  }
-
-  // Trigger any active Android bridges first
-  await triggerAndroidNativePermissions('audio');
-
-  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-    return {
-      granted: false,
-      state: 'unavailable',
-      error: 'MediaDevices API not supported on this browser/platform'
-    };
-  }
-
-  // Tier 1: Try with standard audio constraints
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1,
-      }
-    });
-    return { granted: true, state: 'granted', stream };
-  } catch (tier1Err: any) {
-    console.warn('[Permissions] Tier 1 Mic constraint request error:', tier1Err?.name, tier1Err?.message);
-
-    // Tier 2: Try basic { audio: true } constraints
-    try {
-      const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      return { granted: true, state: 'granted', stream: fallbackStream };
-    } catch (tier2Err: any) {
-      console.warn('[Permissions] Tier 2 Basic Mic request error:', tier2Err?.name, tier2Err?.message);
-
-      const errName = tier2Err?.name || '';
-      let state: 'denied' | 'prompt' | 'unavailable' = 'denied';
-      let errorMsg = 'Microphone access denied or blocked.';
-
-      if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
-        state = 'denied';
-        errorMsg = 'Microphone permission was denied by user or system policy.';
-      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
-        state = 'unavailable';
-        errorMsg = 'No physical microphone hardware detected on this device.';
-      } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
-        state = 'unavailable';
-        errorMsg = 'Microphone is currently in use by another application or background process.';
-      } else if (errName === 'SecurityError') {
-        state = 'denied';
-        errorMsg = 'Security restriction or iframe permission policy is blocking microphone access.';
-      }
-
-      return { granted: false, state, error: errorMsg };
-    }
-  }
+  const res = await microphoneService.requestMicrophonePermission();
+  return {
+    granted: res.granted,
+    state: res.status.state as any,
+    stream: res.stream,
+    error: res.error
+  };
 }
 
 /**

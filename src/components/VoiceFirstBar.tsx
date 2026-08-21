@@ -33,6 +33,8 @@ import {
   playSendMessageSound
 } from '../lib/sounds';
 import { showBrutalistToast } from '../lib/toast';
+import { microphoneService } from '../lib/microphoneService';
+import { MicrophoneDiagnosticPanel } from './MicrophoneDiagnosticPanel';
 
 interface VoiceFirstBarProps {
   chatId: string;
@@ -185,18 +187,24 @@ export function VoiceFirstBar({
   };
 
   const [micPermissionDenied, setMicPermissionDenied] = useState<boolean>(false);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState<boolean>(false);
 
   // Request physical microphone permission
   const handleRequestMicPermission = async () => {
     try {
-      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(t => t.stop());
+      const res = await microphoneService.requestMicrophonePermission();
+      if (res.granted && res.stream) {
+        res.stream.getTracks().forEach(t => t.stop());
         setMicPermissionDenied(false);
-        showBrutalistToast('MIC GRANTED', 'Microphone access is now enabled for voice recording.', 'success');
+        showBrutalistToast('MIC GRANTED', 'Microphone access is enabled for voice recording.', 'success');
+      } else {
+        setMicPermissionDenied(true);
+        setIsDiagnosticOpen(true);
+        showBrutalistToast('MIC PERMISSION', res.error || 'Please allow microphone access or use synthetic audio mode.', 'info');
       }
     } catch (e) {
-      showBrutalistToast('MIC PERMISSION', 'Please click the lock/settings icon in your browser URL bar to allow microphone access.', 'info');
+      setMicPermissionDenied(true);
+      setIsDiagnosticOpen(true);
     }
   };
 
@@ -433,7 +441,7 @@ export function VoiceFirstBar({
     <div className="w-full bg-[var(--color-surface)] border-t border-[var(--neon-green)]/20 font-mono select-none relative transition-all">
       
       {/* Microphone Fallback / Permission Notice Banner */}
-      {(recorderState.isSyntheticFallback || micPermissionDenied) && (
+      {(recorderState.isSynthetic || micPermissionDenied) && (
         <div className="px-3 py-1.5 bg-amber-950/90 border-b border-amber-500/40 flex items-center justify-between gap-2 text-[9px] text-amber-200">
           <div className="flex items-center gap-1.5 truncate">
             <Radio className="w-3 h-3 text-amber-400 shrink-0" />
@@ -441,13 +449,22 @@ export function VoiceFirstBar({
               SYNTHETIC AUDIO MODE • Real mic access restricted in this browser session.
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleRequestMicPermission}
-            className="px-2 py-0.5 bg-amber-400 hover:bg-white text-black font-black text-[8px] uppercase tracking-wider transition cursor-pointer shrink-0"
-          >
-            ENABLE MIC
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleRequestMicPermission}
+              className="px-2 py-0.5 bg-amber-400 hover:bg-white text-black font-black text-[8px] uppercase tracking-wider transition cursor-pointer"
+            >
+              ENABLE MIC
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDiagnosticOpen(true)}
+              className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-black text-[8px] uppercase tracking-wider border border-amber-500/30 transition cursor-pointer"
+            >
+              DIAGNOSE
+            </button>
+          </div>
         </div>
       )}
 
@@ -782,6 +799,12 @@ export function VoiceFirstBar({
         )}
 
       </div>
+
+      {/* Hardware & Microphone Diagnostic Suite Modal */}
+      <MicrophoneDiagnosticPanel
+        isOpen={isDiagnosticOpen}
+        onClose={() => setIsDiagnosticOpen(false)}
+      />
     </div>
   );
 }

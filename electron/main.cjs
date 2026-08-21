@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, dialog, ipcMain, shell, Notification, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, dialog, ipcMain, shell, Notification, screen, session, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -581,7 +581,52 @@ ipcMain.on('incoming-call', (event, { callerName, callType, callId }) => {
   });
 });
 
+// IPC handlers for Native Media / Microphone Permissions & Diagnostics
+ipcMain.handle('check-microphone-permission', async () => {
+  if (process.platform === 'darwin' && systemPreferences && systemPreferences.getMediaAccessStatus) {
+    const status = systemPreferences.getMediaAccessStatus('microphone');
+    return { status, platform: 'darwin' };
+  }
+  return { status: 'granted', platform: process.platform };
+});
+
+ipcMain.handle('request-microphone-permission', async () => {
+  if (process.platform === 'darwin' && systemPreferences && systemPreferences.askForMediaAccess) {
+    const granted = await systemPreferences.askForMediaAccess('microphone');
+    return { granted, status: granted ? 'granted' : 'denied', platform: 'darwin' };
+  }
+  return { granted: true, status: 'granted', platform: process.platform };
+});
+
 app.whenReady().then(() => {
+  // Explicitly configure session-level permission request and check handlers
+  // This prevents Chromium in Electron from silently denying audio / media / microphone access
+  if (session && session.defaultSession) {
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+      const allowed = ['media', 'microphone', 'camera', 'audioCapture', 'notifications', 'mediaKeySystem'];
+      if (allowed.includes(permission)) {
+        console.log(`[Electron Session] Auto-approving media permission: ${permission}`);
+        return callback(true);
+      }
+      if (details && details.mediaTypes && (details.mediaTypes.includes('audio') || details.mediaTypes.includes('video'))) {
+        console.log('[Electron Session] Auto-approving mediaTypes:', details.mediaTypes);
+        return callback(true);
+      }
+      return callback(true); // Allow internal app requests
+    });
+
+    session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+      const allowed = ['media', 'microphone', 'camera', 'audioCapture', 'notifications', 'mediaKeySystem'];
+      if (allowed.includes(permission)) {
+        return true;
+      }
+      if (details && details.mediaTypes && (details.mediaTypes.includes('audio') || details.mediaTypes.includes('video'))) {
+        return true;
+      }
+      return true;
+    });
+  }
+
   createSplash();
   createWindow();
   createTray();

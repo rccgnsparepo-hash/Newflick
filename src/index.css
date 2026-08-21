@@ -531,10 +531,7 @@ header.bg-\[\#050505\]\/85,
 .bg-black\/70,
 .bg-black\/75 {
   background-color: var(--color-surface) !important;
-  border-radius: var(--border-radius-card) !important;
   border-color: var(--neon-green-border) !important;
-  box-shadow: var(--shadow-card) !important;
-  backdrop-filter: blur(var(--backdrop-blur-card)) !important;
   transition: var(--theme-transition);
 }
 
@@ -580,8 +577,6 @@ textarea,
 .border-zinc-800,
 .border-zinc-90 {
   border-color: var(--neon-green-border) !important;
-  border-width: var(--border-width-card) !important;
-  border-radius: var(--border-radius-card) !important;
 }
 
 /* Buttons overrides */
@@ -602,13 +597,32 @@ button.px-3.py-2.border {
 }
 
 /* Layout rounding overrides */
-.rounded-none,
-.rounded-sm,
-.rounded-md,
-.rounded-lg,
-.rounded-xl,
+.rounded-none {
+  border-radius: 0px !important;
+}
+
+.rounded-sm {
+  border-radius: 4px !important;
+}
+
+.rounded-md {
+  border-radius: 6px !important;
+}
+
+.rounded-lg {
+  border-radius: 8px !important;
+}
+
+.rounded-xl {
+  border-radius: 12px !important;
+}
+
 .rounded-2xl {
-  border-radius: var(--border-radius-card) !important;
+  border-radius: 16px !important;
+}
+
+.rounded-full {
+  border-radius: 9999px !important;
 }
 
 

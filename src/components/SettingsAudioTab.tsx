@@ -11,7 +11,10 @@ import {
   Headphones, 
   Flame, 
   Zap, 
-  Play
+  Play,
+  Mic,
+  Activity,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   isInteractionSoundsEnabled, 
@@ -32,6 +35,8 @@ import {
   TypingSoundStyle
 } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
+import { MicrophoneDiagnosticPanel } from './MicrophoneDiagnosticPanel';
+import { microphoneService, MicrophoneStatusInfo } from '../lib/microphoneService';
 
 interface SettingsAudioTabProps {
   interactionSoundsEnabled: boolean;
@@ -48,6 +53,15 @@ export function SettingsAudioTab({
   const [sendSoundEnabled, setSendSoundEnabled] = useState<boolean>(() => isSendMessageSoundEnabled());
   const [receiveSoundEnabled, setReceiveSoundEnabled] = useState<boolean>(() => isReceiveMessageSoundEnabled());
   const [readSoundEnabled, setReadSoundEnabled] = useState<boolean>(() => isReadMessageSoundEnabled());
+  const [showDiagModal, setShowDiagModal] = useState<boolean>(false);
+  const [micStatus, setMicStatus] = useState<MicrophoneStatusInfo>(microphoneService.getStatus());
+
+  useEffect(() => {
+    const unsub = microphoneService.subscribe((status) => {
+      setMicStatus(status);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -363,7 +377,49 @@ export function SettingsAudioTab({
           </div>
         </div>
 
+        {/* Hardware Microphone & Media Bridge Diagnostic Launcher */}
+        <div className="p-3.5 bg-zinc-950/80 border border-zinc-800 rounded-xl space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mic className="w-4 h-4 text-[var(--neon-green)]" />
+              <span className="text-[10px] font-black uppercase text-white tracking-wider">
+                Microphone Hardware & Permissions Suite
+              </span>
+            </div>
+            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+              micStatus.state === 'granted'
+                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                : micStatus.isBlocked
+                ? 'bg-red-950 text-red-300 border border-red-800'
+                : 'bg-amber-950 text-amber-300 border border-amber-800'
+            }`}>
+              {micStatus.state}
+            </span>
+          </div>
+          <p className="text-[9px] text-zinc-400 leading-relaxed">
+            Test active audio input frequencies, view platform security policies, detect connected input devices, or reset blocked browser/Electron microphone states.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setShowDiagModal(true);
+            }}
+            className="w-full py-2 bg-[var(--neon-green)] text-black font-black uppercase text-[9.5px] tracking-wider rounded-lg hover:bg-white transition cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(0,255,102,0.2)]"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Launch Hardware & Mic Diagnostic Test
+          </button>
+        </div>
+
       </div>
+
+      {showDiagModal && (
+        <MicrophoneDiagnosticPanel
+          isOpen={showDiagModal}
+          onClose={() => setShowDiagModal(false)}
+        />
+      )}
     </div>
   );
 }
