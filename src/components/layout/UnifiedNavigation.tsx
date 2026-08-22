@@ -89,11 +89,11 @@ export function UnifiedNavigation({
     <>
       {/* DESKTOP SIDEBAR RAIL (md:flex) */}
       <aside
-        className={`hidden md:flex flex-col justify-between shrink-0 h-full z-40 select-none bg-[var(--color-background)]/85 backdrop-blur-xl border-r border-[var(--glass-border)] py-5 transition-all duration-300 ease-in-out relative rounded-none ${
+        className={`hidden md:flex flex-col justify-between shrink-0 h-full z-40 select-none bg-[var(--color-background)]/90 backdrop-blur-xl border-r border-[var(--glass-border)] py-4 transition-[width] duration-300 ease-in-out relative rounded-none ${
           sidebarExpanded ? 'w-64 px-4' : 'w-20 px-2.5'
         }`}
       >
-        {/* Toggle Collapse Arrow */}
+        {/* Toggle Collapse Arrow - strictly anchored to the sidebar rail edge */}
         <button
           onClick={() => {
             playGlitchClickSound();
@@ -102,11 +102,12 @@ export function UnifiedNavigation({
             setSidebarExpanded(next);
             localStorage.setItem('flick_sidebar_expanded', String(next));
           }}
-          className="absolute -right-3 top-7 w-6 h-6 rounded-full glass-panel border border-[var(--glass-border)] flex items-center justify-center text-zinc-400 hover:text-[var(--color-text)] hover:scale-110 transition-all duration-200 cursor-pointer shadow-lg z-[60]"
-          title={sidebarExpanded ? 'Collapse Navigation' : 'Expand Navigation'}
+          className="absolute -right-3.5 top-6 w-7 h-7 rounded-full bg-[var(--color-background)] border-2 border-[var(--neon-green-border)] hover:border-[var(--neon-green)] flex items-center justify-center text-zinc-300 hover:text-[var(--neon-green)] transition-all duration-200 cursor-pointer shadow-md z-50 hover:scale-110 active:scale-95"
+          title={sidebarExpanded ? 'Collapse Navigation Rail' : 'Expand Navigation Rail'}
+          aria-label={sidebarExpanded ? 'Collapse Navigation Rail' : 'Expand Navigation Rail'}
         >
           <ChevronRight
-            className={`w-3.5 h-3.5 transition-transform duration-300 ${
+            className={`w-4 h-4 transition-transform duration-300 ${
               sidebarExpanded ? 'rotate-180 text-rose-400' : 'text-[var(--neon-green)]'
             }`}
           />

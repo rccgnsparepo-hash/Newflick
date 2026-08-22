@@ -69,7 +69,10 @@ import {
   Calendar,
   SendHorizontal,
   Video,
-  Radio
+  Radio,
+  GripVertical,
+  Layers,
+  Move
 } from 'lucide-react';
 import { compressImage } from '../lib/mediaHelper';
 import { playLikeSound, playGlitchClickSound, playReceiveMessageSound } from '../lib/sounds';
@@ -229,6 +232,104 @@ export default function FeedSection({
   const [postVideo, setPostVideo] = useState('');
   const [postPollOpts, setPostPollOpts] = useState<string[]>(['Option 1', 'Option 2']);
   const [postAnon, setPostAnon] = useState(false);
+
+  // Drag & Drop Layout customization and Pinned Posts state
+  const DEFAULT_FEED_SECTIONS = [
+    { id: 'stories', label: 'Ephemeral Stories', icon: '⚡', desc: 'Peer story nodes' },
+    { id: 'pinned_items', label: 'Pinned Vault', icon: '📌', desc: 'Bookmarked & pinned posts' },
+    { id: 'quick_actions', label: 'Tactical Pills', icon: '✨', desc: 'Match Mate & shortcuts' },
+    { id: 'trending_radar', label: 'Campus Radar', icon: '📈', desc: 'Trending intelligence' },
+    { id: 'posts_stream', label: 'Feed Stream', icon: '📜', desc: 'Decentralized timeline' }
+  ];
+
+  const [feedSectionsOrder, setFeedSectionsOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('flick_feed_sections_order');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const allIds = ['stories', 'pinned_items', 'quick_actions', 'trending_radar', 'posts_stream'];
+          const existing = parsed.filter((id: string) => allIds.includes(id));
+          allIds.forEach(id => {
+            if (!existing.includes(id)) existing.push(id);
+          });
+          return existing;
+        }
+      }
+    } catch (e) {}
+    return ['stories', 'pinned_items', 'quick_actions', 'trending_radar', 'posts_stream'];
+  });
+
+  const [pinnedPostIds, setPinnedPostIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('flick_pinned_posts');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+
+  const [draggedSectionId, setDraggedSectionId] = useState<string | null>(null);
+  const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null);
+  const [draggedPinnedId, setDraggedPinnedId] = useState<string | null>(null);
+  const [dragOverPinnedId, setDragOverPinnedId] = useState<string | null>(null);
+  const [isCustomizingFeedLayout, setIsCustomizingFeedLayout] = useState(false);
+
+  const handleReorderSections = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+    setFeedSectionsOrder(prev => {
+      const next = [...prev];
+      const fromIdx = next.indexOf(fromId);
+      const toIdx = next.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      localStorage.setItem('flick_feed_sections_order', JSON.stringify(next));
+      playGlitchClickSound();
+      triggerVibration('medium');
+      showBrutalistToast('LAYOUT SAVED ✓', 'Feed section order successfully reorganized!', 'success');
+      return next;
+    });
+  };
+
+  const handleReorderPinnedPosts = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+    setPinnedPostIds(prev => {
+      const next = [...prev];
+      const fromIdx = next.indexOf(fromId);
+      const toIdx = next.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      localStorage.setItem('flick_pinned_posts', JSON.stringify(next));
+      playGlitchClickSound();
+      triggerVibration('light');
+      showBrutalistToast('VAULT REORDERED ✓', 'Pinned items sequence updated!', 'success');
+      return next;
+    });
+  };
+
+  const togglePinPost = (postId: string) => {
+    setPinnedPostIds(prev => {
+      const isPinned = prev.includes(postId);
+      const updated = isPinned ? prev.filter(id => id !== postId) : [postId, ...prev];
+      localStorage.setItem('flick_pinned_posts', JSON.stringify(updated));
+      showBrutalistToast(
+        isPinned ? 'UNPINNED' : 'PINNED ✓', 
+        isPinned ? 'Post removed from your pinned vault.' : 'Post pinned to your academic vault! Drag & drop to reorder anytime.', 
+        isPinned ? 'info' : 'success'
+      );
+      return updated;
+    });
+  };
+
+  const resetFeedLayout = () => {
+    const def = ['stories', 'pinned_items', 'quick_actions', 'trending_radar', 'posts_stream'];
+    setFeedSectionsOrder(def);
+    localStorage.setItem('flick_feed_sections_order', JSON.stringify(def));
+    playGlitchClickSound();
+    triggerVibration('medium');
+    showBrutalistToast('LAYOUT RESET ✓', 'Feed layout restored to standard protocol configuration.', 'info');
+  };
 
   // Comments / discussions modal
   const [activeDiscussionPost, setActiveDiscussionPost] = useState<any | null>(null);
@@ -1156,7 +1257,7 @@ export default function FeedSection({
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="w-full h-full overflow-y-auto flex flex-col px-2 sm:px-4 py-4 space-y-5"
             >
-              <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-28 md:pb-12">
+              <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-24 md:pb-6">
                 {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
                 <div className="sticky top-0 z-30 flex glass-panel p-1.5 rounded-[20px] overflow-x-auto scrollbar-none gap-1">
                   <button
@@ -1736,12 +1837,16 @@ export default function FeedSection({
                             onClick={() => {
                               playGlitchClickSound();
                               triggerVibration('medium');
-                              showBrutalistToast('PINNED ✓', 'Post successfully pinned to your local academic vault!', 'success');
+                              togglePinPost(post.id);
                             }}
-                            className="hover:text-amber-500 transition cursor-pointer"
-                            title="Bookmark"
+                            className={`transition cursor-pointer p-1 rounded-lg ${
+                              pinnedPostIds.includes(post.id) 
+                                ? 'text-amber-400 bg-amber-950/30' 
+                                : 'hover:text-amber-400 text-zinc-500'
+                            }`}
+                            title={pinnedPostIds.includes(post.id) ? "Unpin from Vault" : "Pin to Academic Vault (Drag to Reorder)"}
                           >
-                            <Bookmark className="w-4 h-4" />
+                            <Bookmark className={`w-4 h-4 ${pinnedPostIds.includes(post.id) ? 'fill-current' : ''}`} />
                           </button>
                         </div>
                       </div>

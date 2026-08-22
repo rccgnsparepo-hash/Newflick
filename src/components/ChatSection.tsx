@@ -464,7 +464,9 @@ function DecryptedMessageBubble({
   // Handle emoji reactions with Firestore persistence
   const toggleReaction = async (emoji: string) => {
     try {
-      const existing = reactions.find(r => r.userId === currentUserId);
+      playGlitchClickSound();
+      triggerVibration('light');
+      const existing = reactions.find(r => r.userId === currentUserId) || (message.reactions && message.reactions[currentUserId] ? { userId: currentUserId, userName: currentUserDisplayName, emoji: message.reactions[currentUserId] } : null);
       if (existing && existing.emoji === emoji) {
         await removeMessageReaction(chatId, message.id, currentUserId);
         try {
@@ -475,6 +477,7 @@ function DecryptedMessageBubble({
         } catch (e) {
           // Field removal fallback
         }
+        setReactions(prev => prev.filter(r => r.userId !== currentUserId));
       } else {
         await addOrUpdateMessageReaction(chatId, message.id, {
           userId: currentUserId,
@@ -489,6 +492,10 @@ function DecryptedMessageBubble({
         } catch (e) {
           console.warn("Direct doc reaction write bypassed:", e);
         }
+        setReactions(prev => {
+          const filtered = prev.filter(r => r.userId !== currentUserId);
+          return [...filtered, { userId: currentUserId, userName: currentUserDisplayName, emoji, createdAt: new Date() }];
+        });
       }
     } catch (err) {
       console.warn("Reaction toggle error:", err);
@@ -510,17 +517,39 @@ function DecryptedMessageBubble({
     }
   };
 
-  const groupedReactions = reactions.reduce((acc, r) => {
-    const match = acc.find(x => x.emoji === r.emoji);
-    if (match) {
-      match.users.push(r);
-    } else {
-      acc.push({ emoji: r.emoji, users: [r] });
+  // Merge subcollection reactions with message.reactions map
+  const effectiveReactions: MessageReaction[] = useMemo(() => {
+    const list = [...reactions];
+    if (message.reactions) {
+      Object.entries(message.reactions).forEach(([uId, emojiVal]) => {
+        if (!list.some(r => r.userId === uId)) {
+          list.push({
+            userId: uId,
+            userName: uId === currentUserId ? currentUserDisplayName : 'Peer',
+            emoji: emojiVal as string,
+            createdAt: message.createdAt
+          });
+        }
+      });
     }
-    return acc;
-  }, [] as { emoji: string; users: MessageReaction[] }[]);
+    return list;
+  }, [reactions, message.reactions, currentUserId, currentUserDisplayName, message.createdAt]);
 
-  const pickerEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  const groupedReactions = useMemo(() => {
+    return effectiveReactions.reduce((acc, r) => {
+      const match = acc.find(x => x.emoji === r.emoji);
+      if (match) {
+        if (!match.users.some(u => u.userId === r.userId)) {
+          match.users.push(r);
+        }
+      } else {
+        acc.push({ emoji: r.emoji, users: [r] });
+      }
+      return acc;
+    }, [] as { emoji: string; users: MessageReaction[] }[]);
+  }, [effectiveReactions]);
+
+  const pickerEmojis = ['👍', '❤️', '🔥', '🚀', '⚡', '🤯', '😂', '🎯', '👏', '💯', '🤝', '👀'];
 
   // Audio speed adjustment controls
   const togglePlaybackSpeed = () => {
@@ -904,40 +933,63 @@ function DecryptedMessageBubble({
         {/* Reaction picker portal modal overlay */}
         <AnimatePresence>
           {showPicker && (
-            <div className="absolute bottom-6 left-0 bg-[var(--color-surface)] border border-[var(--neon-green)] p-1 shadow-lg z-50 flex space-x-1 font-mono">
-              {pickerEmojis.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => toggleReaction(emoji)}
-                  className="p-1 text-sm hover:scale-125 transition cursor-pointer"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className={`absolute -top-11 ${message.senderId === currentUserId ? 'right-0' : 'left-0'} bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] p-1.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-50 flex items-center space-x-1 font-mono max-w-[90vw] overflow-x-auto scrollbar-none`}
+            >
+              {pickerEmojis.map(emoji => {
+                const isReacted = effectiveReactions.some(r => r.userId === currentUserId && r.emoji === emoji);
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => toggleReaction(emoji)}
+                    className={`w-7 h-7 flex items-center justify-center text-sm rounded-full transition-all duration-150 cursor-pointer transform hover:scale-130 active:scale-90 ${
+                      isReacted 
+                        ? 'bg-[var(--neon-green)]/20 ring-1 ring-[var(--neon-green)] scale-110' 
+                        : 'hover:bg-zinc-800/80'
+                    }`}
+                    title={`React ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
+            </motion.div>
           )}
         </AnimatePresence>
 
         {/* Aggregate displayed reactions as a small floating overlay on each message bubble */}
         {groupedReactions.length > 0 && (
           <div 
-            className={`absolute bottom-[-11px] ${message.senderId === currentUserId ? 'right-3' : 'left-3'} flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--neon-green)] px-1.5 py-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] select-none z-10 font-mono`}
+            className={`absolute -bottom-3 ${message.senderId === currentUserId ? 'right-2' : 'left-2'} flex flex-wrap items-center gap-1 bg-[var(--color-surface)]/90 backdrop-blur-sm border border-[var(--glass-border)] rounded-full px-1.5 py-0.5 shadow-md select-none z-10 font-mono`}
             style={{ pointerEvents: 'auto' }}
           >
-            {groupedReactions.map((g, idx) => (
-              <span 
-                key={idx} 
-                className="text-[10px] flex items-center gap-0.5 cursor-pointer hover:scale-110 transition duration-100" 
-                title={g.users.map(u => u.userName).join(', ')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleReaction(g.emoji);
-                }}
-              >
-                <span>{g.emoji}</span>
-                <span className="text-[8px] font-black text-[var(--neon-green)]">{g.users.length}</span>
-              </span>
-            ))}
+            {groupedReactions.map((g, idx) => {
+              const hasUserReacted = g.users.some(u => u.userId === currentUserId);
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleReaction(g.emoji);
+                  }}
+                  className={`text-[11px] flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all duration-150 cursor-pointer ${
+                    hasUserReacted
+                      ? 'bg-[var(--neon-green)]/15 border-[var(--neon-green)] text-[var(--neon-green)] font-bold'
+                      : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 text-zinc-300'
+                  }`}
+                  title={`${g.users.map(u => u.userName || 'Peer').join(', ')} (${g.users.length})`}
+                >
+                  <span className="leading-none">{g.emoji}</span>
+                  <span className="text-[9px] font-black">{g.users.length}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 

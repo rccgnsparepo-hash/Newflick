@@ -164,7 +164,7 @@ export default function BentoProfile({
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 pb-20 text-[var(--color-text)]">
+    <div className="w-full max-w-5xl mx-auto space-y-6 pb-20 md:pb-6 text-[var(--color-text)]">
       {/* HEADER CARD WITH COVER PHOTO */}
       <div className="glass-panel overflow-hidden relative space-y-0">
         {/* Cover Photo Banner */}

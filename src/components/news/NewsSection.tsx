@@ -255,7 +255,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   const feedArticles = heroArticle ? articles.slice(1) : articles;
 
   return (
-    <div className="w-full min-h-screen bg-black text-zinc-100 flex flex-col font-mono select-none pb-20">
+    <div className="w-full min-h-full bg-black text-zinc-100 flex flex-col font-mono select-none pb-20 md:pb-6">
       {/* Sticky Header with Real Category Navigation */}
       <NewsHeader
         activeTab={activeTab}

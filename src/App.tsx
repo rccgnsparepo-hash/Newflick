@@ -7,8 +7,6 @@ import { useScrollLock } from './hooks/useScrollLock';
 import AuthScreen from './components/AuthScreen';
 import ChatSection from './components/ChatSection';
 import FeedSection from './components/FeedSection';
-import DesktopSidebar from './components/layout/DesktopSidebar';
-import MobileBottomNav from './components/layout/MobileBottomNav';
 import { UnifiedNavigation } from './components/layout/UnifiedNavigation';
 import { AppHeader } from './components/layout/AppHeader';
 import { applyFont, getSavedFont } from './lib/theme';
@@ -1154,45 +1152,45 @@ function Dashboard() {
   const unreadE2EECount = notifications.filter(n => n.type === 'message').length;
 
   return (
-    <div className="h-screen h-[100dvh] w-full flex flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
-      {/* Main Dashboard Container - Dynamically blurred & dimmed when CallOverlay is active to focus user attention */}
-      <div className={`h-full flex-1 min-h-0 w-full flex flex-col overflow-hidden transition-all duration-500 ease-out ${
+    <div className="h-full h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
+      {/* Main Dashboard Container - Dynamically blurred & dimmed when CallOverlay is active */}
+      <div className={`h-full flex-1 min-h-0 w-full flex flex-col md:flex-row overflow-hidden transition-all duration-500 ease-out ${
         ongoingCall ? 'filter blur-[12px] brightness-[0.20] scale-[0.985] pointer-events-none select-none' : 'filter-none brightness-100 scale-100'
       }`}>
-        {/* Main Responsive App Header */}
-        <AppHeader
-          profile={profile}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
+        
+        {/* Full-Height Desktop Sidebar Navigation (Left Rail on Desktop) / Mobile Bottom Bar */}
+        <UnifiedNavigation
           unreadE2EECount={unreadE2EECount}
-          notifications={notifications}
-          isOnline={isOnline}
-          isSlow={isSlow}
-          connectionType={connectionType}
-          batteryLevel={batteryLevel}
-          isCharging={isCharging}
-          setShowCinematicIntro={setShowCinematicIntro}
-          setIsSettingsOpen={setIsSettingsOpen}
-          setIsShortcutsOpen={setIsShortcutsOpen}
-          handleNotificationClick={handleNotificationClick}
-          handleClearNotification={handleClearNotification}
-          logout={logout}
-          playGlitchClickSound={playGlitchClickSound}
-          triggerVibration={triggerVibration}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
+          onOpenCallHistory={() => setIsCallHistoryOpen(true)}
         />
 
-        {/* Unified Nav-Aware Layout Container */}
-        <div className="flex-1 min-h-0 w-full max-w-full flex flex-row relative overflow-hidden">
-          
-          {/* Responsive Unified Navigation (Adapts Sidebar vs Mobile Bottom Nav) */}
-          <UnifiedNavigation
+        {/* Right Content Workspace Container (Header + Main Active Content) */}
+        <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
+          {/* Main Responsive App Header */}
+          <AppHeader
+            profile={profile}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
             unreadE2EECount={unreadE2EECount}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
-            onOpenCallHistory={() => setIsCallHistoryOpen(true)}
+            notifications={notifications}
+            isOnline={isOnline}
+            isSlow={isSlow}
+            connectionType={connectionType}
+            batteryLevel={batteryLevel}
+            isCharging={isCharging}
+            setShowCinematicIntro={setShowCinematicIntro}
+            setIsSettingsOpen={setIsSettingsOpen}
+            setIsShortcutsOpen={setIsShortcutsOpen}
+            handleNotificationClick={handleNotificationClick}
+            handleClearNotification={handleClearNotification}
+            logout={logout}
+            playGlitchClickSound={playGlitchClickSound}
+            triggerVibration={triggerVibration}
           />
 
-          {/* Center Content Column (Main Feed / Messaging / Profile / Workspace) */}
+          {/* Center Content Column (Feed / Messaging / News / Profile / Workspace) */}
           <main className="flex-1 min-h-0 flex flex-col min-w-0 h-full relative overflow-hidden">
             <FeedSection 
               activeTab={activeTab} 
@@ -1206,7 +1204,6 @@ function Dashboard() {
               onClearDeepLinkedNews={() => setDeepLinkedNewsId(null)}
             />
           </main>
-
         </div>
       </div>
 
