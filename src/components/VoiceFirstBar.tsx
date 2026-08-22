@@ -418,14 +418,27 @@ export function VoiceFirstBar({
     }
   };
 
-  // Send auxiliary text message
-  const handleSendAuxText = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auxiliaryText.trim() || !onSendTextMessage || isSending) return;
+  // Send auxiliary text message with instant input clearing and failure draft preservation
+  const handleSendAuxText = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const textToSubmit = auxiliaryText.trim();
+    if (!textToSubmit || !onSendTextMessage || isSending) return;
+
+    // 1. Immediately reset the input field so UI clears on the very same frame
+    setAuxiliaryText('');
+    setIsSending(true);
+
     try {
-      setIsSending(true);
-      await onSendTextMessage(auxiliaryText.trim());
-      setAuxiliaryText('');
+      if (onTypingStatusChange) {
+        onTypingStatusChange(false);
+      }
+      await onSendTextMessage(textToSubmit);
+    } catch (err: any) {
+      // 2. If transmission fails, safely restore draft into input box
+      setAuxiliaryText(textToSubmit);
+      showBrutalistToast('SEND FAILED', 'Could not transmit dialogue packet. Message draft restored.', 'error');
     } finally {
       setIsSending(false);
     }

@@ -8,6 +8,7 @@ import {
   School,
   Search,
   Radio,
+  Newspaper,
   Briefcase,
   MessageSquare,
   Sparkles,
@@ -237,7 +238,7 @@ export default function DesktopSidebar({
               )}
             </button>
 
-            {/* Arena Tab */}
+            {/* Flick News Tab */}
             <button
               onClick={() => { playGlitchClickSound(); triggerVibration('light'); setActiveTab('news'); }}
               className={`relative flex items-center w-full transition-all duration-200 cursor-pointer rounded-xl group hover:scale-[1.02] active:scale-[0.98] ${
@@ -245,7 +246,7 @@ export default function DesktopSidebar({
                   ? 'text-emerald-400 font-bold'
                   : 'text-zinc-300 hover:text-emerald-300 hover:bg-[var(--color-background)]/80'
               } ${isEffectiveExpanded ? 'px-3.5 py-3 gap-3.5' : 'justify-center h-11 w-11 mx-auto'}`}
-              title="Arena"
+              title="Flick News"
             >
               {activeTab === 'news' && (
                 <motion.div
@@ -254,9 +255,9 @@ export default function DesktopSidebar({
                   transition={{ type: 'spring', damping: 28, stiffness: 380 }}
                 />
               )}
-              <Radio className="w-5 h-5 shrink-0 text-emerald-400 relative z-10 transition-transform duration-200 group-hover:scale-110" />
+              <Newspaper className="w-5 h-5 shrink-0 text-emerald-400 relative z-10 transition-transform duration-200 group-hover:scale-110" />
               {isEffectiveExpanded && (
-                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10 text-emerald-400">ARENA</span>
+                <span className="text-xs font-mono font-bold tracking-wider uppercase relative z-10 text-emerald-400">FLICK NEWS</span>
               )}
             </button>
 

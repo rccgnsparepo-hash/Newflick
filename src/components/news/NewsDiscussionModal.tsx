@@ -18,6 +18,7 @@ import {
 import { NewsArticle, NewsComment } from '../../types/news';
 import { newsService } from '../../lib/newsService';
 import { playGlitchClickSound, playLikeSound } from '../../lib/sounds';
+import { showBrutalistToast } from '../../lib/toast';
 
 interface NewsDiscussionModalProps {
   article: NewsArticle | null;
@@ -54,7 +55,7 @@ export const NewsDiscussionModal: React.FC<NewsDiscussionModalProps> = ({
     playGlitchClickSound();
 
     const created = await newsService.postComment(article.id, {
-      userId: currentUser?.id || 'citizen-node',
+      userId: currentUser?.uid || currentUser?.id || 'citizen-node',
       userName: currentUser?.displayName || currentUser?.name || 'FLICK Citizen',
       userUsername: currentUser?.username || 'citizen',
       userPhoto: currentUser?.photoURL,
@@ -69,6 +70,7 @@ export const NewsDiscussionModal: React.FC<NewsDiscussionModalProps> = ({
       setNewComment('');
       setReplyTo(null);
       playLikeSound();
+      showBrutalistToast('COMMENT POSTED', 'Your voice is live on the FLICK community wire', 'success');
     }
     setIsSubmitting(false);
   };
@@ -78,7 +80,7 @@ export const NewsDiscussionModal: React.FC<NewsDiscussionModalProps> = ({
       onShareToTimeline(article, repostComment);
       setShowRepostBox(false);
       setRepostComment('');
-      alert('Article reposted to your FLICK social feed!');
+      showBrutalistToast('REPOST DEPLOYED', 'Article reposted to your FLICK social feed!', 'success');
     }
   };
 

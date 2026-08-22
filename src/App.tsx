@@ -1202,6 +1202,8 @@ function Dashboard() {
               onClearDeepLink={() => setDeepLinkedPeerId(null)}
               deepLinkedGroupId={deepLinkedGroupId}
               onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
+              deepLinkedNewsId={deepLinkedNewsId}
+              onClearDeepLinkedNews={() => setDeepLinkedNewsId(null)}
             />
           </main>
 

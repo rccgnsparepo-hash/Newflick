@@ -4,6 +4,7 @@ import { RefreshCw, AlertCircle, Sparkles, Flame, Check, Bookmark, ArrowUp, Chev
 import { NewsArticle, NewsCategoryTab } from '../../types/news';
 import { newsService } from '../../lib/newsService';
 import { playGlitchClickSound, playLikeSound } from '../../lib/sounds';
+import { showBrutalistToast } from '../../lib/toast';
 
 import { NewsHeader } from './NewsHeader';
 import { BreakingNewsBanner } from './BreakingNewsBanner';
@@ -22,11 +23,15 @@ import { NewsRealtimeLoader } from './NewsRealtimeLoader';
 interface NewsSectionProps {
   currentUser?: any;
   onShareToTimeline?: (article: NewsArticle, comment?: string) => void;
+  deepLinkedArticleId?: string | null;
+  onClearDeepLink?: () => void;
 }
 
 export const NewsSection: React.FC<NewsSectionProps> = ({
   currentUser,
-  onShareToTimeline
+  onShareToTimeline,
+  deepLinkedArticleId = null,
+  onClearDeepLink
 }) => {
   const [activeTab, setActiveTab] = useState<NewsCategoryTab>('for-you');
   const [activeNigeriaSub, setActiveNigeriaSub] = useState('all');
@@ -35,6 +40,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   // Articles state
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [breakingNews, setBreakingNews] = useState<NewsArticle[]>([]);
+  const [savedArticlesFull, setSavedArticlesFull] = useState<NewsArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -52,6 +58,27 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   const [discussionArticle, setDiscussionArticle] = useState<NewsArticle | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const effectiveUserId = currentUser?.uid || currentUser?.id || 'local-user';
+
+  // Handle deep-linked article on arrival
+  useEffect(() => {
+    if (!deepLinkedArticleId) return;
+    
+    // Check if article is already in current list
+    const found = articles.find(a => a.id === deepLinkedArticleId) || breakingNews.find(a => a.id === deepLinkedArticleId);
+    if (found) {
+      setSelectedArticle(found);
+      if (onClearDeepLink) onClearDeepLink();
+    } else {
+      newsService.getArticle(deepLinkedArticleId, effectiveUserId).then((art) => {
+        if (art) {
+          setSelectedArticle(art);
+        }
+        if (onClearDeepLink) onClearDeepLink();
+      });
+    }
+  }, [deepLinkedArticleId, articles, breakingNews, effectiveUserId, onClearDeepLink]);
 
   // Load feed based on active tab and filters
   const loadFeed = useCallback(async (pageNum = 1, append = false) => {
@@ -88,7 +115,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
         tab: tabParam,
         page: pageNum,
         limit: 14,
-        userId: currentUser?.id
+        userId: effectiveUserId
       });
 
       if (append) {
@@ -104,7 +131,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab, activeNigeriaSub, selectedCampus, currentUser?.id]);
+  }, [activeTab, activeNigeriaSub, selectedCampus, effectiveUserId]);
 
   // Initial load & breaking news poll
   useEffect(() => {
@@ -115,6 +142,8 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   // Refresh trigger
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
+    playGlitchClickSound();
+    showBrutalistToast('SYNCING...', 'Connecting to live RSS editorial wire feeds', 'info');
     try {
       await fetch('/api/news/refresh', { method: 'POST' });
     } catch (err) {}
@@ -123,13 +152,15 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       newsService.getBreakingNews().then(setBreakingNews)
     ]);
     setIsRefreshing(false);
+    showBrutalistToast('LIVE FEED UPDATED', 'Wire reports synchronized successfully', 'success');
   };
 
   // Toggle Save
   const handleToggleSave = async (articleId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    playGlitchClickSound();
     const isCurrentlySaved = savedIds.has(articleId);
-    const updated = await newsService.toggleSave(articleId, currentUser?.id, isCurrentlySaved);
+    const updated = await newsService.toggleSave(articleId, effectiveUserId, isCurrentlySaved);
     
     setSavedIds(prev => {
       const next = new Set(prev);
@@ -137,12 +168,18 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       else next.delete(articleId);
       return next;
     });
+
+    showBrutalistToast(
+      updated ? 'BOOKMARKED ✓' : 'UNSAVED',
+      updated ? 'Article saved to your private FLICK archive' : 'Article removed from saved bookmarks',
+      updated ? 'success' : 'info'
+    );
   };
 
   // React to article
   const handleReact = async (articleId: string, reactionType: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const res = await newsService.reactToArticle(articleId, reactionType, currentUser?.id);
+    const res = await newsService.reactToArticle(articleId, reactionType, effectiveUserId);
     if (res.success && res.article) {
       setArticles(prev => prev.map(a => a.id === articleId ? res.article! : a));
     }
@@ -151,24 +188,33 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   // Toggle follow source
   const handleToggleFollow = async (sourceId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const isNowFollowing = await newsService.toggleFollow(sourceId, currentUser?.id);
+    playGlitchClickSound();
+    const isNowFollowing = await newsService.toggleFollow(sourceId, effectiveUserId);
     setFollowedSources(prev => {
       const next = new Set(prev);
       if (isNowFollowing) next.add(sourceId.toLowerCase());
       else next.delete(sourceId.toLowerCase());
       return next;
     });
+
+    showBrutalistToast(
+      isNowFollowing ? 'SOURCE FOLLOWED' : 'UNFOLLOWED',
+      isNowFollowing ? `Now following ${sourceId} updates in your custom wire` : `Unsubscribed from ${sourceId}`,
+      isNowFollowing ? 'success' : 'info'
+    );
   };
 
   // Toggle follow campus
   const handleToggleFollowCampus = (campusId: string) => {
+    playGlitchClickSound();
     setFollowedCampuses(prev => {
       const next = new Set(prev);
       if (next.has(campusId)) next.delete(campusId);
       else next.add(campusId);
       return next;
     });
-    newsService.toggleFollow(`campus-${campusId}`, currentUser?.id);
+    newsService.toggleFollow(`campus-${campusId}`, effectiveUserId);
+    showBrutalistToast('CAMPUS PREFERENCE SAVED', `Campus filter updated for ${campusId.toUpperCase()}`, 'success');
   };
 
   // Share article
@@ -185,7 +231,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(article.articleUrl);
-      alert('Article link copied to clipboard!');
+      showBrutalistToast('LINK COPIED', 'Story link copied to clipboard', 'success');
     }
   };
 
@@ -387,6 +433,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
           currentUser={currentUser}
           followedSources={followedSources}
           onToggleFollow={handleToggleFollow}
+          showToast={showBrutalistToast}
         />
       )}
 

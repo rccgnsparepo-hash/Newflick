@@ -557,6 +557,7 @@ export async function sendE2EEMessage(params: {
     // 1. Perform Hybrid Cryptography Encryption
     const cipherResult = await encryptE2EEMessage(plainText, recipientPublicKeyJwk, senderPublicKeyJwk);
 
+    const now = Date.now();
     const messageData: any = {
       id: messageId,
       senderId,
@@ -568,7 +569,8 @@ export async function sendE2EEMessage(params: {
       senderEncryptedKey: cipherResult.senderEncryptedKey,
       read: false,
       senderDisplayName,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      clientTimestamp: now
     };
 
     if (lifespanSeconds && lifespanSeconds > 0) {
@@ -893,6 +895,7 @@ export async function sendGroupMessageService(params: {
   const path = `chats/${chatId}/messages/${messageId}`;
 
   try {
+    const now = Date.now();
     const messageData: any = {
       id: messageId,
       senderId,
@@ -905,6 +908,7 @@ export async function sendGroupMessageService(params: {
       isGroupMessage: true,
       senderDisplayName,
       createdAt: serverTimestamp(),
+      clientTimestamp: now,
       messageType,
       mediaUrl,
       mediaType,
@@ -1049,13 +1053,41 @@ export function subscribeToChats(userId: string, callback: (chats: DirectChat[])
   });
 }
 
+/**
+ * Normalizes message timestamps to a monotonic millisecond epoch number.
+ * Correctly handles Firestore Timestamp, Date, string ISO, clientTimestamp, and pending local writes.
+ */
+export function getMessageTimestamp(msg: any): number {
+  if (!msg) return 0;
+  if (msg.createdAt) {
+    if (typeof msg.createdAt.toMillis === 'function') return msg.createdAt.toMillis();
+    if (typeof msg.createdAt.toDate === 'function') return msg.createdAt.toDate().getTime();
+    if (typeof msg.createdAt.seconds === 'number') {
+      return msg.createdAt.seconds * 1000 + Math.round((msg.createdAt.nanoseconds || 0) / 1000000);
+    }
+    if (typeof msg.createdAt === 'number' && msg.createdAt > 0) return msg.createdAt;
+    if (typeof msg.createdAt === 'string') {
+      const parsed = Date.parse(msg.createdAt);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+  }
+  if (typeof msg.clientTimestamp === 'number' && msg.clientTimestamp > 0) {
+    return msg.clientTimestamp;
+  }
+  if (typeof msg.timestamp === 'number' && msg.timestamp > 0) {
+    return msg.timestamp;
+  }
+  // If this is a pending write message in local memory, fallback to Date.now() so it stays at the bottom
+  return Date.now();
+}
+
 // Subscribe to messages under a subcollection in real-time
 export function subscribeToMessages(chatId: string, callback: (messages: ChatMessage[]) => void) {
   const path = `chats/${chatId}/messages`;
   const q = query(
     collection(db, 'chats', chatId, 'messages'),
     orderBy('createdAt', 'asc'),
-    limit(150)
+    limit(200)
   );
 
   // If this is a direct chat (chat_uidA_uidB), also listen to legacy conv_uidA_uidB if it exists
@@ -1067,19 +1099,27 @@ export function subscribeToMessages(chatId: string, callback: (messages: ChatMes
   const emitCombined = () => {
     const combinedMap = new Map<string, ChatMessage>();
     for (const msg of [...legacyMessages, ...mainMessages]) {
-      combinedMap.set(msg.id, msg);
+      if (msg && msg.id) {
+        combinedMap.set(msg.id, msg);
+      }
     }
     const combined = Array.from(combinedMap.values());
     combined.sort((a, b) => {
-      const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (typeof a.createdAt === 'number' ? a.createdAt : 0));
-      const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (typeof b.createdAt === 'number' ? b.createdAt : 0));
-      return aTime - bTime;
+      const aTime = getMessageTimestamp(a);
+      const bTime = getMessageTimestamp(b);
+      if (aTime !== bTime) {
+        return aTime - bTime;
+      }
+      return (a.id || '').localeCompare(b.id || '');
     });
     callback(combined);
   };
 
   const unsubMain = onSnapshot(q, (snap) => {
-    mainMessages = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
+    mainMessages = snap.docs.map(d => ({ 
+      id: d.id, 
+      ...d.data({ serverTimestamps: 'estimate' }) 
+    } as ChatMessage));
     emitCombined();
   }, (err) => {
     try {
@@ -1098,7 +1138,10 @@ export function subscribeToMessages(chatId: string, callback: (messages: ChatMes
         limit(50)
       );
       unsubLegacy = onSnapshot(legacyQ, (snap) => {
-        legacyMessages = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
+        legacyMessages = snap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data({ serverTimestamps: 'estimate' }) 
+        } as ChatMessage));
         emitCombined();
       }, () => {
         // Silently ignore if legacy room does not exist

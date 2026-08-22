@@ -124,6 +124,9 @@ async function generateAllIcons() {
 
   // 3. Generate Android Status Notification Icon (ic_stat_flick_logo.png)
   console.log('Generating Notification Status Bar Icons...');
+  if (fs.existsSync('android/app/src/main/res/drawable/ic_stat_flick_logo.xml')) {
+    try { fs.unlinkSync('android/app/src/main/res/drawable/ic_stat_flick_logo.xml'); } catch (e) {}
+  }
   await sharp(sourceBuffer)
     .resize(96, 96, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()

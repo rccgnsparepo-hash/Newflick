@@ -55,10 +55,30 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Windows Executables
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: flick-windows-v1.0.${{ github.run_number }}
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          retention-days: 30
+
       - name: Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
+          name: "Flick Windows Desktop v1.0.${{ github.run_number }}"
+          body: |
+            ### 🪟 Flick Windows Desktop Release v1.0.${{ github.run_number }}
+            
+            #### ⚡ Notification & Audio Upgrades:
+            - **Native Windows Toast Notifications**: Integrated with action buttons and system tray alert indicators.
+            - **Deep Linking Protocol**: Support for `flick://` and `faraflick://` URLs directly opening specific conversations or video rooms.
+            - **App Badge Counter**: Unread counter synchronization with Windows taskbar badge.
+            - **Microphone & WebRTC Media Diagnostics**: Hardware checks, permissions, and audio loopback meters.
           files: |
             release/*.exe
             release/*.blockmap

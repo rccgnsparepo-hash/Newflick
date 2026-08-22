@@ -1336,43 +1336,6 @@ export default function ChatSection({
     }
   };
 
-  const sendGroupMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile || !selectedGroup || (!text.trim() && !selectedAttachment)) return;
-    triggerVibration('medium');
-    playSendMessageSound();
-
-    const textToSend = text.trim();
-    // Build simulated rich attachments poll or location payload if applicable
-    let payloadText = textToSend;
-    if (selectedAttachment) {
-      payloadText = JSON.stringify({
-        text: textToSend,
-        attachmentUrl: selectedAttachment.dataUrl,
-        attachmentType: selectedAttachment.type,
-        attachmentName: selectedAttachment.name
-      });
-    }
-
-    const newMsg = {
-      id: `gmsg-${Date.now()}`,
-      senderId: profile.uid,
-      senderDisplayName: profile.displayName || 'Relay User',
-      content: payloadText,
-      createdAt: new Date().toISOString()
-    };
-
-    const threadKey = `flick_group_messages_${selectedGroup.id}`;
-    const stored = localStorage.getItem(threadKey);
-    const msgsList = stored ? JSON.parse(stored) : [];
-    msgsList.push(newMsg);
-    localStorage.setItem(threadKey, JSON.stringify(msgsList));
-
-    setText('');
-    setSelectedAttachment(null);
-    setMessages(msgsList); // Trigger scroll update
-  };
-
   // Poll custom votes trigger
   const castPollVote = async (msgId: string, optionIdx: number) => {
     playGlitchClickSound();
@@ -2007,6 +1970,8 @@ export default function ChatSection({
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef<boolean>(true);
   const typingTimeoutRef = useRef<any>(null);
   const isCurrentlyTypingRef = useRef<boolean>(false);
 
@@ -2322,6 +2287,10 @@ export default function ChatSection({
       if (!hasInitialMessagesLoadedRef.current) {
         hasInitialMessagesLoadedRef.current = true;
         prevMessagesRef.current = filtered;
+        // On initial conversation load, scroll immediately to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 60);
       } else {
         const prevList = prevMessagesRef.current;
         
@@ -2332,6 +2301,9 @@ export default function ChatSection({
         );
         if (hasNewSentByMe) {
           playMessageSentSound();
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 50);
         }
 
         // 2. Check for incoming new messages from peer/group (Received status trigger)
@@ -2342,6 +2314,12 @@ export default function ChatSection({
         if (hasNewIncoming) {
           playMessageReceivedSound();
           triggerVibration('light');
+          // Only auto-scroll for incoming messages if user was already near the bottom
+          if (isNearBottomRef.current) {
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 60);
+          }
         }
 
         // 3. Check for read receipt transitions on messages sent by me (Read status trigger)
@@ -2372,20 +2350,17 @@ export default function ChatSection({
           }
         }
       });
-
-      // Scroll smoothly to bottom
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
     });
 
     return () => unsubscribe();
   }, [currentChat?.id, selectedPeer?.uid, profile?.uid]);
 
-  // Direct send implementation
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile || !currentChat || (!text.trim() && !selectedAttachment)) return;
+  // Direct send implementation with unified dispatch and failure draft protection
+  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
+    if (e) e.preventDefault();
+    const rawText = customText !== undefined ? customText : text;
+    const trimmedText = rawText.trim();
+    if (!profile || !currentChat || (!trimmedText && !selectedAttachment)) return;
     if (!currentChat.isGroup && !selectedPeer) return;
 
     // Trigger physical message transmission vibration
@@ -2395,9 +2370,9 @@ export default function ChatSection({
     setError(null);
     
     // Construct E2EE payload
-    let textToSend = text.trim();
+    let textToSend = trimmedText;
     
-    // Stringify WhatsApp replies or attachments under RSA ciphertext
+    // Stringify replies or attachments under RSA ciphertext
     const replyMeta = replyQuote ? {
       quotedAuthor: replyQuote.authorName,
       quotedSnippet: replyQuote.snippetText
@@ -2405,7 +2380,7 @@ export default function ChatSection({
 
     if (selectedAttachment) {
       textToSend = JSON.stringify({
-        text: text.trim(),
+        text: trimmedText,
         attachmentUrl: selectedAttachment.dataUrl,
         attachmentType: selectedAttachment.type,
         attachmentName: selectedAttachment.name,
@@ -2413,16 +2388,34 @@ export default function ChatSection({
       });
     } else if (replyQuote) {
       textToSend = JSON.stringify({
-        text: text.trim(),
+        text: trimmedText,
         ...replyMeta
       });
     }
 
-    const textRestoreValue = text;
-    setText('');
+    const textRestoreValue = trimmedText;
+    if (customText === undefined) {
+      setText('');
+    }
     const attachmentRestoreValue = selectedAttachment;
     setSelectedAttachment(null);
     setReplyQuote(null);
+
+    // Clear saved draft in local storage
+    try {
+      if (currentChat.isGroup) {
+        localStorage.removeItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`);
+      } else if (selectedPeer) {
+        localStorage.removeItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
+      }
+    } catch {
+      // Ignore
+    }
+
+    // Scroll to bottom immediately on send trigger
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
 
     const taskType = attachmentRestoreValue ? 'file transfer' : 'chat send';
     const hasAttachment = !!attachmentRestoreValue;
@@ -2435,8 +2428,7 @@ export default function ChatSection({
       maxRetries: 3,
       totalBytes: hasAttachment ? Math.round(attachmentRestoreValue.dataUrl.length * 0.75) : undefined,
       onRetry: async () => {
-        // Simple retry trigger
-        await handleSendMessage(e);
+        await handleSendMessage(e, customText);
       }
     });
 
@@ -2458,7 +2450,7 @@ export default function ChatSection({
       // Intercept THE FATHER Chat Tunnel
       if (currentChat.id === aiChatId) {
         operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, 100));
 
         // Create user message in Firestore
         const userMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
@@ -2470,6 +2462,7 @@ export default function ChatSection({
           plainText: textRestoreValue,
           senderDisplayName: profile.displayName || 'You',
           createdAt: serverTimestamp(),
+          clientTimestamp: Date.now(),
           read: true
         };
         await setDoc(doc(db, 'chats', aiChatId, 'messages', userMessageId), userMessageData);
@@ -2505,6 +2498,7 @@ export default function ChatSection({
             plainText: aiReplyText,
             senderDisplayName: 'THE FATHER 🔮',
             createdAt: serverTimestamp(),
+            clientTimestamp: Date.now(),
             read: false
           };
           await setDoc(doc(db, 'chats', aiChatId, 'messages', aiMessageId), aiMessageData);
@@ -2523,6 +2517,7 @@ export default function ChatSection({
             plainText: "Oh no! Flick's neural link suffered a temporary interruption. Let's try again! ☄️",
             senderDisplayName: 'THE FATHER 🔮',
             createdAt: serverTimestamp(),
+            clientTimestamp: Date.now(),
             read: false
           });
         } finally {
@@ -2568,19 +2563,10 @@ export default function ChatSection({
 
         // Phase 3: CONNECTING
         operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
-        await new Promise(r => setTimeout(r, 200));
 
-        // Phase 4: UPLOADING (simulated progress for file if any)
+        // Phase 4: UPLOADING (progress for file if any)
         if (hasAttachment && attachmentRestoreValue) {
           operations.updateTask(taskId, { state: 'UPLOADING', progress: 40 });
-          const totalSize = Math.round(attachmentRestoreValue.dataUrl.length * 0.75);
-          for (let percent = 40; percent <= 80; percent += 20) {
-            operations.updateTask(taskId, {
-              progress: percent,
-              bytesUploaded: Math.round((percent / 100) * totalSize)
-            });
-            await new Promise(r => setTimeout(r, 200));
-          }
         }
 
         // Phase 5: SERVER ACKNOWLEDGED & FINALIZING
@@ -2618,19 +2604,6 @@ export default function ChatSection({
 
       // Phase 3: CONNECTING
       operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
-      await new Promise(r => setTimeout(r, 150));
-
-      if (hasAttachment && attachmentRestoreValue) {
-        operations.updateTask(taskId, { state: 'UPLOADING', progress: 40 });
-        const totalSize = Math.round(attachmentRestoreValue.dataUrl.length * 0.75);
-        for (let percent = 40; percent <= 80; percent += 20) {
-          operations.updateTask(taskId, {
-            progress: percent,
-            bytesUploaded: Math.round((percent / 100) * totalSize)
-          });
-          await new Promise(r => setTimeout(r, 150));
-        }
-      }
 
       if (isOffline) {
         // Offline queueing
@@ -2650,9 +2623,7 @@ export default function ChatSection({
         playSendMessageSound();
         setError(null);
         showBrutalistToast('ENCRYPTED & QUEUED', 'You are offline. Dialogue packet securely cached in local vault.', 'warning', undefined, toastId);
-        console.log("[Offline Queue] Dialogue successfully cached in local IndexedDB vault.");
         
-        // Phase 7: SUCCESS (or queue state)
         operations.successTask(taskId);
       } else {
         // Online dispatch
@@ -2675,7 +2646,9 @@ export default function ChatSection({
         operations.successTask(taskId);
       }
     } catch (err: any) {
-      setText(textRestoreValue); 
+      if (customText === undefined) {
+        setText(textRestoreValue);
+      }
       setSelectedAttachment(attachmentRestoreValue); 
       let errMsg = "Handshake packaging failure: " + sanitizeErrorMessage(err);
       if (!navigator.onLine) {
@@ -2684,8 +2657,8 @@ export default function ChatSection({
       setError(errMsg);
       showBrutalistToast('TRANSMISSION ERROR', errMsg, 'error', undefined, toastId);
       
-      // Phase 8: FAILED
       operations.failTask(taskId, errMsg);
+      throw err;
     } finally {
       setSending(false);
     }
@@ -4899,7 +4872,16 @@ export default function ChatSection({
             {/* Messages Stream Wrapper with Info drawer sidebar layout */}
             <div className="flex-1 flex overflow-hidden relative">
               {/* Active chat messages history stream (AnimatePresence transitions) */}
-              <div className={`flex-1 ${isRecording || isV2TListening || isEmoStickerOpen || isPollCreatorOpen || isGroupSettingsOpen || isJoinGroupOpen || isCreateGroupOpen ? 'overflow-hidden' : 'overflow-y-auto'} p-4 bg-[var(--color-background)] relative scrollbar`}>
+              <div 
+                ref={messagesContainerRef}
+                onScroll={() => {
+                  const el = messagesContainerRef.current;
+                  if (!el) return;
+                  const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                  isNearBottomRef.current = distanceToBottom < 120;
+                }}
+                className={`flex-1 ${isRecording || isV2TListening || isEmoStickerOpen || isPollCreatorOpen || isGroupSettingsOpen || isJoinGroupOpen || isCreateGroupOpen ? 'overflow-hidden' : 'overflow-y-auto'} p-4 bg-[var(--color-background)] relative scrollbar`}
+              >
                 <div className="max-w-md mx-auto text-center border border-[var(--neon-green)]/15 bg-[var(--color-surface)]/45 p-3 mb-6 font-mono text-[9px] uppercase text-zinc-500 tracking-wider">
                   🔐 Encryption Verified. Communication streams on Fara Flick are secured with perfect forward secrecy. No storage is cached plain.
                 </div>
@@ -4978,7 +4960,7 @@ export default function ChatSection({
 
                         return (
                           <motion.div
-                            key={msg.id || index}
+                            key={msg.id}
                             layout="position"
                             initial={{ opacity: 0, scale: 0.95, y: 12, x: isMe ? 8 : -8 }}
                             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
@@ -6196,77 +6178,7 @@ export default function ChatSection({
                   await handleSendVoiceFlick(params);
                 }}
                 onSendTextMessage={async (auxText) => {
-                  setText(auxText);
-                  const fakeEvent = { preventDefault: () => {} } as any;
-                  // Construct text to send directly
-                  if (!profile || !currentChat) return;
-                  if (!currentChat.isGroup && !selectedPeer) return;
-                  triggerVibration('medium');
-                  setSending(true);
-                  try {
-                    const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
-                    if (currentChat.id === aiChatId) {
-                      const userMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
-                      await setDoc(doc(db, 'chats', aiChatId, 'messages', userMessageId), {
-                        id: userMessageId,
-                        senderId: profile.uid,
-                        receiverId: 'my-ai-bot-uid',
-                        participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
-                        plainText: auxText.trim(),
-                        senderDisplayName: profile.displayName || 'You',
-                        createdAt: serverTimestamp(),
-                        read: true
-                      });
-                      playSendMessageSound();
-                      const baseUrl = getBackendUrl();
-                      const aiRes = await fetch(`${baseUrl}/api/myai`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: auxText.trim() })
-                      });
-                      const aiD = await aiRes.json();
-                      const aiMsgId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
-                      await setDoc(doc(db, 'chats', aiChatId, 'messages', aiMsgId), {
-                        id: aiMsgId,
-                        senderId: 'my-ai-bot-uid',
-                        receiverId: profile.uid,
-                        participantIds: [profile.uid, 'my-ai-bot-uid'].sort(),
-                        plainText: aiD.reply || "Transmission received.",
-                        senderDisplayName: 'THE FATHER 🔮',
-                        createdAt: serverTimestamp(),
-                        read: false
-                      });
-                      return;
-                    }
-
-                    if (currentChat.isGroup) {
-                      await sendGroupMessageService({
-                        chatId: currentChat.id,
-                        senderId: profile.uid,
-                        senderDisplayName: profile.displayName || 'Relay User',
-                        plainText: auxText.trim(),
-                        messageType: 'text'
-                      });
-                      playSendMessageSound();
-                    } else if (selectedPeer) {
-                      await sendE2EEMessage({
-                        chatId: currentChat.id,
-                        senderId: profile.uid,
-                        senderDisplayName: profile.displayName,
-                        receiverId: selectedPeer.uid,
-                        plainText: auxText.trim(),
-                        recipientPublicKeyJwk: selectedPeer.publicKey,
-                        senderPublicKeyJwk: profile.publicKey,
-                        lifespanSeconds: selfDestructSeconds > 0 ? selfDestructSeconds : undefined
-                      });
-                      playSendMessageSound();
-                    }
-                  } catch (e: any) {
-                    console.error('Send text error:', e);
-                  } finally {
-                    setSending(false);
-                    setText('');
-                  }
+                  await handleSendMessage(undefined, auxText);
                 }}
                 onPickAttachment={() => fileInputRef.current?.click()}
                 onTypingStatusChange={(isTyping, type) => {

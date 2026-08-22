@@ -88,6 +88,8 @@ export interface FeedSectionProps {
   onClearDeepLink?: () => void;
   deepLinkedGroupId?: string | null;
   onClearDeepLinkedGroup?: () => void;
+  deepLinkedNewsId?: string | null;
+  onClearDeepLinkedNews?: () => void;
 }
 
 export default function FeedSection({
@@ -97,7 +99,9 @@ export default function FeedSection({
   deepLinkedPeerId = null,
   onClearDeepLink = () => {},
   deepLinkedGroupId = null,
-  onClearDeepLinkedGroup = () => {}
+  onClearDeepLinkedGroup = () => {},
+  deepLinkedNewsId = null,
+  onClearDeepLinkedNews = () => {}
 }: FeedSectionProps = {}) {
   const { profile } = useAuth();
   const operations = useOperations();
@@ -1969,6 +1973,8 @@ export default function FeedSection({
             <div className="flex-1 flex flex-col">
               <NewsSection
                 currentUser={profile}
+                deepLinkedArticleId={deepLinkedNewsId}
+                onClearDeepLink={onClearDeepLinkedNews}
                 onShareToTimeline={async (article, comment) => {
                   try {
                     await createPost({

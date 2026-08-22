@@ -16,14 +16,17 @@ let tray = null;
 let isQuitting = false;
 let fileToOpenOnStartup = null;
 
-// Register custom protocol 'flick://'
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient('flick', process.execPath, [path.resolve(process.argv[1])]);
+// Register custom protocols 'flick://' and 'faraflick://'
+const protocols = ['flick', 'faraflick'];
+protocols.forEach(protocol => {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1])]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient(protocol);
   }
-} else {
-  app.setAsDefaultProtocolClient('flick');
-}
+});
 
 // Handle macOS open-file event for associated files (.flick)
 app.on('open-file', (event, filePath) => {
@@ -44,14 +47,14 @@ if (!gotTheLock) {
       mainWindow.show();
       mainWindow.focus();
     }
-    // Handle Windows deeplink on second instance
-    const deeplinkUrl = commandLine.find(arg => arg.startsWith('flick://'));
+    // Handle Windows/Linux deeplink on second instance
+    const deeplinkUrl = commandLine.find(arg => arg.startsWith('flick://') || arg.startsWith('faraflick://'));
     if (deeplinkUrl) {
       handleDeeplink(deeplinkUrl);
     }
     
     // Handle Windows file association on second instance
-    const filePath = commandLine.find(arg => !arg.startsWith('flick://') && fs.existsSync(arg) && path.extname(arg).toLowerCase() === '.flick');
+    const filePath = commandLine.find(arg => !arg.startsWith('flick://') && !arg.startsWith('faraflick://') && fs.existsSync(arg) && path.extname(arg).toLowerCase() === '.flick');
     if (filePath) {
       handleFileOpen(filePath);
     }
@@ -60,9 +63,10 @@ if (!gotTheLock) {
 
 function handleDeeplink(url) {
   if (!mainWindow) return;
-  // Parse url, e.g., flick://post, flick://story, flick://message
-  const action = url.replace('flick://', '').replace('/', '');
-  mainWindow.webContents.send('deeplink-action', action);
+  // Parse url e.g., flick://chat?senderId=xxx or flick://post or faraflick://group?groupId=yyy
+  let cleanAction = url.replace(/^(flick|faraflick):\/\//, '');
+  if (cleanAction.startsWith('/')) cleanAction = cleanAction.slice(1);
+  mainWindow.webContents.send('deeplink-action', cleanAction);
 }
 
 function handleFileOpen(filePath) {
@@ -532,6 +536,13 @@ ipcMain.handle('toggle-start-on-login', (event, value) => {
 
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+// IPC handler for App Badge Count (Dock / Taskbar unread counter)
+ipcMain.on('set-badge-count', (event, count) => {
+  if (app.setBadgeCount) {
+    app.setBadgeCount(typeof count === 'number' ? count : 0);
+  }
 });
 
 // IPC handler for Native Notification Dispatching

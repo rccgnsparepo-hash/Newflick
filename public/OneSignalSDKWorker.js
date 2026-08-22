@@ -132,15 +132,21 @@ self.addEventListener('notificationclick', (event) => {
   const notificationData = event.notification?.data || {};
 
   let targetUrl = '/';
-  const route = notificationData.route || (notificationData.type === 'message' || notificationData.type === 'call' ? 'chat' : null);
-  const senderId = notificationData.senderId || notificationData.sender_id || notificationData.callerId;
-  const chatId = notificationData.chatId;
+  const rawData = notificationData || {};
+  const route = rawData.route || (rawData.type === 'message' || rawData.type === 'call' ? 'chat' : (rawData.type === 'group_message' ? 'group' : null));
+  const senderId = rawData.senderId || rawData.sender_id || rawData.callerId;
+  const conversationId = rawData.conversationId || rawData.chatId || rawData.chat_id;
+  const groupId = rawData.groupId || rawData.group_id;
+  const messageId = rawData.messageId || rawData.message_id;
 
-  if (route) {
+  if (route || senderId || conversationId || groupId) {
+    const finalRoute = route || (groupId ? 'group' : 'chat');
     const params = new URLSearchParams();
-    params.set('route', route);
+    params.set('route', finalRoute);
     if (senderId) params.set('senderId', senderId);
-    if (chatId) params.set('chatId', chatId);
+    if (conversationId) params.set('conversationId', conversationId);
+    if (groupId) params.set('groupId', groupId);
+    if (messageId) params.set('messageId', messageId);
     targetUrl = '/?' + params.toString();
   }
 
@@ -152,10 +158,13 @@ self.addEventListener('notificationclick', (event) => {
             client.postMessage({
               type: 'fara-flick-deeplink-sw',
               detail: {
-                route: route || 'chat',
+                route: route || (groupId ? 'group' : 'chat'),
                 senderId: senderId,
-                chatId: chatId,
-                params: notificationData
+                conversationId: conversationId,
+                chatId: conversationId,
+                groupId: groupId,
+                messageId: messageId,
+                params: rawData
               }
             });
           } catch (e) {}

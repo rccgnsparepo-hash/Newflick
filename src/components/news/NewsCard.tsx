@@ -148,6 +148,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               className="w-full h-full object-cover group-hover:scale-102 transition duration-300"
               loading="lazy"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = newsService.getHighResImageUrl('', article.category);
+                if (target.src !== fallback) target.src = fallback;
+              }}
             />
             {article.readTime && (
               <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 backdrop-blur-md text-[10px] font-mono text-zinc-300 border border-zinc-700 flex items-center gap-1">
@@ -288,6 +293,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               className="w-full h-full object-cover group-hover:scale-102 transition"
               loading="lazy"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = newsService.getHighResImageUrl('', article.category);
+                if (target.src !== fallback) target.src = fallback;
+              }}
             />
           )}
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -365,6 +375,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               className="w-full h-full object-cover group-hover:scale-105 transition"
               loading="lazy"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = newsService.getHighResImageUrl('', article.category);
+                if (target.src !== fallback) target.src = fallback;
+              }}
             />
           </div>
         )}
@@ -498,6 +513,11 @@ export const NewsCard: React.FC<NewsCardProps> = ({
               className="w-full h-full object-cover group-hover:scale-105 transition"
               loading="lazy"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = newsService.getHighResImageUrl('', article.category);
+                if (target.src !== fallback) target.src = fallback;
+              }}
             />
           </div>
         )}

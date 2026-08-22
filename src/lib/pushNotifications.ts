@@ -568,6 +568,21 @@ export function showPushNotification(titleOrPayload: string | any, body?: string
     // ignore sandbox limit
   }
 
+  // If running in Electron desktop environment (Linux/Windows/macOS), dispatch native notification to main process
+  try {
+    const uWin = typeof window !== 'undefined' ? (window as any) : null;
+    const ipc = uWin?.electron?.ipcRenderer || uWin?.ipcRenderer || (uWin?.require ? uWin.require('electron')?.ipcRenderer : null);
+    if (ipc?.send) {
+      ipc.send('show-notification', {
+        title: finalTitle,
+        body: finalBody,
+        icon: finalIcon
+      });
+    }
+  } catch (err) {
+    // Ignore sandbox or missing electron IPC
+  }
+
   if (typeof window === 'undefined' || !('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 

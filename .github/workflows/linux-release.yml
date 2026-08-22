@@ -55,11 +55,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: flick-linux-v1.0.${{ github.run_number }}
+          path: |
+            release/*.deb
+            release/*.AppImage
+          retention-days: 30
+
       - name: Release to GitHub
         uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push'
         with:
           tag_name: ${{ env.TAG_NAME }}
+          name: "Flick Linux (DEB & AppImage) v1.0.${{ github.run_number }}"
+          body: |
+            ### 🐧 Flick Linux Release v1.0.${{ github.run_number }}
+            
+            #### ⚡ Notification & Audio Upgrades:
+            - **Native Linux Desktop Notifications**: OS-level notification bubbles with direct action routing.
+            - **Custom Protocol Handlers**: Registered `flick://` and `faraflick://` for instant deep linking from browsers and desktop launchers.
+            - **Microphone & WebRTC Media Diagnostics**: Auto-configured Linux session permissions for crystal clear voice calls, voice notes, and audio meters.
+            - **AppImage & Debian (.deb) Packages**: Tested for Ubuntu, Debian, Deepin OS, Linux Mint, and Arch.
           files: |
             release/*.deb
             release/*.AppImage

@@ -87,6 +87,7 @@ export const ChatMessageSchema = z.object({
   read: z.boolean().optional(),
   readBy: z.array(z.string().min(1).max(128)).optional(),
   senderDisplayName: z.string().optional(),
+  clientTimestamp: z.number().optional(),
   expiresAt: z.any().optional(),
   isGroupMessage: z.boolean().optional(),
   plainText: z.string().optional(),

@@ -60,7 +60,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x ./gradlew
-          gradle assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Stage APK with Release Version Name
         run: |
