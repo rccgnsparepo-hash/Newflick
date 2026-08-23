@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, dialog, ipcMain, shell, Notification, screen, session, systemPreferences } = require('electron');
+const { app, BrowserWindow, Tray, Menu, dialog, ipcMain, shell, Notification, screen, session, systemPreferences, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -538,29 +538,101 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// IPC handler for App Badge Count (Dock / Taskbar unread counter)
+// Dynamic SVG-based badge overlay generator for Windows (.exe) Taskbar & System Tray
+function createBadgeNativeImage(count) {
+  if (!count || count <= 0) return null;
+  const displayCount = count > 99 ? '99+' : String(count);
+  const fontSize = displayCount.length >= 3 ? 10 : (displayCount.length === 2 ? 12 : 15);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+    <circle cx="16" cy="16" r="14" fill="#00ff66" stroke="#000000" stroke-width="2"/>
+    <text x="16" y="21" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="900" fill="#000000" text-anchor="middle">${displayCount}</text>
+  </svg>`;
+  try {
+    return nativeImage.createFromBuffer(Buffer.from(svg));
+  } catch (e) {
+    console.warn('Failed generating badge native image:', e);
+    return null;
+  }
+}
+
+// IPC handler for App Badge Count (Windows EXE Taskbar Counter, macOS Dock, Tray)
 ipcMain.on('set-badge-count', (event, count) => {
+  const numericCount = typeof count === 'number' && !isNaN(count) ? Math.max(0, count) : 0;
+  
+  // 1. macOS / Linux Unity Dock Badge
   if (app.setBadgeCount) {
-    app.setBadgeCount(typeof count === 'number' ? count : 0);
+    try {
+      app.setBadgeCount(numericCount);
+    } catch (e) {
+      console.warn('app.setBadgeCount error:', e);
+    }
+  }
+
+  // 2. Windows Taskbar Overlay Icon & Window Title (.exe counters)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      if (numericCount > 0) {
+        const badgeImg = createBadgeNativeImage(numericCount);
+        if (badgeImg && mainWindow.setOverlayIcon) {
+          mainWindow.setOverlayIcon(badgeImg, `${numericCount} unread items`);
+        }
+        mainWindow.setTitle(`(${numericCount}) Flick`);
+      } else {
+        if (mainWindow.setOverlayIcon) {
+          mainWindow.setOverlayIcon(null, '');
+        }
+        mainWindow.setTitle('Flick');
+      }
+    } catch (e) {
+      console.warn('mainWindow overlay icon error:', e);
+    }
+  }
+
+  // 3. System Tray Tooltip & Title update
+  if (tray && !tray.isDestroyed()) {
+    try {
+      if (numericCount > 0) {
+        tray.setToolTip(`Flick - ${numericCount} unread notification${numericCount > 1 ? 's' : ''}`);
+        if (process.platform === 'darwin') {
+          tray.setTitle(` ${numericCount}`);
+        }
+      } else {
+        tray.setToolTip('Flick');
+        if (process.platform === 'darwin') {
+          tray.setTitle('');
+        }
+      }
+    } catch (e) {
+      console.warn('tray badge update error:', e);
+    }
   }
 });
 
 // IPC handler for Native Notification Dispatching
 ipcMain.on('show-notification', (event, { title, body, icon }) => {
-  const notif = new Notification({
-    title: title || 'Flick',
-    body: body,
-    icon: icon || path.join(__dirname, '../dist/icon.png'),
-    silent: false
-  });
-  notif.show();
-  notif.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
+  try {
+    const defaultIcon = path.join(__dirname, '../dist/icon.png');
+    const finalIcon = (icon && fs.existsSync(icon)) ? icon : defaultIcon;
+
+    if (Notification.isSupported()) {
+      const notif = new Notification({
+        title: title || 'Flick',
+        body: body || '',
+        icon: finalIcon,
+        silent: false
+      });
+      notif.show();
+      notif.on('click', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      });
     }
-  });
+  } catch (err) {
+    console.error('Failed to show native Electron notification:', err);
+  }
 });
 
 // IPC handler for High-Priority Native Incoming Call Alert
