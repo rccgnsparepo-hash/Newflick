@@ -372,7 +372,10 @@ export default function VoiceFirstHomeScreen({
   };
 
   return (
-    <div className="flex-1 w-full h-full overflow-y-auto bg-[var(--color-background)] text-[var(--color-text)] font-mono p-3 md:p-6 space-y-6 select-none">
+    <div 
+      className="flex-1 w-full h-full overflow-y-auto bg-[var(--color-background)] text-[var(--color-text)] font-mono p-3 md:p-6 space-y-6 select-text"
+      style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+    >
       
       {/* NEW DEVICE WELCOME / LOCAL-FIRST ORIENTATION BANNER */}
       <NewDeviceWelcomeBanner

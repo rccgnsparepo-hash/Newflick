@@ -8,6 +8,7 @@ import {
   subscribeToUsers,
   getUserProfile,
   getOrCreateDirectChat,
+  getDeterministicChatId,
   sendE2EEMessage,
   subscribeToMessages,
   addOrUpdateMessageReaction,
@@ -577,57 +578,44 @@ function DecryptedMessageBubble({
     }
   };
 
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStartCustom = (e: React.TouchEvent) => {
+    if (e.touches && e.touches[0]) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+    }
+    handleTouchStart();
+  };
+
+  const handleTouchEndCustom = (e: React.TouchEvent) => {
+    handleTouchEnd();
+    if (touchStartXRef.current !== null && touchStartYRef.current !== null && e.changedTouches && e.changedTouches[0]) {
+      const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+      const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+      if (deltaX > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        const senderName = message.senderId === currentUserId ? 'You' : (message.senderDisplayName || 'Peer');
+        const snippet = caption || '[Media Node]';
+        onReplyTrigger(message.id, senderName, snippet);
+      }
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
+
   return (
     <div className="relative overflow-visible w-full">
-      {/* Swipe status icon */}
       <div
-        id={`swipe-reply-cue-${message.id}`}
-        className="absolute left-[-26px] top-1/2 -translate-y-1/2 opacity-0 pointer-events-none transition-all flex items-center justify-center text-[var(--neon-green)] bg-[var(--neon-green)]/10 border border-[var(--neon-green)]/30 p-1.5 duration-75"
-      >
-        <CornerUpLeft className="w-4 h-4" />
-      </div>
-
-      <motion.div
-        drag="x"
-        dragDirectionLock
-        dragConstraints={{ left: 0, right: 80 }}
-        dragElastic={{ left: 0.05, right: 0.25 }}
-        dragSnapToOrigin
-        onDrag={(event, info) => {
-          const cue = document.getElementById(`swipe-reply-cue-${message.id}`);
-          if (cue) {
-            const x = info.offset.x;
-            if (x > 8) {
-              cue.style.opacity = Math.min((x - 8) / 35, 1).toString();
-              cue.style.transform = `translateY(-50%) translateX(${Math.min(x * 0.15, 10)}px) scale(${Math.min(0.6 + x / 90, 1.1)})`;
-            } else {
-              cue.style.opacity = '0';
-              cue.style.transform = 'translateY(-50%) translateX(0px) scale(0.6)';
-            }
-          }
-        }}
-        onDragEnd={(event, info) => {
-          const cue = document.getElementById(`swipe-reply-cue-${message.id}`);
-          if (cue) {
-            // Smooth reset styles
-            cue.style.opacity = '0';
-            cue.style.transform = 'translateY(-50%) scale(0.6)';
-          }
-          if (info.offset.x > 45) {
-            const senderName = message.senderId === currentUserId ? 'You' : (message.senderDisplayName || 'Peer');
-            const snippet = caption || '[Media Node]';
-            onReplyTrigger(message.id, senderName, snippet);
-          }
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={handleTouchStartCustom}
+        onTouchEnd={handleTouchEndCustom}
         onTouchMove={handleTouchEnd}
         onContextMenu={(e) => {
           e.preventDefault();
           triggerVibration('medium');
           setShowPicker(true);
         }}
-        className="space-y-1 relative pointer-events-auto w-full min-w-0 break-words overflow-visible cursor-grab active:cursor-grabbing select-none"
+        className="space-y-1 relative pointer-events-auto w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-visible select-text"
       >
         {message.isGroupMessage && message.senderId !== currentUserId && (
           <div 
@@ -718,7 +706,7 @@ function DecryptedMessageBubble({
 
             {/* Actual Message text segment */}
             {caption && (
-              <div className="text-[12.5px] leading-relaxed dark:text-zinc-150 select-text font-serif">
+              <div className="text-[12.5px] leading-relaxed dark:text-zinc-150 select-text font-serif min-w-0 break-words break-all [overflow-wrap:anywhere]">
                 {(message.messageType === 'poll' || message.pollData || caption.startsWith('📊 POLL_DATA:')) ? (() => {
                   try {
                     let pollQuestion = '';
@@ -822,7 +810,7 @@ function DecryptedMessageBubble({
                       {searchQuery ? (
                         <HighlightedText text={caption} query={searchQuery} />
                       ) : (
-                        <span>{caption}</span>
+                        <span className="min-w-0 break-words break-all [overflow-wrap:anywhere]">{caption}</span>
                       )}
                       {message.isEdited && (
                         <span className="text-[7.5px] font-mono uppercase text-zinc-500 self-end mt-0.5 tracking-wider">
@@ -1035,7 +1023,7 @@ function DecryptedMessageBubble({
           </div>
         </div>
       )}
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -2211,6 +2199,7 @@ export default function ChatSection({
   const openChatRoom = async (peer: UserProfile) => {
     if (!profile) return;
     playGlitchClickSound();
+    triggerVibration('light');
     setError(null);
     setReplyQuote(null);
     setSelectedAttachment(null);
@@ -2226,6 +2215,7 @@ export default function ChatSection({
 
     if (peer.uid === 'my-ai-bot-uid') {
       setSelectedPeer(peer);
+      setSelectedGroup(null);
       setCurrentChat({
         id: `chat_my-ai-bot-uid_${profile.uid}`,
         participantIds: [profile.uid, 'my-ai-bot-uid'],
@@ -2236,12 +2226,30 @@ export default function ChatSection({
       return;
     }
 
+    // Set optimistic direct chat immediately so selection and UI update without blocking delay
+    const deterministicChatId = getDeterministicChatId(profile.uid, peer.uid);
+    const existingChat = activeChatTunnels.find(c => c.id === deterministicChatId);
+    setSelectedPeer(peer);
+    setSelectedGroup(null);
+    if (existingChat) {
+      setCurrentChat(existingChat);
+    } else {
+      setCurrentChat({
+        id: deterministicChatId,
+        participantIds: [profile.uid, peer.uid].sort() as [string, string],
+        lastMessage: 'Chat started (End-to-End Encrypted)',
+        lastMessageAt: { toDate: () => new Date() } as any,
+        isGroup: false
+      });
+    }
+
     try {
       const chat = await getOrCreateDirectChat(profile.uid, peer.uid);
-      setSelectedPeer(peer);
-      setCurrentChat(chat);
+      if (chat) {
+        setCurrentChat(chat);
+      }
     } catch (err: any) {
-      setError("Secure handshake handshake rejected or delayed.");
+      console.warn("Secure handshake note:", err);
     }
   };
 
@@ -2335,59 +2343,73 @@ export default function ChatSection({
         return true;
       });
 
-      // Sound triggers for Sent, Received, and Read message status transitions
-      if (!hasInitialMessagesLoadedRef.current) {
-        hasInitialMessagesLoadedRef.current = true;
-        prevMessagesRef.current = filtered;
-        // On initial conversation load, scroll immediately to bottom
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-        }, 60);
-      } else {
-        const prevList = prevMessagesRef.current;
-        
-        // 1. Check for newly sent messages authored by local user (Sent status trigger)
-        const hasNewSentByMe = filtered.some(m =>
-          m.senderId === profile.uid &&
-          !prevList.some(p => p.id === m.id)
-        );
-        if (hasNewSentByMe) {
-          playMessageSentSound();
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }, 50);
-        }
-
-        // 2. Check for incoming new messages from peer/group (Received status trigger)
-        const hasNewIncoming = filtered.some(m => 
-          m.senderId !== profile.uid && 
-          !prevList.some(p => p.id === m.id)
-        );
-        if (hasNewIncoming) {
-          playMessageReceivedSound();
-          triggerVibration('light');
-          // Only auto-scroll for incoming messages if user was already near the bottom
-          if (isNearBottomRef.current) {
-            setTimeout(() => {
-              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, 60);
-          }
-        }
-
-        // 3. Check for read receipt transitions on messages sent by me (Read status trigger)
-        const hasNewlyRead = filtered.some(m => {
-          if (m.senderId !== profile.uid) return false;
-          const isNowRead = !!(m.read || (m.readBy && m.readBy.length > 0));
-          const prev = prevList.find(p => p.id === m.id);
-          const wasRead = prev ? !!(prev.read || (prev.readBy && prev.readBy.length > 0)) : false;
-          return isNowRead && !wasRead;
+  // Verified scrolling helper to scroll ONLY the messages container without shifting the page/window
+  const scrollToBottom = (smooth = false) => {
+    if (messagesContainerRef.current) {
+      if (smooth) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: 'smooth'
         });
-        if (hasNewlyRead) {
-          playMessageReadSound();
-        }
-
-        prevMessagesRef.current = filtered;
+      } else {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
       }
+    }
+  };
+
+  // Sound triggers for Sent, Received, and Read message status transitions
+  if (!hasInitialMessagesLoadedRef.current) {
+    hasInitialMessagesLoadedRef.current = true;
+    prevMessagesRef.current = filtered;
+    // On initial conversation load, scroll container immediately to bottom
+    setTimeout(() => {
+      scrollToBottom(false);
+    }, 40);
+  } else {
+    const prevList = prevMessagesRef.current;
+    
+    // 1. Check for newly sent messages authored by local user (Sent status trigger)
+    const hasNewSentByMe = filtered.some(m =>
+      m.senderId === profile.uid &&
+      !prevList.some(p => p.id === m.id)
+    );
+    if (hasNewSentByMe) {
+      playMessageSentSound();
+      setTimeout(() => {
+        scrollToBottom(true);
+      }, 40);
+    }
+
+    // 2. Check for incoming new messages from peer/group (Received status trigger)
+    const hasNewIncoming = filtered.some(m => 
+      m.senderId !== profile.uid && 
+      !prevList.some(p => p.id === m.id)
+    );
+    if (hasNewIncoming) {
+      playMessageReceivedSound();
+      triggerVibration('light');
+      // Only auto-scroll for incoming messages if user was already near the bottom
+      if (isNearBottomRef.current) {
+        setTimeout(() => {
+          scrollToBottom(true);
+        }, 40);
+      }
+    }
+
+    // 3. Check for read receipt transitions on messages sent by me (Read status trigger)
+    const hasNewlyRead = filtered.some(m => {
+      if (m.senderId !== profile.uid) return false;
+      const isNowRead = !!(m.read || (m.readBy && m.readBy.length > 0));
+      const prev = prevList.find(p => p.id === m.id);
+      const wasRead = prev ? !!(prev.read || (prev.readBy && prev.readBy.length > 0)) : false;
+      return isNowRead && !wasRead;
+    });
+    if (hasNewlyRead) {
+      playMessageReadSound();
+    }
+
+    prevMessagesRef.current = filtered;
+  }
 
       setMessages(filtered);
 
@@ -3134,15 +3156,6 @@ export default function ChatSection({
   const unreadTunnelsCount = notifications.filter(n => n.type === 'message').length;
 
   const filteredActiveTunnels = activeChatTunnels.filter(chat => {
-    // If it is a direct message chat, make sure the peer still exists in our registered users list
-    if (!chat.isGroup && chat.id !== 'global-node-concourse') {
-      const peerId = chat.participantIds.find(id => id !== profile?.uid);
-      if (peerId) {
-        const peerExists = users.some(u => u.uid === peerId);
-        if (!peerExists) return false;
-      }
-    }
-
     // Filter by deleted/trash status
     const isDeleted = deletedChats.includes(chat.id);
     if (filterType === 'trash') {
@@ -3186,11 +3199,11 @@ export default function ChatSection({
   return (
     <div 
       style={{ paddingBottom: `${mobileBottomPadding}px` }}
-      className="grid grid-cols-1 md:grid-cols-12 bg-[var(--color-surface)] overflow-hidden h-full w-full font-mono transition-[padding-bottom] duration-150"
+      className="grid grid-cols-1 md:grid-cols-12 bg-[var(--color-surface)] overflow-hidden h-full w-full font-mono transition-[padding-bottom] duration-150 min-h-0 min-w-0"
     >
       
       {/* Contact Panel sidebar - spans 4 cols */}
-      <div className={`md:col-span-4 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[var(--color-background)] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'} ${guideHighlight === 'highlight_tunnels' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse' : ''}`}>
+      <div className={`md:col-span-4 min-h-0 min-w-0 border-r-2 border-[var(--neon-green)]/30 flex flex-col bg-[var(--color-background)] h-full overflow-hidden ${currentChat ? 'hidden md:flex' : 'flex'} ${guideHighlight === 'highlight_tunnels' ? 'ring-4 ring-violet-500 ring-offset-4 ring-offset-black z-[95] animate-pulse' : ''}`}>
         
         {/* Compact Snapchat-inspired Sidebar Header */}
         <div className="p-4 border-b border-[var(--neon-green-border)]/40 bg-neutral-950 flex-shrink-0 flex items-center justify-between select-none">
@@ -3478,7 +3491,10 @@ export default function ChatSection({
         )}
 
         {/* Main Sidebar Scroll Area */}
-        <div className="flex-1 overflow-y-auto divide-y divide-zinc-950 bg-[var(--color-surface)]/40">
+        <div 
+          className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-950 bg-[var(--color-surface)]/40 scrollbar"
+          style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
+        >
           
           {/* Group Joining Form inline pop */}
           {isJoinGroupOpen && (
@@ -4047,7 +4063,7 @@ export default function ChatSection({
               const timeB = b.lastMessageAt ? (b.lastMessageAt.seconds ? b.lastMessageAt.seconds * 1000 : (b.lastMessageAt.toDate ? b.lastMessageAt.toDate().getTime() : Date.parse(b.lastMessageAt))) : 0;
               return timeB - timeA;
             }).map((chat) => {
-              const isSelected = currentChat?.id === chat.id;
+              const isSelected = (currentChat?.id === chat.id) || (selectedPeer && !chat.isGroup && chat.participantIds?.includes(selectedPeer.uid)) || (selectedGroup && chat.isGroup && selectedGroup.id === chat.id);
               const isFavorite = favoriteChats.includes(chat.id);
               const isPinned = pinnedChats.includes(chat.id);
               const isMuted = mutedChats.includes(chat.id);
@@ -4089,8 +4105,16 @@ export default function ChatSection({
                     setCurrentChat(chat);
                   } else {
                     const peerId = chat.participantIds.find(id => id !== profile?.uid);
-                    const peer = users.find(u => u.uid === peerId);
-                    if (peer) openChatRoom(peer);
+                    const peer = users.find(u => u.uid === peerId) || {
+                      uid: peerId || 'unknown',
+                      displayName: (chat as any).lastMessageSenderName || 'Peer Node',
+                      email: `${(peerId || 'peer').slice(0, 8)}@flick.local`,
+                      photoURL: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${peerId || 'flick'}`,
+                      status: 'offline',
+                      publicKey: '',
+                      updatedAt: new Date()
+                    };
+                    openChatRoom(peer);
                   }
                 }
               };
@@ -4274,8 +4298,15 @@ export default function ChatSection({
               } else {
                 // Direct Chat Item
                 const peerId = chat.participantIds.find(id => id !== profile?.uid);
-                const peer = users.find(u => u.uid === peerId);
-                if (!peer) return null;
+                const peer: UserProfile = users.find(u => u.uid === peerId) || {
+                  uid: peerId || 'unknown',
+                  displayName: (chat as any).lastMessageSenderName || 'Peer Node',
+                  email: `${(peerId || 'peer').slice(0, 8)}@flick.local`,
+                  photoURL: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${peerId || 'flick'}`,
+                  status: 'offline',
+                  publicKey: '',
+                  updatedAt: new Date()
+                };
 
                 const rtdbPresence = rtdbStatuses[peer.uid];
                 const lastSeenMs = peer.lastSeen 
@@ -4589,7 +4620,7 @@ export default function ChatSection({
       {/* Messages Console Box - spans 8 cols with custom micro-animations */}
       <div 
         style={customAccentStyles}
-        className={`md:col-span-8 flex flex-col bg-[var(--color-surface)] h-full overflow-hidden ${!currentChat ? 'hidden md:flex' : 'flex'}`}
+        className={`md:col-span-8 min-h-0 min-w-0 flex flex-col bg-[var(--color-surface)] h-full overflow-hidden ${!currentChat ? 'hidden md:flex' : 'flex'}`}
       >
         {currentChat ? (
           <>
@@ -4888,8 +4919,12 @@ export default function ChatSection({
                                   onClick={() => {
                                     playGlitchClickSound();
                                     const el = document.getElementById(`swipe-reply-cue-${pMsg.id}`);
-                                    if (el) {
-                                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    const container = messagesContainerRef.current;
+                                    if (el && container) {
+                                      const containerRect = container.getBoundingClientRect();
+                                      const elRect = el.getBoundingClientRect();
+                                      const targetTop = container.scrollTop + (elRect.top - containerRect.top) - (container.clientHeight / 2);
+                                      container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
                                       el.classList.add('animate-pulse');
                                       setTimeout(() => el.classList.remove('animate-pulse'), 1500);
                                     }
@@ -4922,7 +4957,7 @@ export default function ChatSection({
             })()}
 
             {/* Messages Stream Wrapper with Info drawer sidebar layout */}
-            <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 min-h-0 min-w-0 flex overflow-hidden relative">
               {/* Active chat messages history stream (AnimatePresence transitions) */}
               <div 
                 ref={messagesContainerRef}
@@ -4932,7 +4967,8 @@ export default function ChatSection({
                   const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
                   isNearBottomRef.current = distanceToBottom < 120;
                 }}
-                className={`flex-1 ${isRecording || isV2TListening || isEmoStickerOpen || isPollCreatorOpen || isGroupSettingsOpen || isJoinGroupOpen || isCreateGroupOpen ? 'overflow-hidden' : 'overflow-y-auto'} p-4 bg-[var(--color-background)] relative scrollbar`}
+                className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 bg-[var(--color-background)] relative scrollbar select-text"
+                style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
               >
                 <div className="max-w-md mx-auto text-center border border-[var(--neon-green)]/15 bg-[var(--color-surface)]/45 p-3 mb-6 font-mono text-[9px] uppercase text-zinc-500 tracking-wider">
                   🔐 Encryption Verified. Communication streams on Fara Flick are secured with perfect forward secrecy. No storage is cached plain.
@@ -5029,9 +5065,9 @@ export default function ChatSection({
                               stiffness: 280,
                               mass: 0.6
                             }}
-                            className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full relative ${isGrouped ? 'mt-1' : 'mt-4'}`}
+                            className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full relative min-w-0 ${isGrouped ? 'mt-1' : 'mt-4'}`}
                           >
-                          <div className={`p-3 max-w-sm border ${
+                          <div className={`p-3 max-w-[85%] sm:max-w-md md:max-w-lg border min-w-0 break-words [overflow-wrap:anywhere] ${
                             isMe 
                               ? 'bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--neon-green)]/35 shadow-[0_4px_16px_rgba(0,0,0,0.3)] rounded-2xl rounded-tr-sm theme-chat-bubble-me' 
                               : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[0_4px_16px_rgba(0,255,102,0.05)] rounded-2xl rounded-tl-sm theme-chat-bubble-peer'

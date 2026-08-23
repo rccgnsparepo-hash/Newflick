@@ -187,87 +187,17 @@ function Dashboard() {
     window.addEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
     window.addEventListener('faraflick-open-call-history', handleOpenCallHistory);
 
-    // Dynamic Physical Display Density (DPI) & Zoom Normalizer
-    const adjustDisplayDensityZoom = () => {
-      const isDesktop = window.innerWidth >= 1024;
-      if (!isDesktop) {
-        document.documentElement.style.removeProperty('--app-desktop-zoom');
-        document.documentElement.style.removeProperty('zoom');
-        return;
-      }
-
-      const dpr = window.devicePixelRatio || 1;
-      let targetZoom = 0.90;
-
-      // Adjust for Windows DPI display scaling (e.g. 1.25x / 1.5x) or Retina (2.0x+)
-      if (dpr >= 1.75) {
-        // High density Retina / 4K monitors: maintain crisp 0.90
-        targetZoom = 0.90;
-      } else if (dpr >= 1.4) {
-        // Common 150% Windows scaling on 1080p laptop panels: scale to 0.85 to avoid bloated cards
-        targetZoom = 0.85;
-      } else if (dpr >= 1.15) {
-        // 125% Windows scaling on standard laptops: scale to 0.88
-        targetZoom = 0.88;
-      } else {
-        // Standard 100% desktop DPI (1.0x)
-        targetZoom = 0.90;
-      }
-
-      document.documentElement.style.setProperty('--app-desktop-zoom', targetZoom.toString());
-      (document.documentElement.style as any).zoom = targetZoom.toString();
-    };
-
-    adjustDisplayDensityZoom();
-    window.addEventListener('resize', adjustDisplayDensityZoom);
-
-    // Watch for resolution / monitor transitions
-    let mediaQuery: MediaQueryList | null = null;
-    const updateMediaQueryListener = () => {
-      const dpr = window.devicePixelRatio || 1;
-      try {
-        if (mediaQuery) {
-          mediaQuery.removeEventListener('change', handleDpiChange);
-        }
-        mediaQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
-        mediaQuery.addEventListener('change', handleDpiChange);
-      } catch (e) {
-        // Ignore fallback
-      }
-    };
-
-    const handleDpiChange = () => {
-      adjustDisplayDensityZoom();
-      updateMediaQueryListener();
-    };
-
-    updateMediaQueryListener();
-
-    // Prevent accidental browser zooming across laptops/desktops to lock permanent layout scale
-    const handleWheelZoom = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-      }
-    };
-    const handleKeyZoom = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0' || e.key === '_')) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('wheel', handleWheelZoom, { passive: false });
-    window.addEventListener('keydown', handleKeyZoom);
+    // Clean up zoom styles if any were set previously
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.removeProperty('--app-desktop-zoom');
+      document.documentElement.style.removeProperty('zoom');
+    }
 
     return () => {
       window.removeEventListener('faraflick-view-profile', handleViewProfileEvent);
       window.removeEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
       window.removeEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
       window.removeEventListener('faraflick-open-call-history', handleOpenCallHistory);
-      window.removeEventListener('resize', adjustDisplayDensityZoom);
-      if (mediaQuery) {
-        mediaQuery.removeEventListener('change', handleDpiChange);
-      }
-      window.removeEventListener('wheel', handleWheelZoom);
-      window.removeEventListener('keydown', handleKeyZoom);
     };
   }, []);
 
@@ -1152,14 +1082,15 @@ function Dashboard() {
   const unreadE2EECount = notifications.filter(n => n.type === 'message').length;
 
   return (
-    <div className="h-full h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200 relative">
+    <div className="fixed inset-0 h-full w-full flex flex-col md:flex-row overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200">
       {/* Main Dashboard Container - Dynamically blurred & dimmed when CallOverlay is active */}
-      <div className={`h-full flex-1 min-h-0 w-full flex flex-col md:flex-row overflow-hidden transition-all duration-500 ease-out ${
+      <div className={`h-full flex-1 min-h-0 min-w-0 w-full flex flex-col md:flex-row overflow-hidden transition-all duration-500 ease-out ${
         ongoingCall ? 'filter blur-[12px] brightness-[0.20] scale-[0.985] pointer-events-none select-none' : 'filter-none brightness-100 scale-100'
       }`}>
         
         {/* Full-Height Desktop Sidebar Navigation (Left Rail on Desktop) / Mobile Bottom Bar */}
         <UnifiedNavigation
+          className="shrink-0 h-full z-40"
           unreadE2EECount={unreadE2EECount}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
@@ -1167,7 +1098,7 @@ function Dashboard() {
         />
 
         {/* Right Content Workspace Container (Header + Main Active Content) */}
-        <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
+        <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col overflow-hidden relative">
           {/* Main Responsive App Header */}
           <AppHeader
             profile={profile}

@@ -1249,13 +1249,10 @@ export default function FeedSection({
         <AnimatePresence mode="wait" initial={false}>
           {/* ==================== HOME TAB VIEW ==================== */}
           {(activeTab === 'home' || activeTab === 'feed') && (
-            <motion.div
+            <div
               key="home"
-              initial={{ opacity: 0, y: 8, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full h-full overflow-y-auto flex flex-col px-2 sm:px-4 py-4 space-y-5"
+              className="w-full h-full overflow-y-auto flex flex-col px-2 sm:px-4 py-4 space-y-5 select-text"
+              style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               <div className="w-full max-w-5xl lg:max-w-6xl mx-auto space-y-6 pb-24 md:pb-6">
                 {/* Morphic custom capsule switcher (Sticky Top / Fixed) */}
@@ -1358,246 +1355,524 @@ export default function FeedSection({
                 playClickSound={playGlitchClickSound}
               />
             ) : (
-              <>
-                {/* =================================== EPHEMERAL CHRONICLES (STORIES) BAR =================================== */}
-                <div id="tour-stories-bar" className="glass-panel p-4 rounded-[20px] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[8px] font-mono font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span>
-                      ⚡ Ephemeral Peer Chronicles
+              <div className="space-y-4">
+                {/* Reorder / Customization Control Bar */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[9px] font-mono uppercase text-zinc-500 font-black tracking-wider flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-[var(--neon-green)]" />
+                      Dynamic Feed Layout
                     </span>
-                    <button
-                      onClick={() => {
-                        playGlitchClickSound();
-                        setPostCreatorType('story');
-                        setShowPostCreator(true);
-                      }}
-                      className="text-[7.5px] font-mono text-zinc-500 hover:text-[var(--neon-green)] transition uppercase font-black"
-                    >
-                      + ADD STORY NODE
-                    </button>
+                    {pinnedPostIds.length > 0 && (
+                      <span className="text-[8.5px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                        📌 {pinnedPostIds.length} Pinned
+                      </span>
+                    )}
                   </div>
-                  
-                  <div className="flex space-x-4 overflow-x-auto pb-1 scrollbar-none select-none">
-                    {/* Add/View own story bubble */}
-                    {(() => {
-                      const allGroups = getGroupedStories();
-                      const currentUserGroup = profile ? allGroups.find(g => g.authorId === profile.uid) : null;
-                      const ownStoriesViewed = currentUserGroup ? currentUserGroup.stories.every(s => storyViewedList[s.id] || false) : true;
-                      
-                      return (
-                        <div className="flex flex-col items-center space-y-1.5 shrink-0">
-                          <div className="relative group">
-                            <button
-                              onClick={() => {
-                                playGlitchClickSound();
-                                if (currentUserGroup && profile) {
-                                  handleOpenStoryGroup(profile.uid);
-                                } else {
-                                  setPostCreatorType('story');
-                                  setShowPostCreator(true);
-                                }
-                              }}
-                              className={`w-13 h-13 rounded-full flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
-                                currentUserGroup 
-                                  ? (ownStoriesViewed 
-                                      ? 'bg-zinc-800 p-0.5' 
-                                      : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse p-0.5')
-                                  : 'bg-[var(--color-background)] border-2 border-dashed border-[var(--neon-green-border)] hover:border-[var(--neon-green)] p-0'
-                              }`}
-                            >
-                              <div className={`w-full h-full rounded-full bg-[var(--color-surface)] flex items-center justify-center ${currentUserGroup ? 'p-[1.5px]' : 'p-0'}`}>
-                                {profile?.photoURL ? (
-                                  <img 
-                                    src={profile.photoURL} 
-                                    alt="My Avatar" 
-                                    className={`w-full h-full rounded-full object-cover transition ${currentUserGroup ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`} 
-                                    referrerPolicy="no-referrer"
-                                  />
-                                ) : (
-                                  <span className="text-xs text-zinc-500 font-bold">+</span>
-                                )}
-                              </div>
-                            </button>
-                            
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                playGlitchClickSound();
-                                setPostCreatorType('story');
-                                setShowPostCreator(true);
-                              }}
-                              className="absolute bottom-0 right-0 bg-[var(--neon-green)] text-black rounded-full p-0.5 border border-black hover:scale-110 transition cursor-pointer shadow-lg z-10"
-                              title="Add Story"
-                            >
-                              <Plus className="w-3 h-3 font-bold" />
-                            </button>
-                          </div>
-                          <span className="text-[8.5px] font-mono text-zinc-500 max-w-[55px] truncate">My Story</span>
-                        </div>
-                      );
-                    })()}
+                  <button
+                    onClick={() => {
+                      playGlitchClickSound();
+                      setIsCustomizingFeedLayout(!isCustomizingFeedLayout);
+                    }}
+                    className={`px-2.5 py-1 text-[8.5px] font-mono uppercase font-black rounded-lg border transition flex items-center space-x-1.5 cursor-pointer ${
+                      isCustomizingFeedLayout
+                        ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] shadow-[0_0_12px_rgba(0,255,102,0.3)]'
+                        : 'bg-[var(--color-surface)] text-zinc-400 border-[var(--neon-green-border)] hover:text-[var(--color-text)]'
+                    }`}
+                  >
+                    <Move className="w-2.5 h-2.5" />
+                    <span>{isCustomizingFeedLayout ? 'Done Customizing' : 'Customize Order'}</span>
+                  </button>
+                </div>
 
-                    {/* Render existing active stories grouped by other users */}
-                    {getGroupedStories()
-                      .filter(group => !profile || group.authorId !== profile.uid)
-                      .map((group) => {
-                        const allViewed = group.stories.every(s => storyViewedList[s.id] || false);
-                        const authorFirstName = (group.authorName || 'Anonymous').split(' ')[0];
+                {/* Customization Drawer when active */}
+                {isCustomizingFeedLayout && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="p-3.5 bg-zinc-950/90 border-2 border-[var(--neon-green)]/40 rounded-2xl space-y-3 shadow-xl backdrop-blur-md"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-black text-[var(--neon-green)] uppercase tracking-wider flex items-center gap-1.5">
+                        <GripVertical className="w-3.5 h-3.5" />
+                        Drag & Drop or Reorder Feed Sections
+                      </span>
+                      <button
+                        onClick={resetFeedLayout}
+                        className="text-[8px] font-mono text-zinc-500 hover:text-red-400 transition uppercase font-bold"
+                      >
+                        [Reset to Default]
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {feedSectionsOrder.map((secId, idx) => {
+                        const secMeta = DEFAULT_FEED_SECTIONS.find(s => s.id === secId) || { id: secId, label: secId, icon: '📦', desc: '' };
+                        const isDragging = draggedSectionId === secId;
+                        const isDragOver = dragOverSectionId === secId;
+
                         return (
-                          <div key={group.authorId} className="flex flex-col items-center space-y-1.5 shrink-0">
-                            <button
-                              onClick={() => handleOpenStoryGroup(group.authorId)}
-                              className={`w-13 h-13 rounded-full p-0.5 flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
-                                allViewed 
-                                  ? 'bg-zinc-800' 
-                                  : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse'
-                              }`}
-                            >
-                              <div className="w-full h-full rounded-full bg-[var(--color-surface)] p-[1.5px] flex items-center justify-center">
-                                <img 
-                                  src={group.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
-                                  alt={group.authorName} 
-                                  className="w-full h-full rounded-full object-cover border border-zinc-950" 
-                                  referrerPolicy="no-referrer"
-                                />
+                          <div
+                            key={secId}
+                            draggable
+                            onDragStart={() => setDraggedSectionId(secId)}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              if (dragOverSectionId !== secId) setDragOverSectionId(secId);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverSectionId === secId) setDragOverSectionId(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedSectionId && draggedSectionId !== secId) {
+                                handleReorderSections(draggedSectionId, secId);
+                              }
+                              setDraggedSectionId(null);
+                              setDragOverSectionId(null);
+                            }}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between transition cursor-grab active:cursor-grabbing ${
+                              isDragging 
+                                ? 'opacity-40 border-dashed border-[var(--neon-green)] bg-[var(--neon-green)]/10'
+                                : isDragOver
+                                  ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/20 scale-[1.01]'
+                                  : 'border-zinc-800 bg-zinc-900/80 hover:border-zinc-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2.5">
+                              <GripVertical className="w-4 h-4 text-zinc-600 hover:text-zinc-300" />
+                              <span className="text-sm">{secMeta.icon}</span>
+                              <div>
+                                <h5 className="text-[10.5px] font-mono font-black text-zinc-200 uppercase">{secMeta.label}</h5>
+                                <p className="text-[8px] font-sans text-zinc-500">{secMeta.desc}</p>
                               </div>
-                            </button>
-                            <span className="text-[8.5px] font-mono text-zinc-400 max-w-[55px] truncate uppercase">{authorFirstName}</span>
+                            </div>
+
+                            <div className="flex items-center space-x-1">
+                              <button
+                                disabled={idx === 0}
+                                onClick={() => {
+                                  if (idx > 0) handleReorderSections(secId, feedSectionsOrder[idx - 1]);
+                                }}
+                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-300 text-[10px] font-mono px-1.5"
+                                title="Move Up"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                disabled={idx === feedSectionsOrder.length - 1}
+                                onClick={() => {
+                                  if (idx < feedSectionsOrder.length - 1) handleReorderSections(secId, feedSectionsOrder[idx + 1]);
+                                }}
+                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 text-zinc-300 text-[10px] font-mono px-1.5"
+                                title="Move Down"
+                              >
+                                ▼
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
-                  </div>
-                </div>
+                    </div>
+                  </motion.div>
+                )}
 
-            {/* =================================== SECTION 3 — QUICK ACTION PILLS =================================== */}
-            <div className="py-2">
-              <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
-                <button
-                  onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
-                  className="flex items-center space-x-1.5 shrink-0 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-pink-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-pink-400 hover:text-[var(--color-text)] transition transform active:scale-95 shadow-[0_2px_10px_rgba(236,72,153,0.05)]"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-pink-500 animate-pulse" />
-                  <span>Match Mate</span>
-                </button>
-
-
-
-
-
-                <button
-                  onClick={() => {
-                    playGlitchClickSound();
-                    setSelectedCampus('Global Feed');
-                    setSearchQuery('#exams');
-                    setIsSearchOpen(true);
-                  }}
-                  className="flex items-center space-x-1.5 shrink-0 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-amber-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-amber-500 hover:text-[var(--color-text)] transition transform active:scale-95 shadow-[0_2px_10px_rgba(245,158,11,0.05)]"
-                >
-                  <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Trending</span>
-                </button>
-              </div>
-            </div>
-
-            {/* =================================== SECTION 4 — MAIN FEED =================================== */}
-            <div className="space-y-6">
-              {isFeedLoading ? (
-                <div className="space-y-4">
-                  {isFeedPendingLong && (
-                    <div className="p-4 border border-emerald-500/30 bg-emerald-950/20 backdrop-blur-md rounded-2xl flex items-center space-x-3.5 text-emerald-400 font-mono text-xs shadow-[0_0_20px_rgba(16,185,129,0.12)] transition-all">
-                      <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                      </div>
-                      <div className="flex-1 min-w-0">
+                {/* Render Sections in configured dynamic order */}
+                {feedSectionsOrder.map((sectionKey) => {
+                  if (sectionKey === 'stories') {
+                    return (
+                      <div 
+                        key="stories" 
+                        id="tour-stories-bar" 
+                        className={`glass-panel p-4 rounded-[20px] space-y-3 transition ${
+                          isCustomizingFeedLayout ? 'ring-1 ring-[var(--neon-green)]/30' : ''
+                        }`}
+                      >
                         <div className="flex items-center justify-between">
-                          <span className="font-black tracking-wider uppercase text-[11px] text-emerald-300">
-                            Syncing with secure nodes...
+                          <span className="text-[8px] font-mono font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></span>
+                            ⚡ Ephemeral Peer Chronicles
                           </span>
-                          <span className="text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-900/30 text-emerald-400 font-mono uppercase">
-                            LIVE PROTOCOL
-                          </span>
-                        </div>
-                        <p className="text-[9.5px] text-zinc-400 font-sans mt-0.5 leading-tight">
-                          Decrypting & streaming real-time campus feeds from decentralized cloud database relays.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {Array.from({ length: 3 }).map((_, idx) => (
-                    <div key={idx} className="p-5 border border-[var(--neon-green-border)] bg-[var(--color-background)]/40 rounded-2xl space-y-4 animate-pulse">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 bg-[var(--color-surface)] rounded-full" />
-                        <div className="space-y-1.5 flex-1">
-                          <div className="h-3 bg-[var(--color-surface)] rounded w-1/4" />
-                          <div className="h-2 bg-[var(--color-surface)] rounded w-1/6" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-3 bg-[var(--color-surface)] rounded w-full" />
-                        <div className="h-3 bg-[var(--color-surface)] rounded w-5/6" />
-                      </div>
-                      <div className="h-32 bg-[var(--color-surface)]/30 rounded-xl border border-[var(--neon-green-border)]" />
-                    </div>
-                  ))}
-                </div>
-              ) : getMergedPosts().length === 0 ? (
-                <div className="p-12 text-center bg-[var(--color-background)]/40 border-2 border-dashed border-[var(--neon-green-border)] rounded-2xl flex flex-col items-center justify-center space-y-4">
-                  <div className="w-12 h-12 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-full flex items-center justify-center text-zinc-500 font-mono text-lg font-black animate-bounce">
-                    ?
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-mono font-black uppercase text-zinc-400">FEED SILENT / NO PACKETS FOUND</p>
-                    <p className="text-[10px] font-sans text-zinc-500 max-w-xs leading-normal">
-                      No dialogue contributions have been transmitted to the spectrum yet. Try posting a new packet!
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <AnimatePresence initial={false}>
-                    {getMergedPosts().flatMap((post, index) => {
-                      const commentsCount = post.commentsCount || 0;
-                      const cards = [];
-
-                      // Inject Smart Recommendation Card every 3 posts
-                      if (index > 0 && index % 2 === 0) {
-                        cards.push(
-                          <motion.div
-                            key={`recommendation-${post.id || index}`}
-                            layout
-                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -30 }}
-                            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                            className="p-5 border border-red-500/20 bg-[var(--color-background)]/85 rounded-2xl space-y-3 relative overflow-hidden shadow-xl animate-pulse-slow"
+                          <button
+                            onClick={() => {
+                              playGlitchClickSound();
+                              setPostCreatorType('story');
+                              setShowPostCreator(true);
+                            }}
+                            className="text-[7.5px] font-mono text-zinc-500 hover:text-[var(--neon-green)] transition uppercase font-black"
                           >
-                            <div className="absolute top-0 right-0 p-1 px-2.5 bg-red-600/15 text-[7px] text-red-400 font-black uppercase tracking-widest font-mono">
-                              CAMPUS RECOMMENDATION
-                            </div>
-
-                            <div className="space-y-2">
-                              <span className="text-[8px] font-mono text-rose-400 font-bold block uppercase">⏱️ SCHOLASTIC countdown</span>
-                              <h4 className="text-sm font-black text-[var(--color-text)] font-mono uppercase">First Semester Exams</h4>
-                              <p className="text-[10px] text-zinc-400">Exams start in exactly 4 days. Connect with other students to study together!</p>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
-                                  className="w-full text-center py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-[var(--color-text)] font-mono text-[9px] font-black uppercase rounded-lg transition shadow-md cursor-pointer font-sans"
-                                >
-                                  Find study partner
-                                </button>
+                            + ADD STORY NODE
+                          </button>
+                        </div>
+                        
+                        <div className="flex space-x-4 overflow-x-auto pb-1 scrollbar-none select-none">
+                          {/* Add/View own story bubble */}
+                          {(() => {
+                            const allGroups = getGroupedStories();
+                            const currentUserGroup = profile ? allGroups.find(g => g.authorId === profile.uid) : null;
+                            const ownStoriesViewed = currentUserGroup ? currentUserGroup.stories.every(s => storyViewedList[s.id] || false) : true;
+                            
+                            return (
+                              <div className="flex flex-col items-center space-y-1.5 shrink-0">
+                                <div className="relative group">
+                                  <button
+                                    onClick={() => {
+                                      playGlitchClickSound();
+                                      if (currentUserGroup && profile) {
+                                        handleOpenStoryGroup(profile.uid);
+                                      } else {
+                                        setPostCreatorType('story');
+                                        setShowPostCreator(true);
+                                      }
+                                    }}
+                                    className={`w-13 h-13 rounded-full flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
+                                      currentUserGroup 
+                                        ? (ownStoriesViewed 
+                                            ? 'bg-zinc-800 p-0.5' 
+                                            : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse p-0.5')
+                                        : 'bg-[var(--color-background)] border-2 border-dashed border-[var(--neon-green-border)] hover:border-[var(--neon-green)] p-0'
+                                    }`}
+                                  >
+                                    <div className={`w-full h-full rounded-full bg-[var(--color-surface)] flex items-center justify-center ${currentUserGroup ? 'p-[1.5px]' : 'p-0'}`}>
+                                      {profile?.photoURL ? (
+                                        <img 
+                                          src={profile.photoURL} 
+                                          alt="My Avatar" 
+                                          className={`w-full h-full rounded-full object-cover transition ${currentUserGroup ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`} 
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      ) : (
+                                        <span className="text-xs text-zinc-500 font-bold">+</span>
+                                      )}
+                                    </div>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      playGlitchClickSound();
+                                      setPostCreatorType('story');
+                                      setShowPostCreator(true);
+                                    }}
+                                    className="absolute bottom-0 right-0 bg-[var(--neon-green)] text-black rounded-full p-0.5 border border-black hover:scale-110 transition cursor-pointer shadow-lg z-10"
+                                    title="Add Story"
+                                  >
+                                    <Plus className="w-3 h-3 font-bold" />
+                                  </button>
+                                </div>
+                                <span className="text-[8.5px] font-mono text-zinc-500 max-w-[55px] truncate">My Story</span>
                               </div>
-                            </div>
-                          </motion.div>
-                        );
-                      }
+                            );
+                          })()}
 
-                      cards.push(
-                        <motion.div 
-                          key={post.id || `post-${index}`}
+                          {/* Render existing active stories grouped by other users */}
+                          {getGroupedStories()
+                            .filter(group => !profile || group.authorId !== profile.uid)
+                            .map((group) => {
+                              const allViewed = group.stories.every(s => storyViewedList[s.id] || false);
+                              const authorFirstName = (group.authorName || 'Anonymous').split(' ')[0];
+                              return (
+                                <div key={group.authorId} className="flex flex-col items-center space-y-1.5 shrink-0">
+                                  <button
+                                    onClick={() => handleOpenStoryGroup(group.authorId)}
+                                    className={`w-13 h-13 rounded-full p-0.5 flex items-center justify-center transition transform hover:scale-105 active:scale-95 cursor-pointer ${
+                                      allViewed 
+                                        ? 'bg-zinc-800' 
+                                        : 'bg-gradient-to-tr from-amber-500 via-red-500 to-rose-600 animate-pulse'
+                                    }`}
+                                  >
+                                    <div className="w-full h-full rounded-full bg-[var(--color-surface)] p-[1.5px] flex items-center justify-center">
+                                      <img 
+                                        src={group.authorPhoto || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'} 
+                                        alt={group.authorName} 
+                                        className="w-full h-full rounded-full object-cover border border-zinc-950" 
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    </div>
+                                  </button>
+                                  <span className="text-[8.5px] font-mono text-zinc-400 max-w-[55px] truncate uppercase">{authorFirstName}</span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (sectionKey === 'pinned_items') {
+                    const pinnedPosts = getMergedPosts()
+                      .filter(p => pinnedPostIds.includes(p.id))
+                      .sort((a, b) => pinnedPostIds.indexOf(a.id) - pinnedPostIds.indexOf(b.id));
+
+                    if (pinnedPosts.length === 0 && !isCustomizingFeedLayout) return null;
+
+                    return (
+                      <div 
+                        key="pinned_items" 
+                        className="p-4 border-2 border-amber-500/30 bg-amber-950/10 backdrop-blur-md rounded-2xl space-y-3 relative overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Bookmark className="w-4 h-4 text-amber-400 fill-current" />
+                            <span className="text-[10px] font-mono font-black text-amber-300 uppercase tracking-widest">
+                              PINNED ACADEMIC VAULT
+                            </span>
+                            <span className="text-[8px] font-mono text-amber-500/80 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 font-bold">
+                              {pinnedPosts.length} ITEMS (DRAG TO REORDER)
+                            </span>
+                          </div>
+                        </div>
+
+                        {pinnedPosts.length === 0 ? (
+                          <div className="p-4 text-center border border-dashed border-amber-500/20 rounded-xl">
+                            <p className="text-[9px] font-mono text-amber-400/70">
+                              Bookmark any post with the pin icon to keep it here in your prioritized quick-access vault!
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {pinnedPosts.map((post, pIdx) => {
+                              const isDragging = draggedPinnedId === post.id;
+                              const isDragOver = dragOverPinnedId === post.id;
+
+                              return (
+                                <div
+                                  key={`pinned-${post.id}`}
+                                  draggable
+                                  onDragStart={() => setDraggedPinnedId(post.id)}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    if (dragOverPinnedId !== post.id) setDragOverPinnedId(post.id);
+                                  }}
+                                  onDragLeave={() => {
+                                    if (dragOverPinnedId === post.id) setDragOverPinnedId(null);
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (draggedPinnedId && draggedPinnedId !== post.id) {
+                                      handleReorderPinnedPosts(draggedPinnedId, post.id);
+                                    }
+                                    setDraggedPinnedId(null);
+                                    setDragOverPinnedId(null);
+                                  }}
+                                  className={`p-3 rounded-xl border bg-zinc-950/80 transition flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing ${
+                                    isDragging 
+                                      ? 'opacity-40 border-dashed border-amber-400 bg-amber-500/10'
+                                      : isDragOver
+                                        ? 'border-amber-400 bg-amber-500/20 scale-[1.01]'
+                                        : 'border-amber-500/20 hover:border-amber-500/40'
+                                  }`}
+                                >
+                                  <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                    <GripVertical className="w-4 h-4 text-amber-500/60 hover:text-amber-400 shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-[9px] font-mono font-bold text-amber-400">
+                                          #{pIdx + 1}
+                                        </span>
+                                        <span className="text-[8.5px] font-mono text-zinc-400 truncate">
+                                          {post.authorName || 'Anonymous'}
+                                        </span>
+                                        {post.campus && (
+                                          <span className="text-[7.5px] font-mono px-1 rounded bg-zinc-800 text-zinc-300">
+                                            {post.campus}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-[10.5px] font-sans text-zinc-200 truncate mt-0.5">
+                                        {post.content}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center space-x-1.5 shrink-0">
+                                    <button
+                                      onClick={() => {
+                                        playGlitchClickSound();
+                                        setActiveDiscussionPost(post);
+                                      }}
+                                      className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-[9px] font-mono font-bold transition"
+                                      title="Open Discussion"
+                                    >
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        playGlitchClickSound();
+                                        togglePinPost(post.id);
+                                      }}
+                                      className="p-1.5 hover:bg-red-950/40 text-zinc-500 hover:text-red-400 rounded-lg text-[9px] font-mono transition"
+                                      title="Unpin"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (sectionKey === 'quick_actions') {
+                    return (
+                      <div key="quick_actions" className="py-2">
+                        <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
+                          <button
+                            onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
+                            className="flex items-center space-x-1.5 shrink-0 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-pink-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-pink-400 hover:text-[var(--color-text)] transition transform active:scale-95 shadow-[0_2px_10px_rgba(236,72,153,0.05)]"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-pink-500 animate-pulse" />
+                            <span>Match Mate</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              playGlitchClickSound();
+                              setSelectedCampus('Global Feed');
+                              setSearchQuery('#exams');
+                              setIsSearchOpen(true);
+                            }}
+                            className="flex items-center space-x-1.5 shrink-0 bg-[var(--color-background)] border border-[var(--neon-green-border)] hover:border-amber-500/40 rounded-full px-3.5 py-1.5 text-xs font-mono font-black uppercase text-amber-500 hover:text-[var(--color-text)] transition transform active:scale-95 shadow-[0_2px_10px_rgba(245,158,11,0.05)]"
+                          >
+                            <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Trending</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (sectionKey === 'trending_radar') {
+                    return (
+                      <div key="trending_radar" className="p-3 bg-[var(--color-surface)]/60 border border-[var(--neon-green-border)] rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-base">📈</span>
+                          <div>
+                            <span className="text-[8.5px] font-mono uppercase font-black text-zinc-400 tracking-wider block">
+                              Campus Spectrum Radar
+                            </span>
+                            <span className="text-[10px] font-mono text-[var(--neon-green)] font-bold">
+                              Trending: #Exams #StudyRelay #LibraryLive #Hackathon
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            playGlitchClickSound();
+                            setSearchQuery('#StudyRelay');
+                            setIsSearchOpen(true);
+                          }}
+                          className="text-[8.5px] font-mono uppercase font-bold text-zinc-400 hover:text-[var(--neon-green)] px-2 py-1 rounded bg-black/40 border border-zinc-800"
+                        >
+                          Explore
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  if (sectionKey === 'posts_stream') {
+                    return (
+                      <div key="posts_stream" className="space-y-6">
+                        {isFeedLoading ? (
+                          <div className="space-y-4">
+                            {isFeedPendingLong && (
+                              <div className="p-4 border border-emerald-500/30 bg-emerald-950/20 backdrop-blur-md rounded-2xl flex items-center space-x-3.5 text-emerald-400 font-mono text-xs shadow-[0_0_20px_rgba(16,185,129,0.12)] transition-all">
+                                <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-black tracking-wider uppercase text-[11px] text-emerald-300">
+                                      Syncing with secure nodes...
+                                    </span>
+                                    <span className="text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-900/30 text-emerald-400 font-mono uppercase">
+                                      LIVE PROTOCOL
+                                    </span>
+                                  </div>
+                                  <p className="text-[9.5px] text-zinc-400 font-sans mt-0.5 leading-tight">
+                                    Decrypting & streaming real-time campus feeds from decentralized cloud database relays.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {Array.from({ length: 3 }).map((_, idx) => (
+                              <div key={idx} className="p-5 border border-[var(--neon-green-border)] bg-[var(--color-background)]/40 rounded-2xl space-y-4 animate-pulse">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-9 h-9 bg-[var(--color-surface)] rounded-full" />
+                                  <div className="space-y-1.5 flex-1">
+                                    <div className="h-3 bg-[var(--color-surface)] rounded w-1/4" />
+                                    <div className="h-2 bg-[var(--color-surface)] rounded w-1/6" />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="h-3 bg-[var(--color-surface)] rounded w-full" />
+                                  <div className="h-3 bg-[var(--color-surface)] rounded w-5/6" />
+                                </div>
+                                <div className="h-32 bg-[var(--color-surface)]/30 rounded-xl border border-[var(--neon-green-border)]" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : getMergedPosts().length === 0 ? (
+                          <div className="p-12 text-center bg-[var(--color-background)]/40 border-2 border-dashed border-[var(--neon-green-border)] rounded-2xl flex flex-col items-center justify-center space-y-4">
+                            <div className="w-12 h-12 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-full flex items-center justify-center text-zinc-500 font-mono text-lg font-black animate-bounce">
+                              ?
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-xs font-mono font-black uppercase text-zinc-400">FEED SILENT / NO PACKETS FOUND</p>
+                              <p className="text-[10px] font-sans text-zinc-500 max-w-xs leading-normal">
+                                No dialogue contributions have been transmitted to the spectrum yet. Try posting a new packet!
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            <AnimatePresence initial={false}>
+                              {getMergedPosts().flatMap((post, index) => {
+                                const commentsCount = post.commentsCount || 0;
+                                const cards = [];
+
+                                // Inject Smart Recommendation Card every 3 posts
+                                if (index > 0 && index % 2 === 0) {
+                                  cards.push(
+                                    <motion.div
+                                      key={`recommendation-${post.id || index}`}
+                                      layout
+                                      initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.95, y: -30 }}
+                                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                      className="p-5 border border-red-500/20 bg-[var(--color-background)]/85 rounded-2xl space-y-3 relative overflow-hidden shadow-xl animate-pulse-slow"
+                                    >
+                                      <div className="absolute top-0 right-0 p-1 px-2.5 bg-red-600/15 text-[7px] text-red-400 font-black uppercase tracking-widest font-mono">
+                                        CAMPUS RECOMMENDATION
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <span className="text-[8px] font-mono text-rose-400 font-bold block uppercase">⏱️ SCHOLASTIC countdown</span>
+                                        <h4 className="text-sm font-black text-[var(--color-text)] font-mono uppercase">First Semester Exams</h4>
+                                        <p className="text-[10px] text-zinc-400">Exams start in exactly 4 days. Connect with other students to study together!</p>
+                                        <div className="flex gap-2">
+                                          <button
+                                            onClick={() => { playGlitchClickSound(); setActiveTab('match'); handleStartMatching(); }}
+                                            className="w-full text-center py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-[var(--color-text)] font-mono text-[9px] font-black uppercase rounded-lg transition shadow-md cursor-pointer font-sans"
+                                          >
+                                            Find study partner
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                }
+
+                                cards.push(
+                                  <motion.div 
+                                    key={post.id || `post-${index}`}
                           layout
                           initial={{ opacity: 0, scale: 0.95, y: 30 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1859,21 +2134,23 @@ export default function FeedSection({
             </div>
           )}
         </div>
-      </>
-    )}
-          </div>
-        </motion.div>
-      )}
+      );
+    }
+
+    return null;
+  })}
+</div>
+)}
+</div>
+</div>
+)}
 
         {/* ==================== MATCH TAB VIEW ==================== */}
         {activeTab === 'match' && (
-          <motion.div
+          <div
             key="match"
-            initial={{ opacity: 0, y: 8, scale: 0.995 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.995 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full overflow-y-auto flex flex-col px-4 py-3 pb-24 md:pb-0"
+            className="w-full h-full overflow-y-auto flex flex-col px-4 py-3 pb-24 md:pb-0 select-text"
+            style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
             <div className="space-y-5">
               <span className="text-[9px] uppercase tracking-widest font-mono text-zinc-500 font-black block border-l border-pink-500 pl-1.5">
@@ -2000,18 +2277,15 @@ export default function FeedSection({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ==================== PROFILE TAB VIEW ==================== */}
         {activeTab === 'profile' && (
-          <motion.div
+          <div
             key="profile"
-            initial={{ opacity: 0, y: 8, scale: 0.995 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.995 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
+            className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4 select-text"
+            style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
             <BentoProfile
               profile={profile}
@@ -2025,20 +2299,16 @@ export default function FeedSection({
               triggerVibration={triggerVibration}
               showBrutalistToast={showBrutalistToast}
             />
-          </motion.div>
+          </div>
         )}
 
         {/* ==================== SECURE CRYPTO CHATS TAB ==================== */}
         {activeTab === 'chat' && (
-          <motion.div
+          <div
             key="chat"
-            initial={{ opacity: 0, y: 8, scale: 0.995 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.995 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full min-h-0 flex flex-col bg-[var(--color-surface)]"
+            className="w-full h-full min-h-0 min-w-0 flex flex-col bg-[var(--color-surface)] overflow-hidden"
           >
-            <div className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 min-w-0 h-full overflow-hidden flex flex-col">
               <ChatSection 
                 deepLinkedPeerId={deepLinkedPeerId} 
                 onClearDeepLink={onClearDeepLink} 
@@ -2046,34 +2316,28 @@ export default function FeedSection({
                 onClearDeepLinkedGroup={onClearDeepLinkedGroup}
               />
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ==================== WORKSPACE HUB TAB ==================== */}
         {activeTab === 'workspace' && (
-          <motion.div
+          <div
             key="workspace"
-            initial={{ opacity: 0, y: 8, scale: 0.995 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.995 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full min-h-0 flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
+            className="w-full h-full min-h-0 overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4"
+            style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col">
               <WorkspaceHub />
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ==================== FLICK REAL NEWS WIRE TAB (NO AI) ==================== */}
         {activeTab === 'news' && (
-          <motion.div
+          <div
             key="news"
-            initial={{ opacity: 0, y: 8, scale: 0.995 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.995 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full h-full overflow-y-auto flex flex-col p-0 pb-20 md:pb-4"
+            className="w-full h-full overflow-y-auto flex flex-col p-0 pb-20 md:pb-4 select-text"
+            style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
             <div className="flex-1 flex flex-col">
               <NewsSection
@@ -2097,7 +2361,7 @@ export default function FeedSection({
                 }}
               />
             </div>
-          </motion.div>
+          </div>
         )}
         </AnimatePresence>
 

@@ -507,7 +507,7 @@ export default function LiveSportsHub({ profile, showToast, playClickSound }: Li
   const isWorldCupSelected = selectedLeague === '4429' || (selectedMatch && selectedMatch.leagueId === '4429');
 
   return (
-    <div id="live-sports-arena-root" className="space-y-4 font-mono select-none">
+    <div id="live-sports-arena-root" className="space-y-4 font-mono select-text">
       
       {/* 1. Scrolling Match Event ticker banner */}
       <div id="sports-event-ticker" className="bg-[var(--color-surface)] border border-[var(--neon-green-border)] px-4 py-2.5 flex items-center justify-between text-[8px] tracking-wider shrink-0 overflow-hidden text-[var(--neon-green)] font-black">

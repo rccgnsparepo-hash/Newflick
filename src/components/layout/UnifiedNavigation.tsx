@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 interface UnifiedNavigationProps {
+  className?: string;
   unreadE2EECount?: number;
   onOpenSearch?: () => void;
   onOpenSettings?: () => void;
@@ -28,6 +29,7 @@ interface UnifiedNavigationProps {
 }
 
 export function UnifiedNavigation({
+  className = '',
   unreadE2EECount = 0,
   onOpenSearch,
   onOpenSettings,
@@ -91,7 +93,7 @@ export function UnifiedNavigation({
       <aside
         className={`hidden md:flex flex-col justify-between shrink-0 h-full z-40 select-none bg-[var(--color-background)]/90 backdrop-blur-xl border-r border-[var(--glass-border)] py-4 transition-[width] duration-300 ease-in-out relative rounded-none ${
           sidebarExpanded ? 'w-64 px-4' : 'w-20 px-2.5'
-        }`}
+        } ${className}`}
       >
         {/* Toggle Collapse Arrow - strictly anchored to the sidebar rail edge */}
         <button
