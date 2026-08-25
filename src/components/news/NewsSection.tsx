@@ -145,7 +145,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
     playGlitchClickSound();
     showBrutalistToast('SYNCING...', 'Connecting to live RSS editorial wire feeds', 'info');
     try {
-      await fetch('/api/news/refresh', { method: 'POST' });
+      await newsService.refreshFeed();
     } catch (err) {}
     await Promise.all([
       loadFeed(1),

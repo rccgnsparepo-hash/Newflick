@@ -52,7 +52,7 @@ import {
   updateOneSignalUserTags
 } from './lib/pushNotifications';
 import { deepLinkManager } from './lib/deepLinkManager';
-import { NotificationProvider, useNotificationSystem } from './lib/notificationSystem';
+import { NotificationProvider, useNotificationSystem, BadgeService } from './lib/notificationSystem';
 import { CustomNavigationProvider, useNavigation } from './lib/navigationService';
 import {
   Shield,
@@ -836,6 +836,7 @@ function Dashboard() {
     if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToNotifications(profile.uid, (unread) => {
       setNotifications(unread);
+      BadgeService.updateBadgeCount(unread.length, profile.uid);
     });
     return () => unsubscribe();
   }, [isAuthReady, profile?.uid]);

@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { NewsArticle, FullArticleContent, NewsComment, InAppReaderPreferences } from '../../types/news';
 import { newsService } from '../../lib/newsService';
+import { getBackendUrl } from '../../lib/bootstrap';
 import { playGlitchClickSound, playLikeSound } from '../../lib/sounds';
 import { NewsRealtimeLoader } from './NewsRealtimeLoader';
 import { StoryGroupCluster } from './StoryGroupCluster';
@@ -634,7 +635,7 @@ export const InAppArticleReader: React.FC<InAppArticleReaderProps> = ({
                 )}
                 <iframe
                   key={iframeKey}
-                  src={`/api/news/proxy-article?url=${encodeURIComponent(article.articleUrl)}`}
+                  src={`${getBackendUrl()}/api/news/proxy-article?url=${encodeURIComponent(article.articleUrl)}`}
                   className="w-full h-full min-h-[600px] border-0 bg-white"
                   title={article.title}
                   onLoad={() => setIsIframeLoading(false)}

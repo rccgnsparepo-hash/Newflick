@@ -49,8 +49,9 @@ export function getBackendUrl(): string {
   );
 
   if (isStandalone) {
-    // Connect to live Cloud Run server for Father AI, Flick Arena sports, and Firebase config pairing
-    const remoteBackend = (import.meta as any).env?.VITE_REMOTE_BACKEND_URL || "https://ais-dev-zu5wepafp2hyqxyhqmj344-930155083055.europe-west2.run.app";
+    // Connect to live Cloud Run server for Flick News wire feeds, Father AI, Flick Arena sports, and Firebase pairing
+    const remoteBackend = (import.meta as any).env?.VITE_REMOTE_BACKEND_URL || 
+      (typeof window !== 'undefined' && window.location.origin.startsWith('https://ais-') ? window.location.origin : "https://ais-dev-zu5wepafp2hyqxyhqmj344-930155083055.europe-west2.run.app");
     return remoteBackend.replace(/\/$/, '');
   }
 

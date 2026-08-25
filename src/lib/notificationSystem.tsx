@@ -112,6 +112,19 @@ export const BadgeService = {
       const originalTitle = document.title.replace(/^\(\d+\)\s+/, '');
       document.title = count > 0 ? `(${count}) ${originalTitle}` : originalTitle;
     }
+
+    // Sync directly to Electron main process (Windows Taskbar overlay icon & Linux/macOS dock counters)
+    try {
+      if (typeof window !== 'undefined') {
+        const uWin = window as any;
+        const ipc = uWin?.electron?.ipcRenderer || uWin?.ipcRenderer || (uWin?.require ? uWin.require('electron')?.ipcRenderer : null);
+        if (ipc?.send) {
+          ipc.send('set-badge-count', count);
+        }
+      }
+    } catch (err) {
+      console.warn('[BadgeService] Electron set-badge-count IPC dispatch error:', err);
+    }
   }
 };
 
