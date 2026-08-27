@@ -59,8 +59,25 @@ jobs:
       - name: Build APK
         working-directory: android
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon
+          mkdir -p gradle/wrapper
+          # Ensure gradle-wrapper.jar is healthy and contains GradleWrapperMain
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ] || ! unzip -t gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+            echo "Downloading clean Gradle wrapper jar..."
+            curl -sSL "https://raw.githubusercontent.com/gradle/gradle/v8.2.1/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar || gradle wrapper --gradle-version 8.2.1 || true
+          fi
+          chmod +x ./gradlew || true
+          
+          # Attempt build with wrapper, or fallback seamlessly to system gradle
+          if [ -f ./gradlew ] && unzip -t gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+            echo "Building APK with Gradle wrapper..."
+            ./gradlew assembleDebug --stacktrace --no-daemon || {
+              echo "Wrapper execution encountered error, falling back to system Gradle..."
+              gradle assembleDebug --stacktrace --no-daemon
+            }
+          else
+            echo "Building APK directly with system Gradle..."
+            gradle assembleDebug --stacktrace --no-daemon
+          fi
 
       - name: Stage APK with Release Version Name
         run: |

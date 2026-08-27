@@ -92,14 +92,32 @@ export const BadgeService = {
   },
 
   async updateBadgeCount(count: number, userId?: string) {
-    localStorage.setItem('flick_badge_count', count.toString());
+    const normalizedCount = Math.max(0, count);
+    localStorage.setItem('flick_badge_count', normalizedCount.toString());
+
+    // Dispatch global event for in-app UI reactions
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flick-badge-updated', { detail: { count: normalizedCount } }));
+    }
+
+    // Standard Chromium / PWA / Electron badge API
+    try {
+      if (typeof navigator !== 'undefined') {
+        const nav = navigator as any;
+        if (normalizedCount > 0 && typeof nav.setAppBadge === 'function') {
+          nav.setAppBadge(normalizedCount).catch(() => {});
+        } else if (normalizedCount === 0 && typeof nav.clearAppBadge === 'function') {
+          nav.clearAppBadge().catch(() => {});
+        }
+      }
+    } catch {}
 
     // Sync to Firestore for multi-device harmony
     if (userId) {
       try {
         const userRef = doc(db, 'users', userId);
         await updateDoc(userRef, {
-          unreadBadgeCount: count,
+          unreadBadgeCount: normalizedCount,
           updatedAt: new Date()
         });
       } catch (err) {
@@ -107,10 +125,10 @@ export const BadgeService = {
       }
     }
 
-    // Dynamic icon/tab title updater for desktop fallback web browsers & Electron
+    // Dynamic icon/tab title updater for desktop fallback web browsers & Electron (.exe)
     if (typeof document !== 'undefined') {
-      const originalTitle = document.title.replace(/^\(\d+\)\s+/, '');
-      document.title = count > 0 ? `(${count}) ${originalTitle}` : originalTitle;
+      const cleanTitle = document.title.replace(/^\(\d+\)\s*/, '');
+      document.title = normalizedCount > 0 ? `(${normalizedCount}) ${cleanTitle}` : cleanTitle;
     }
 
     // Sync directly to Electron main process (Windows Taskbar overlay icon & Linux/macOS dock counters)
@@ -119,7 +137,7 @@ export const BadgeService = {
         const uWin = window as any;
         const ipc = uWin?.electron?.ipcRenderer || uWin?.ipcRenderer || (uWin?.require ? uWin.require('electron')?.ipcRenderer : null);
         if (ipc?.send) {
-          ipc.send('set-badge-count', count);
+          ipc.send('set-badge-count', normalizedCount);
         }
       }
     } catch (err) {

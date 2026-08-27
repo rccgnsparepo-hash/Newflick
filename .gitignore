@@ -12,3 +12,7 @@ firebase-applet-config.json
 firebase_applet_config.xml
 google-services.json
 google_services.json
+
+# Always track gradle wrapper binaries
+!gradle-wrapper.jar
+!android/gradle/wrapper/gradle-wrapper.jar

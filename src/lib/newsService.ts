@@ -10,6 +10,20 @@ const READER_PREFS_KEY = 'flick_news_reader_prefs';
 const CACHED_FEED_KEY = 'flick_cached_news_feed_data';
 const CACHED_BREAKING_KEY = 'flick_cached_breaking_news_data';
 
+// Helper to construct fully qualified, valid API URLs across Web, Electron EXE, and Capacitor APK
+export function buildNewsApiUrl(path: string): URL {
+  const backend = getBackendUrl();
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  if (backend && (backend.startsWith('http://') || backend.startsWith('https://'))) {
+    return new URL(`${backend.replace(/\/$/, '')}${cleanPath}`);
+  }
+  if (typeof window !== 'undefined' && window.location?.origin && (window.location.origin.startsWith('http://') || window.location.origin.startsWith('https://'))) {
+    return new URL(cleanPath, window.location.origin);
+  }
+  return new URL(`http://localhost:3000${cleanPath}`);
+}
+
 // Standalone & Offline rich fallback articles (covers all categories when network is disconnected or server is waking up)
 const DEFAULT_FALLBACK_ARTICLES: NewsArticle[] = [
   {
@@ -174,8 +188,7 @@ export const newsService = {
   // Extract and fetch full original article content for in-app reader (no redirection)
   async getFullArticleContent(articleUrl: string, id?: string): Promise<FullArticleContent | null> {
     try {
-      const baseUrl = getBackendUrl();
-      const url = new URL(`${baseUrl}/api/news/article-content`);
+      const url = buildNewsApiUrl('/api/news/article-content');
       if (articleUrl) url.searchParams.set('url', articleUrl);
       if (id) url.searchParams.set('id', id);
 
@@ -270,8 +283,8 @@ export const newsService = {
   // Trigger server-side wire feeds synchronization
   async refreshFeed(): Promise<boolean> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/refresh`, { method: 'POST' });
+      const url = buildNewsApiUrl('/api/news/refresh');
+      const res = await fetch(url.toString(), { method: 'POST' });
       return res.ok;
     } catch (err) {
       console.warn('[NewsService refreshFeed Error]', err);
@@ -292,8 +305,7 @@ export const newsService = {
     limit?: number;
   }): Promise<{ articles: NewsArticle[]; total: number; page: number; totalPages: number }> {
     try {
-      const baseUrl = getBackendUrl();
-      const url = new URL(`${baseUrl}/api/news`);
+      const url = buildNewsApiUrl('/api/news');
       if (params.category) url.searchParams.set('category', params.category);
       if (params.subCategory) url.searchParams.set('subCategory', params.subCategory);
       if (params.campus) url.searchParams.set('campus', params.campus);
@@ -368,8 +380,8 @@ export const newsService = {
   // Fetch breaking news with offline/standalone resilience
   async getBreakingNews(): Promise<NewsArticle[]> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/breaking`);
+      const url = buildNewsApiUrl('/api/news/breaking');
+      const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -395,8 +407,7 @@ export const newsService = {
   // Fetch single article
   async getArticle(id: string, userId?: string): Promise<NewsArticle | null> {
     try {
-      const baseUrl = getBackendUrl();
-      const url = new URL(`${baseUrl}/api/news/story/${id}`);
+      const url = buildNewsApiUrl(`/api/news/story/${id}`);
       if (userId) url.searchParams.set('userId', userId);
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -416,16 +427,16 @@ export const newsService = {
         hist.unshift(id);
         localStorage.setItem(VIEWED_HISTORY_KEY, JSON.stringify(hist.slice(0, 50)));
       }
-      const baseUrl = getBackendUrl();
-      fetch(`${baseUrl}/api/news/${id}/view`, { method: 'POST' }).catch(() => {});
+      const url = buildNewsApiUrl(`/api/news/${id}/view`);
+      fetch(url.toString(), { method: 'POST' }).catch(() => {});
     } catch (err) {}
   },
 
   // Record share
   async recordShare(id: string): Promise<void> {
     try {
-      const baseUrl = getBackendUrl();
-      fetch(`${baseUrl}/api/news/${id}/share`, { method: 'POST' }).catch(() => {});
+      const url = buildNewsApiUrl(`/api/news/${id}/share`);
+      fetch(url.toString(), { method: 'POST' }).catch(() => {});
     } catch (err) {}
   },
 
@@ -433,8 +444,8 @@ export const newsService = {
   async toggleSave(id: string, userId?: string, currentSavedState = false): Promise<boolean> {
     try {
       const method = currentSavedState ? 'DELETE' : 'POST';
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/${id}/save`, {
+      const url = buildNewsApiUrl(`/api/news/${id}/save`);
+      const res = await fetch(url.toString(), {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId || 'local' })
@@ -448,7 +459,7 @@ export const newsService = {
         saved.delete(id);
       }
       localStorage.setItem(SAVED_NEWS_KEY, JSON.stringify(Array.from(saved)));
-      return !!data.saved;
+      return data.saved;
     } catch (err) {
       const saved = this.getLocalSavedIds();
       let newState = false;
@@ -485,8 +496,8 @@ export const newsService = {
   // React to article
   async reactToArticle(id: string, reactionType: string, userId?: string): Promise<{ success: boolean; article?: NewsArticle }> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/${id}/react`, {
+      const url = buildNewsApiUrl(`/api/news/${id}/react`);
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId || 'local', reactionType })
@@ -500,8 +511,8 @@ export const newsService = {
   // Follow / Unfollow source, category, or campus
   async toggleFollow(targetId: string, userId?: string): Promise<boolean> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/follow`, {
+      const url = buildNewsApiUrl('/api/news/follow');
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId || 'local', targetId })
@@ -542,8 +553,8 @@ export const newsService = {
   // Get comments
   async getComments(articleId: string): Promise<NewsComment[]> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/${articleId}/comments`);
+      const url = buildNewsApiUrl(`/api/news/${articleId}/comments`);
+      const res = await fetch(url.toString());
       if (!res.ok) return [];
       return await res.json();
     } catch (err) {
@@ -563,8 +574,8 @@ export const newsService = {
     replyToUserName?: string;
   }): Promise<NewsComment | null> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/${articleId}/comments`, {
+      const url = buildNewsApiUrl(`/api/news/${articleId}/comments`);
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(commentData)
@@ -579,8 +590,8 @@ export const newsService = {
   // Report article / comment
   async reportContent(articleId: string, reason: string, userId?: string, commentId?: string): Promise<boolean> {
     try {
-      const baseUrl = getBackendUrl();
-      const res = await fetch(`${baseUrl}/api/news/${articleId}/report`, {
+      const url = buildNewsApiUrl(`/api/news/${articleId}/report`);
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId || 'local', reason, commentId })
