@@ -109,6 +109,7 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
   const [isFactoryResetting, setIsFactoryResetting] = useState<boolean>(false);
   const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
   const [showVaultModal, setShowVaultModal] = useState<boolean>(false);
+  const [vaultTab, setVaultTab] = useState<'transfer' | 'backup' | 'restore' | 'stats'>('transfer');
 
   // Sync with Firestore on mount if profile exists
   useEffect(() => {
@@ -351,33 +352,48 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
           </div>
         </div>
 
-        <p className="text-[11px] text-zinc-300 leading-relaxed">
-          Your messages, voice notes, photos, and drafts are stored locally on your device. Firebase only provides identity and delivery bridging. Transfer your vault directly between devices or create an encrypted offline backup archive.
-        </p>
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed">
+          <strong className="text-amber-400">⚠️ 100% Local Storage Architecture:</strong> All your chats, messages, and voice notes are stored exclusively on this device's hardware disk. To minimize server costs and maximize privacy, nothing is stored in bulk on Firebase cloud. If you switch to another device or phone, you MUST export and sync your <code className="text-amber-400 font-bold">.flick</code> storage extension file.
+        </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
             onClick={() => {
               playGlitchClickSound();
+              setVaultTab('backup');
               setShowVaultModal(true);
             }}
-            className="flex-1 min-w-[140px] py-2.5 px-3 rounded-xl bg-[var(--neon-green)] text-black font-black text-[10.5px] uppercase tracking-wider hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,255,102,0.15)]"
+            className="flex-1 min-w-[130px] py-2.5 px-3 rounded-xl bg-[var(--neon-green)] text-black font-black text-[10.5px] uppercase tracking-wider hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,255,102,0.15)]"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            Device-to-Device Sync
+            <Download className="w-3.5 h-3.5" />
+            Export .flick File
           </button>
 
           <button
             type="button"
             onClick={() => {
               playGlitchClickSound();
+              setVaultTab('restore');
               setShowVaultModal(true);
             }}
-            className="flex-1 min-w-[140px] py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold text-[10.5px] uppercase tracking-wider hover:bg-zinc-800 active:scale-95 transition flex items-center justify-center gap-1.5"
+            className="flex-1 min-w-[130px] py-2.5 px-3 rounded-xl bg-amber-400 text-black font-black text-[10.5px] uppercase tracking-wider hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
           >
-            <Download className="w-3.5 h-3.5 text-[var(--neon-green)]" />
-            Export / Restore Vault
+            <Upload className="w-3.5 h-3.5" />
+            Import .flick File
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setVaultTab('transfer');
+              setShowVaultModal(true);
+            }}
+            className="flex-1 min-w-[130px] py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold text-[10.5px] uppercase tracking-wider hover:bg-zinc-800 active:scale-95 transition flex items-center justify-center gap-1.5"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+            Direct Sync
           </button>
         </div>
       </div>
@@ -386,6 +402,7 @@ export function SettingsStoragePurgeTab({ profile }: StoragePurgeTabProps) {
         <DeviceVaultTransferModal
           isOpen={showVaultModal}
           onClose={() => setShowVaultModal(false)}
+          defaultTab={vaultTab}
           onDataRestored={() => calculateStorage()}
         />
       )}

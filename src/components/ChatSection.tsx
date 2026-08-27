@@ -49,7 +49,7 @@ import {
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
   Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard, Archive,
-  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw
+  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield
 } from 'lucide-react';
 import {
   subscribeToPeersStatus
@@ -71,6 +71,8 @@ import { getBackendUrl } from '../lib/bootstrap';
 import { VoicePlayerBubble } from './VoicePlayerBubble';
 import { VoiceFirstBar } from './VoiceFirstBar';
 import { VoiceMemoriesModal } from './VoiceMemoriesModal';
+import { DeviceVaultTransferModal } from './DeviceVaultTransferModal';
+import { NewDeviceWelcomeBanner } from './NewDeviceWelcomeBanner';
 import { saveVoiceNoteToVault } from '../lib/voiceVault';
 
 function formatLastSeen(lastChanged: any): string {
@@ -1101,6 +1103,8 @@ export default function ChatSection({
   const [decryptedCache, setDecryptedCache] = useState<{[msgId: string]: string}>({});
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
   const [isPinnedDrawerOpen, setIsPinnedDrawerOpen] = useState(false);
+  const [showVaultTransferModal, setShowVaultTransferModal] = useState<boolean>(false);
+  const [vaultDefaultTab, setVaultDefaultTab] = useState<'p2p' | 'backup' | 'restore' | 'stats'>('backup');
   
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -3232,6 +3236,17 @@ export default function ChatSection({
             <button
               onClick={() => {
                 playGlitchClickSound();
+                setVaultDefaultTab('backup');
+                setShowVaultTransferModal(true);
+              }}
+              className="p-2 rounded-full bg-[var(--color-surface)] text-[var(--neon-green)] hover:text-white hover:bg-zinc-800 transition cursor-pointer border border-[var(--neon-green)]/30"
+              title="Flick Local Storage Vault (.flick backup & multi-device sync)"
+            >
+              <HardDrive className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                playGlitchClickSound();
                 setIsShortcutModalOpen(true);
               }}
               className="p-2 rounded-full bg-[var(--color-surface)] text-zinc-400 hover:text-[var(--color-text)] hover:bg-zinc-800 transition cursor-pointer"
@@ -3284,6 +3299,18 @@ export default function ChatSection({
             </button>
           </div>
         </div>
+
+        {/* New Device Detection and 100% Local Storage Warning Banner */}
+        <NewDeviceWelcomeBanner
+          onOpenTransfer={() => {
+            setVaultDefaultTab('p2p');
+            setShowVaultTransferModal(true);
+          }}
+          onOpenRestore={() => {
+            setVaultDefaultTab('restore');
+            setShowVaultTransferModal(true);
+          }}
+        />
 
         {/* Real-time search to instantly filter contacts */}
         <div className="px-3 pb-2 pt-2 border-b border-zinc-950 bg-[var(--color-surface)]/30">
@@ -6681,6 +6708,18 @@ export default function ChatSection({
         chatId={currentChat?.id}
         chatTitle={currentChat?.isGroup ? currentChat?.name : selectedPeer?.displayName}
       />
+
+      {/* Device Vault .flick Backup & Sync Modal */}
+      {showVaultTransferModal && (
+        <DeviceVaultTransferModal
+          isOpen={showVaultTransferModal}
+          onClose={() => setShowVaultTransferModal(false)}
+          defaultTab={vaultDefaultTab}
+          onDataRestored={() => {
+            showBrutalistToast('VAULT SYNCED', 'Your local conversations and media have been updated.', 'success');
+          }}
+        />
+      )}
 
     </div>
   );

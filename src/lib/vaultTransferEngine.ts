@@ -132,13 +132,33 @@ export async function exportEncryptedVault(passphrase: string): Promise<Blob> {
 }
 
 /**
- * Trigger file download for exported vault
+ * Trigger file download or native Android/Capacitor file share for exported vault (.flick)
  */
-export function downloadVaultFile(blob: Blob, customName?: string) {
+export async function downloadVaultFile(blob: Blob, customName?: string): Promise<{ method: 'download' | 'share' }> {
   const d = new Date();
   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const fileName = customName || `flick_encrypted_vault_${dateStr}.flickvault`;
+  const fileName = customName || `flick_vault_${dateStr}.flick`;
 
+  // Check if Web Share API with files is supported (Android APK, mobile browsers)
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], fileName, { type: 'application/octet-stream' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'Flick Storage Vault File',
+          text: 'Encrypted .flick backup for multi-device sync and offline recovery.',
+          files: [file],
+        });
+        return { method: 'share' };
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') {
+        console.warn('[VaultShare Warn]', e);
+      }
+    }
+  }
+
+  // Fallback to standard anchor download (Desktop / Web / Electron)
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -146,7 +166,8 @@ export function downloadVaultFile(blob: Blob, customName?: string) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return { method: 'download' };
 }
 
 /**

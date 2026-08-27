@@ -44,6 +44,11 @@ export interface Post {
   createdAt: any;
   updatedAt: any;
   likedBy?: string[]; // list of userIds who liked it or client-checked state
+  isSensitive?: boolean;
+  sensitiveReason?: string;
+  sensitiveCategory?: 'spoiler' | 'violence' | 'adult' | 'medical' | 'general' | string;
+  flaggedBy?: string[];
+  flagCount?: number;
 }
 
 export interface DirectChat {

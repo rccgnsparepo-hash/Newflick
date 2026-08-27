@@ -126,6 +126,8 @@ export const InAppArticleReader: React.FC<InAppArticleReaderProps> = ({
       setIsPlayingAudio(false);
     }
 
+    // Instantly populate reader with tailored article data so user immediately sees their specific story
+    setFullContent(newsService.createInstantArticleContent(article));
     setIsLoadingContent(true);
     newsService.recordView(article.id);
 
@@ -141,8 +143,12 @@ export const InAppArticleReader: React.FC<InAppArticleReaderProps> = ({
     newsService.getComments(article.id).then(setComments);
 
     // Fetch full extracted article content (no redirect)
-    newsService.getFullArticleContent(article.articleUrl, article.id).then(data => {
-      setFullContent(data);
+    newsService.getFullArticleContent(article.articleUrl, article.id, article).then(data => {
+      if (data) {
+        setFullContent(data);
+      }
+      setIsLoadingContent(false);
+    }).catch(() => {
       setIsLoadingContent(false);
     });
   }, [article?.id, article?.articleUrl]);

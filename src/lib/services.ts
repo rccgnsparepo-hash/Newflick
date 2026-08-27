@@ -253,6 +253,9 @@ export async function createPost(postData: {
   videoUrl?: string;
   audioUrl?: string;
   mediaType?: 'image' | 'video' | 'audio' | 'none';
+  isSensitive?: boolean;
+  sensitiveReason?: string;
+  sensitiveCategory?: string;
 }): Promise<void> {
   const postId = doc(collection(db, 'posts')).id;
   const path = `posts/${postId}`;
@@ -272,6 +275,9 @@ export async function createPost(postData: {
     if (postData.videoUrl !== undefined) rawData.videoUrl = postData.videoUrl;
     if (postData.audioUrl !== undefined) rawData.audioUrl = postData.audioUrl;
     if (postData.mediaType !== undefined) rawData.mediaType = postData.mediaType;
+    if (postData.isSensitive !== undefined) rawData.isSensitive = postData.isSensitive;
+    if (postData.sensitiveReason !== undefined) rawData.sensitiveReason = postData.sensitiveReason;
+    if (postData.sensitiveCategory !== undefined) rawData.sensitiveCategory = postData.sensitiveCategory;
 
     PostSchema.parse(rawData);
 
@@ -304,6 +310,28 @@ export async function createPost(postData: {
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export async function flagPostAsSensitive(
+  postId: string,
+  userId: string,
+  reason: string,
+  category: string = 'general'
+): Promise<void> {
+  const path = `posts/${postId}`;
+  try {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, {
+      isSensitive: true,
+      sensitiveReason: reason,
+      sensitiveCategory: category,
+      flaggedBy: arrayUnion(userId),
+      flagCount: increment(1),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
@@ -1233,11 +1261,12 @@ export async function addOrUpdateMessageReaction(
     userId: string;
     userName: string;
     emoji: string;
+    encryptedSignal?: string;
   }
 ): Promise<void> {
   const path = `chats/${chatId}/messages/${messageId}/message_reactions/${reaction.userId}`;
   try {
-    const reactionData = {
+    const reactionData: any = {
       id: reaction.userId,
       emoji: reaction.emoji,
       userId: reaction.userId,
@@ -1250,6 +1279,20 @@ export async function addOrUpdateMessageReaction(
 
     const reactionRef = doc(db, 'chats', chatId, 'messages', messageId, 'message_reactions', reaction.userId);
     await setDoc(reactionRef, reactionData, { merge: true });
+
+    // Atomically map reaction to parent message document for instant query resolution
+    try {
+      const msgRef = doc(db, 'chats', chatId, 'messages', messageId);
+      const updateData: any = {
+        [`reactions.${reaction.userId}`]: reaction.emoji
+      };
+      if (reaction.encryptedSignal) {
+        updateData[`encryptedReactions.${reaction.userId}`] = reaction.encryptedSignal;
+      }
+      await updateDoc(msgRef, updateData);
+    } catch (docErr) {
+      console.warn("Message root reaction sync skipped:", docErr);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -1264,6 +1307,17 @@ export async function removeMessageReaction(
   try {
     const reactionRef = doc(db, 'chats', chatId, 'messages', messageId, 'message_reactions', userId);
     await deleteDoc(reactionRef);
+
+    // Atomically remove reaction from parent message document
+    try {
+      const msgRef = doc(db, 'chats', chatId, 'messages', messageId);
+      await updateDoc(msgRef, {
+        [`reactions.${userId}`]: deleteField(),
+        [`encryptedReactions.${userId}`]: deleteField()
+      });
+    } catch (docErr) {
+      console.warn("Message root reaction delete skipped:", docErr);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

@@ -93,6 +93,7 @@ export default function VoiceFirstHomeScreen({
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const [showVaultTransferModal, setShowVaultTransferModal] = useState(false);
+  const [vaultTab, setVaultTab] = useState<'p2p' | 'backup' | 'restore' | 'stats'>('backup');
 
   // Recording engine refs
   const recorderRef = useRef<FlickVoiceRecorder | null>(null);
@@ -379,8 +380,14 @@ export default function VoiceFirstHomeScreen({
       
       {/* NEW DEVICE WELCOME / LOCAL-FIRST ORIENTATION BANNER */}
       <NewDeviceWelcomeBanner
-        onOpenTransfer={() => setShowVaultTransferModal(true)}
-        onOpenRestore={() => setShowVaultTransferModal(true)}
+        onOpenTransfer={() => {
+          setVaultTab('p2p');
+          setShowVaultTransferModal(true);
+        }}
+        onOpenRestore={() => {
+          setVaultTab('restore');
+          setShowVaultTransferModal(true);
+        }}
       />
 
       {/* ========================================================================= */}
@@ -922,6 +929,7 @@ export default function VoiceFirstHomeScreen({
         <DeviceVaultTransferModal
           isOpen={showVaultTransferModal}
           onClose={() => setShowVaultTransferModal(false)}
+          defaultTab={vaultTab}
           onDataRestored={() => loadLocalVoiceData()}
         />
       )}

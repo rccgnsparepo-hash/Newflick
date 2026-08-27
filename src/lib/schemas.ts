@@ -40,7 +40,12 @@ export const PostSchema = z.object({
   mediaType: z.enum(['image', 'video', 'audio', 'none']).optional(),
   likesCount: z.number().nonnegative(),
   createdAt: z.any(),
-  updatedAt: z.any()
+  updatedAt: z.any(),
+  isSensitive: z.boolean().optional(),
+  sensitiveReason: z.string().max(500).optional(),
+  sensitiveCategory: z.string().max(64).optional(),
+  flaggedBy: z.array(z.string()).optional(),
+  flagCount: z.number().optional()
 });
 
 export const DirectChatSchema = z.object({

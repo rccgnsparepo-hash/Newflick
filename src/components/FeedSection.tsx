@@ -25,7 +25,8 @@ import {
   createGroupChat,
   subscribeToUsers,
   createComment,
-  subscribeToComments
+  subscribeToComments,
+  flagPostAsSensitive
 } from '../lib/services';
 import {
   Briefcase, Heart,
@@ -72,8 +73,18 @@ import {
   Radio,
   GripVertical,
   Layers,
-  Move
+  Move,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  Flag,
+  SlidersHorizontal,
+  AlertTriangle
 } from 'lucide-react';
+import {
+  isPostMediaBlurRequired,
+  detectSensitiveContent
+} from '../lib/sensitiveMediaHelper';
 import { compressImage } from '../lib/mediaHelper';
 import { playLikeSound, playGlitchClickSound, playReceiveMessageSound } from '../lib/sounds';
 import NodeClusterView from './NodeClusterView';
@@ -232,6 +243,28 @@ export default function FeedSection({
   const [postVideo, setPostVideo] = useState('');
   const [postPollOpts, setPostPollOpts] = useState<string[]>(['Option 1', 'Option 2']);
   const [postAnon, setPostAnon] = useState(false);
+  const [postIsSensitive, setPostIsSensitive] = useState(false);
+  const [postSensitiveCategory, setPostSensitiveCategory] = useState<'nsfw' | 'violence' | 'spoiler' | 'harassment' | 'other'>('spoiler');
+  const [postSensitiveReason, setPostSensitiveReason] = useState('');
+
+  // Sensitive Media Filter Preferences & In-Session Revealing
+  const [revealedSensitivePosts, setRevealedSensitivePosts] = useState<Record<string, boolean>>({});
+  const [feedFilterPreference, setFeedFilterPreference] = useState<'filter_sensitive' | 'always_blur' | 'always_show'>(() => {
+    try {
+      const saved = localStorage.getItem('flick_feed_sensitive_pref');
+      if (saved === 'filter_sensitive' || saved === 'always_blur' || saved === 'always_show') {
+        return saved;
+      }
+    } catch {}
+    return 'filter_sensitive';
+  });
+
+  // Flag post modal state
+  const [showFlagModal, setShowFlagModal] = useState(false);
+  const [flagTargetPost, setFlagTargetPost] = useState<Post | null>(null);
+  const [flagCategory, setFlagCategory] = useState<'nsfw' | 'violence' | 'spoiler' | 'harassment' | 'other'>('spoiler');
+  const [flagReason, setFlagReason] = useState('');
+  const [isSubmittingFlag, setIsSubmittingFlag] = useState(false);
 
   // Drag & Drop Layout customization and Pinned Posts state
   const DEFAULT_FEED_SECTIONS = [
@@ -759,7 +792,10 @@ export default function FeedSection({
         content: postContent.trim(),
         imageUrl: postImage.trim() || undefined,
         videoUrl: postVideo.trim() || undefined,
-        mediaType: postVideo.trim() ? 'video' : postImage.trim() ? 'image' : 'none'
+        mediaType: postVideo.trim() ? 'video' : postImage.trim() ? 'image' : 'none',
+        isSensitive: postIsSensitive,
+        sensitiveCategory: postIsSensitive ? postSensitiveCategory : undefined,
+        sensitiveReason: postIsSensitive ? postSensitiveReason.trim() : undefined
       });
 
       // Phase 6: FINALIZING
@@ -773,6 +809,9 @@ export default function FeedSection({
       setPostImage('');
       setPostVideo('');
       setPostAnon(false);
+      setPostIsSensitive(false);
+      setPostSensitiveReason('');
+      setPostSensitiveCategory('spoiler');
       setShowPostCreator(false);
       showBrutalistToast('SUCCESS ✓', 'Packet securely deployed to global feeds!', 'success', undefined, toastId);
     } catch (err: any) {
@@ -1357,11 +1396,11 @@ export default function FeedSection({
             ) : (
               <div className="space-y-4">
                 {/* Reorder / Customization Control Bar */}
-                <div className="flex items-center justify-between px-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
                   <div className="flex items-center space-x-2">
                     <span className="text-[9px] font-mono uppercase text-zinc-500 font-black tracking-wider flex items-center gap-1">
                       <Layers className="w-3 h-3 text-[var(--neon-green)]" />
-                      Dynamic Feed Layout
+                      Dynamic Feed
                     </span>
                     {pinnedPostIds.length > 0 && (
                       <span className="text-[8.5px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
@@ -1369,20 +1408,43 @@ export default function FeedSection({
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      playGlitchClickSound();
-                      setIsCustomizingFeedLayout(!isCustomizingFeedLayout);
-                    }}
-                    className={`px-2.5 py-1 text-[8.5px] font-mono uppercase font-black rounded-lg border transition flex items-center space-x-1.5 cursor-pointer ${
-                      isCustomizingFeedLayout
-                        ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] shadow-[0_0_12px_rgba(0,255,102,0.3)]'
-                        : 'bg-[var(--color-surface)] text-zinc-400 border-[var(--neon-green-border)] hover:text-[var(--color-text)]'
-                    }`}
-                  >
-                    <Move className="w-2.5 h-2.5" />
-                    <span>{isCustomizingFeedLayout ? 'Done Customizing' : 'Customize Order'}</span>
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {/* Sensitive Media Filter Preference Toggle */}
+                    <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--neon-green-border)] px-2 py-1 rounded-lg text-[8.5px] font-mono text-zinc-400">
+                      <ShieldAlert className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span className="hidden sm:inline uppercase text-zinc-500 font-bold">Filter:</span>
+                      <select
+                        value={feedFilterPreference}
+                        onChange={(e) => {
+                          const val = e.target.value as any;
+                          setFeedFilterPreference(val);
+                          localStorage.setItem('flick_feed_sensitive_pref', val);
+                          showBrutalistToast('FILTER UPDATED', `Sensitive media filter: ${val.replace('_', ' ').toUpperCase()}`, 'info');
+                        }}
+                        className="bg-transparent text-[var(--color-text)] font-mono font-bold focus:outline-none cursor-pointer"
+                      >
+                        <option value="filter_sensitive" className="bg-zinc-900 text-zinc-200">🛡️ Auto-Shield</option>
+                        <option value="always_blur" className="bg-zinc-900 text-zinc-200">🔒 Blur All Media</option>
+                        <option value="always_show" className="bg-zinc-900 text-zinc-200">🔓 Unfiltered</option>
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        playGlitchClickSound();
+                        setIsCustomizingFeedLayout(!isCustomizingFeedLayout);
+                      }}
+                      className={`px-2.5 py-1 text-[8.5px] font-mono uppercase font-black rounded-lg border transition flex items-center space-x-1.5 cursor-pointer ${
+                        isCustomizingFeedLayout
+                          ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] shadow-[0_0_12px_rgba(0,255,102,0.3)]'
+                          : 'bg-[var(--color-surface)] text-zinc-400 border-[var(--neon-green-border)] hover:text-[var(--color-text)]'
+                      }`}
+                    >
+                      <Move className="w-2.5 h-2.5" />
+                      <span>{isCustomizingFeedLayout ? 'Done' : 'Reorder'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Customization Drawer when active */}
@@ -1976,101 +2038,197 @@ export default function FeedSection({
                           </div>
                         )}
 
-                        {/* Media displays */}
-                        {post.imageUrl && (
-                          <div 
-                            onClick={() => setZoomImg(post.imageUrl)}
-                            className="rounded-lg overflow-hidden border border-zinc-950 cursor-zoom-in max-h-80"
-                          >
-                            <LazyImage 
-                              src={post.imageUrl} 
-                              alt="Campus feed attachment" 
-                              className="w-full h-full object-cover hover:opacity-95 transition"
-                            />
-                          </div>
-                        )}
+                        {/* Media displays (Image / Video) with Sensitive Media Filter & Blur Handling */}
+                        {(() => {
+                          const hasImage = Boolean(post.imageUrl);
+                          const hasVideo = Boolean(post.videoUrl);
+                          if (!hasImage && !hasVideo) return null;
 
-                        {/* Deepened Video / Reel / Instagram Playback Handler */}
-                        {post.videoUrl && (() => {
-                          const url = post.videoUrl.trim();
-                          const isInstagram = url.includes('instagram.com');
-                          const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
-                          
-                          if (isInstagram) {
-                            // Extract code from Instagram url (e.g., instagram.com/reel/C8a123bc/ -> /reel/C8a123bc/embed)
-                            const igMatch = url.match(/instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
-                            const igEmbedUrl = igMatch ? `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed/captioned/` : `${url}/embed/`;
-                            
-                            return (
-                              <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-white relative w-full aspect-[4/5] max-h-[500px] shadow-lg flex flex-col">
-                                <div className="bg-zinc-50 border-b border-zinc-100 px-3 py-2 flex items-center justify-between text-[8px] font-mono font-bold text-zinc-500 uppercase">
-                                  <span>📷 INSTAGRAM REEL ATTACHMENT</span>
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                    OPEN IN INSTAGRAM →
-                                  </a>
+                          const isBlurRequired = isPostMediaBlurRequired(post, revealedSensitivePosts, feedFilterPreference);
+                          const isPostFlaggedOrSensitive = post.isSensitive || Boolean(post.flaggedBy && post.flaggedBy.length > 0);
+
+                          return (
+                            <div className="relative rounded-xl overflow-hidden border border-zinc-900 bg-black/40">
+                              {/* Sensitive Media Warning Overlay */}
+                              {isBlurRequired ? (
+                                <div className="relative overflow-hidden min-h-[220px] max-h-[360px] flex items-center justify-center bg-zinc-950/90 p-4">
+                                  {/* Blurred Background Preview */}
+                                  <div className="absolute inset-0 overflow-hidden filter blur-2xl scale-110 brightness-40 contrast-125 opacity-70 pointer-events-none select-none">
+                                    {post.imageUrl ? (
+                                      <img src={post.imageUrl} alt="Sensitive background" className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full bg-gradient-to-tr from-zinc-900 via-amber-950/40 to-zinc-900" />
+                                    )}
+                                  </div>
+
+                                  {/* Brutalist Warning Card */}
+                                  <div className="relative z-10 max-w-sm w-full p-5 rounded-2xl bg-zinc-900/90 border border-amber-500/40 shadow-2xl flex flex-col items-center text-center space-y-3 backdrop-blur-md">
+                                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 animate-pulse">
+                                      <EyeOff className="w-5 h-5" />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <span className="text-[10px] font-mono font-black uppercase text-amber-400 tracking-wider">
+                                          ⚠️ SENSITIVE MEDIA FILTER
+                                        </span>
+                                        <span className="text-[8px] font-mono font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded uppercase">
+                                          {post.sensitiveCategory ? post.sensitiveCategory.toUpperCase() : 'FLAGGED'}
+                                        </span>
+                                      </div>
+                                      <p className="text-[11px] text-zinc-300 font-mono leading-tight">
+                                        {post.sensitiveReason ? `"${post.sensitiveReason}"` : 'This media was marked or flagged as sensitive content.'}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 w-full pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          playGlitchClickSound();
+                                          triggerVibration('medium');
+                                          setRevealedSensitivePosts(prev => ({ ...prev, [post.id]: true }));
+                                        }}
+                                        className="flex-1 py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-[10px] font-mono uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        Click to Reveal Content
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          playGlitchClickSound();
+                                          setFlagTargetPost(post);
+                                          setShowFlagModal(true);
+                                        }}
+                                        className="p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition"
+                                        title="Flag / Report this post"
+                                      >
+                                        <Flag className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
-                                <iframe
-                                  src={igEmbedUrl}
-                                  className="w-full h-full flex-1"
-                                  allowFullScreen={true}
-                                  frameBorder="0"
-                                  scrolling="no"
-                                  title="Instagram Reel"
-                                ></iframe>
-                              </div>
-                            );
-                          } else if (isYoutube) {
-                            // Extract video ID from YouTube
-                            let ytId = '';
-                            if (url.includes('youtu.be/')) {
-                              ytId = url.split('youtu.be/')[1]?.split('?')[0] || '';
-                            } else if (url.includes('v=')) {
-                              ytId = url.split('v=')[1]?.split('&')[0] || '';
-                            } else if (url.includes('embed/')) {
-                              ytId = url.split('embed/')[1]?.split('?')[0] || '';
-                            }
-                            
-                            const ytEmbedUrl = `https://www.youtube.com/embed/${ytId}?autoplay=0&mute=0&rel=0`;
-                            
-                            return (
-                              <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] relative w-full aspect-video shadow-lg">
-                                <iframe
-                                  src={ytEmbedUrl}
-                                  className="w-full h-full"
-                                  allowFullScreen={true}
-                                  frameBorder="0"
-                                  title="YouTube Video"
-                                ></iframe>
-                              </div>
-                            );
-                          } else {
-                            // Fallback to standard premium looping video player for raw MP4/WebM files
-                            return (
-                              <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] relative max-h-96 flex items-center justify-center shadow-lg">
-                                <video
-                                  src={post.videoUrl}
-                                  autoPlay
-                                  loop
-                                  muted={reelsMuted}
-                                  playsInline
-                                  className="w-full h-full object-cover max-h-96"
-                                />
-                                {/* Controls */}
-                                <div className="absolute bottom-3 right-3 flex space-x-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      playGlitchClickSound();
-                                      setReelsMuted(!reelsMuted);
-                                    }}
-                                    className="p-2 bg-[var(--color-surface)]/70 hover:bg-[var(--color-surface)] text-[var(--color-text)] rounded-full transition shadow"
-                                  >
-                                    {reelsMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-[var(--neon-green)]" />}
-                                  </button>
+                              ) : (
+                                /* Revealed / Clear Media Render */
+                                <div className="relative group/media">
+                                  {/* Top-Right Sensitive Re-hide Button */}
+                                  {isPostFlaggedOrSensitive && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        playGlitchClickSound();
+                                        triggerVibration('light');
+                                        setRevealedSensitivePosts(prev => ({ ...prev, [post.id]: false }));
+                                      }}
+                                      className="absolute top-2.5 right-2.5 z-30 px-2 py-1 rounded-lg bg-black/80 hover:bg-black text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm transition shadow-md cursor-pointer"
+                                      title="Hide sensitive media again"
+                                    >
+                                      <EyeOff className="w-3 h-3" />
+                                      Re-blur Media
+                                    </button>
+                                  )}
+
+                                  {/* Image display */}
+                                  {post.imageUrl && (
+                                    <div 
+                                      onClick={() => setZoomImg(post.imageUrl)}
+                                      className="rounded-lg overflow-hidden border border-zinc-950 cursor-zoom-in max-h-80"
+                                    >
+                                      <LazyImage 
+                                        src={post.imageUrl} 
+                                        alt="Campus feed attachment" 
+                                        className="w-full h-full object-cover hover:opacity-95 transition"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Deepened Video / Reel / Instagram Playback Handler */}
+                                  {post.videoUrl && (() => {
+                                    const url = post.videoUrl.trim();
+                                    const isInstagram = url.includes('instagram.com');
+                                    const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
+                                    
+                                    if (isInstagram) {
+                                      const igMatch = url.match(/instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
+                                      const igEmbedUrl = igMatch ? `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed/captioned/` : `${url}/embed/`;
+                                      
+                                      return (
+                                        <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-white relative w-full aspect-[4/5] max-h-[500px] shadow-lg flex flex-col">
+                                          <div className="bg-zinc-50 border-b border-zinc-100 px-3 py-2 flex items-center justify-between text-[8px] font-mono font-bold text-zinc-500 uppercase">
+                                            <span>📷 INSTAGRAM REEL ATTACHMENT</span>
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                              OPEN IN INSTAGRAM →
+                                            </a>
+                                          </div>
+                                          <iframe
+                                            src={igEmbedUrl}
+                                            className="w-full h-full flex-1"
+                                            allowFullScreen={true}
+                                            frameBorder="0"
+                                            scrolling="no"
+                                            title="Instagram Reel"
+                                          ></iframe>
+                                        </div>
+                                      );
+                                    } else if (isYoutube) {
+                                      let ytId = '';
+                                      if (url.includes('youtu.be/')) {
+                                        ytId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+                                      } else if (url.includes('v=')) {
+                                        ytId = url.split('v=')[1]?.split('&')[0] || '';
+                                      } else if (url.includes('embed/')) {
+                                        ytId = url.split('embed/')[1]?.split('?')[0] || '';
+                                      }
+                                      
+                                      const ytEmbedUrl = `https://www.youtube.com/embed/${ytId}?autoplay=0&mute=0&rel=0`;
+                                      
+                                      return (
+                                        <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] relative w-full aspect-video shadow-lg">
+                                          <iframe
+                                            src={ytEmbedUrl}
+                                            className="w-full h-full"
+                                            allowFullScreen={true}
+                                            frameBorder="0"
+                                            title="YouTube Video"
+                                          ></iframe>
+                                        </div>
+                                      );
+                                    } else {
+                                      return (
+                                        <div className="rounded-xl overflow-hidden border border-[var(--neon-green-border)] bg-[var(--color-surface)] relative max-h-96 flex items-center justify-center shadow-lg">
+                                          <video
+                                            src={post.videoUrl}
+                                            autoPlay
+                                            loop
+                                            muted={reelsMuted}
+                                            playsInline
+                                            className="w-full h-full object-cover max-h-96"
+                                          />
+                                          <div className="absolute bottom-3 right-3 flex space-x-2">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                playGlitchClickSound();
+                                                setReelsMuted(!reelsMuted);
+                                              }}
+                                              className="p-2 bg-[var(--color-surface)]/70 hover:bg-[var(--color-surface)] text-[var(--color-text)] rounded-full transition shadow"
+                                            >
+                                              {reelsMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-[var(--neon-green)]" />}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  })()}
                                 </div>
-                              </div>
-                            );
-                          }
+                              )}
+                            </div>
+                          );
                         })()}
                       </div>
 
@@ -2106,6 +2264,22 @@ export default function FeedSection({
                             title="Share Link"
                           >
                             <Share2 className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              playGlitchClickSound();
+                              setFlagTargetPost(post);
+                              setShowFlagModal(true);
+                            }}
+                            className={`transition cursor-pointer p-1 rounded-lg ${
+                              post.flaggedBy?.includes(profile.uid)
+                                ? 'text-amber-400 bg-amber-950/30'
+                                : 'hover:text-amber-400 text-zinc-500'
+                            }`}
+                            title={post.flaggedBy?.includes(profile.uid) ? "You flagged this post" : "Flag sensitive content / spoiler"}
+                          >
+                            <Flag className={`w-4 h-4 ${post.flaggedBy?.includes(profile.uid) ? 'fill-current' : ''}`} />
                           </button>
 
                           <button
@@ -3141,6 +3315,98 @@ export default function FeedSection({
                           Supports full embedded in-feed playback for Instagram reels, YouTube videos, and direct video clips.
                         </p>
                       </div>
+
+                      {/* Auto-detection & Sensitive Content Shield */}
+                      {(() => {
+                        const autoDetected = detectSensitiveContent(postContent);
+                        return (
+                          <div className="space-y-3 pt-2 border-t border-[var(--neon-green-border)]/50">
+                            {autoDetected.isSensitive && !postIsSensitive && (
+                              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5">
+                                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                <div className="space-y-1 text-left flex-1">
+                                  <p className="text-[9px] font-mono font-bold text-amber-400 uppercase">
+                                    Sensitive Content Advisory Detected
+                                  </p>
+                                  <p className="text-[8px] font-mono text-zinc-400">
+                                    Keywords: <span className="text-amber-300">{autoDetected.matchedKeywords.join(', ')}</span>. We recommend flagging this post to protect sensitive feeds.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPostIsSensitive(true);
+                                      if (autoDetected.category) setPostSensitiveCategory(autoDetected.category as any);
+                                      if (autoDetected.reason) setPostSensitiveReason(autoDetected.reason);
+                                    }}
+                                    className="text-[8px] font-mono font-black text-amber-400 hover:underline uppercase pt-0.5 block"
+                                  >
+                                    [ Click to auto-apply sensitive filter ]
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between p-3 bg-[var(--color-surface)] border border-[var(--neon-green-border)] rounded-xl">
+                              <div className="flex items-center gap-2.5">
+                                <ShieldAlert className={`w-4 h-4 ${postIsSensitive ? 'text-amber-400' : 'text-zinc-500'}`} />
+                                <div>
+                                  <span className="block text-[9px] font-mono font-black text-zinc-300 uppercase">
+                                    Mark as Sensitive / Spoiler
+                                  </span>
+                                  <span className="block text-[7.5px] font-mono text-zinc-500">
+                                    Applies CSS blur to attached media until explicitly clicked.
+                                  </span>
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={postIsSensitive}
+                                onChange={(e) => setPostIsSensitive(e.target.checked)}
+                                className="w-4 h-4 accent-amber-400 cursor-pointer"
+                              />
+                            </div>
+
+                            {postIsSensitive && (
+                              <div className="space-y-2 p-3 bg-zinc-900/60 border border-amber-500/30 rounded-xl animate-fade-in text-left">
+                                <div className="space-y-1">
+                                  <span className="block text-[8px] font-mono text-zinc-400 uppercase font-bold">
+                                    Category:
+                                  </span>
+                                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                                    {(['spoiler', 'nsfw', 'violence', 'harassment', 'other'] as const).map((cat) => (
+                                      <button
+                                        type="button"
+                                        key={cat}
+                                        onClick={() => setPostSensitiveCategory(cat)}
+                                        className={`py-1.5 px-2 rounded-lg text-[8.5px] font-mono font-bold uppercase transition ${
+                                          postSensitiveCategory === cat
+                                            ? 'bg-amber-400 text-black shadow-sm'
+                                            : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-700'
+                                        }`}
+                                      >
+                                        {cat}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1 pt-1">
+                                  <span className="block text-[8px] font-mono text-zinc-400 uppercase font-bold">
+                                    Optional Warning Label / Reason:
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={postSensitiveReason}
+                                    onChange={(e) => setPostSensitiveReason(e.target.value)}
+                                    placeholder="e.g. Exam spoiler, flashing lights, intense imagery..."
+                                    className="w-full bg-[var(--color-surface)] border border-zinc-700 rounded-lg p-2 text-[10px] font-mono text-zinc-200 focus:outline-none focus:border-amber-400"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </>
                   )}
                 </div>
@@ -3361,6 +3627,131 @@ export default function FeedSection({
                 </button>
               </form>
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* =================================== SENSITIVE MEDIA FLAG MODAL =================================== */}
+      <AnimatePresence>
+        {showFlagModal && flagTargetPost && (
+          <div
+            data-overlay="true"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[99999] p-4 pointer-events-auto"
+            onClick={() => !isSubmittingFlag && setShowFlagModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-zinc-950 border-2 border-amber-500/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col space-y-4 p-5"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-mono font-black uppercase text-amber-400">
+                      Flag Sensitive Content
+                    </h3>
+                    <p className="text-[8px] font-mono text-zinc-500 uppercase">
+                      Peer Moderation & Protection Shield
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSubmittingFlag}
+                  onClick={() => setShowFlagModal(false)}
+                  className="text-zinc-500 hover:text-white transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[11px] text-zinc-300 font-sans leading-relaxed">
+                  Flagging this post applies an instant client-side blur for you and helps shield sensitive peer feeds across campus.
+                </p>
+
+                <div className="space-y-1.5">
+                  <label className="text-[8.5px] font-mono font-bold text-zinc-400 uppercase">
+                    Violation / Content Category:
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'spoiler', label: '🍿 Spoiler / Exam Leak' },
+                      { id: 'nsfw', label: '🔞 Adult / NSFW' },
+                      { id: 'violence', label: '⚠️ Violence / Gore' },
+                      { id: 'harassment', label: '🚫 Bullying / Hate' },
+                      { id: 'other', label: '⚡ Other Sensitive' }
+                    ].map(cat => (
+                      <button
+                        type="button"
+                        key={cat.id}
+                        onClick={() => setFlagCategory(cat.id as any)}
+                        className={`p-2.5 rounded-xl border text-left text-[9.5px] font-mono font-bold transition flex items-center justify-between ${
+                          flagCategory === cat.id
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-md'
+                            : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+                        }`}
+                      >
+                        <span>{cat.label}</span>
+                        {flagCategory === cat.id && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[8.5px] font-mono font-bold text-zinc-400 uppercase">
+                    Additional Details (Optional):
+                  </label>
+                  <textarea
+                    value={flagReason}
+                    onChange={(e) => setFlagReason(e.target.value)}
+                    placeholder="Provide context on why this media requires blurred filtering..."
+                    rows={2}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-[10.5px] font-mono text-zinc-200 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 pt-2 border-t border-zinc-850">
+                <button
+                  type="button"
+                  disabled={isSubmittingFlag}
+                  onClick={() => setShowFlagModal(false)}
+                  className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-mono text-[10px] uppercase font-black rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingFlag}
+                  onClick={async () => {
+                    if (!flagTargetPost) return;
+                    setIsSubmittingFlag(true);
+                    try {
+                      await flagPostAsSensitive(flagTargetPost.id, profile.uid, flagCategory, flagReason);
+                      // Also immediately blur in local view
+                      setRevealedSensitivePosts(prev => ({ ...prev, [flagTargetPost.id]: false }));
+                      showBrutalistToast('FLAG SUBMITTED', 'Post flagged and media blurred in your feed.', 'success');
+                      setShowFlagModal(false);
+                      setFlagReason('');
+                    } catch (err: any) {
+                      showBrutalistToast('FLAG FAILED', 'Could not flag post: ' + sanitizeErrorMessage(err), 'error');
+                    } finally {
+                      setIsSubmittingFlag(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-black font-mono text-[10px] uppercase font-black rounded-xl transition shadow-[0_0_15px_rgba(251,191,36,0.3)] disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmittingFlag ? 'Flagging...' : '[ SUBMIT REPORT & BLUR ]'}
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
