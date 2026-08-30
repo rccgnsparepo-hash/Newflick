@@ -145,6 +145,35 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of broadcast dispatch" }
       },
       "required": ["title", "category", "impactLevel", "summary", "body", "source", "createdAt"]
+    },
+    "Post": {
+      "title": "Social Feed Post",
+      "description": "Feed post with media attachments, text content, and interaction counters.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique post identifier" },
+        "userId": { "type": "string", "description": "Author user ID" },
+        "userDisplayName": { "type": "string", "description": "Author display name" },
+        "content": { "type": "string", "description": "Post text content" },
+        "mediaUrl": { "type": "string", "description": "Optional attached media URL" },
+        "likesCount": { "type": "number", "description": "Total like count" },
+        "commentsCount": { "type": "number", "description": "Total comment count" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Post creation timestamp" }
+      },
+      "required": ["id", "userId", "content", "createdAt"]
+    },
+    "Story": {
+      "title": "Ephemeral Story",
+      "description": "Short-lived media story snippet.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique story identifier" },
+        "userId": { "type": "string", "description": "Author user ID" },
+        "mediaUrl": { "type": "string", "description": "Story media asset URL" },
+        "caption": { "type": "string", "description": "Story caption text" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Story timestamp" }
+      },
+      "required": ["id", "userId", "mediaUrl", "createdAt"]
     }
   },
   "firestore": {
@@ -155,6 +184,14 @@
     "/users/{userId}/private/info": {
       "schema": "PrivateInfo",
       "description": "Isolated private user information."
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Public social feed posts and broadcasts."
+    },
+    "/stories/{storyId}": {
+      "schema": "Story",
+      "description": "Ephemeral stories and media vignettes."
     },
     "/chats/{chatId}": {
       "schema": "Chat",

@@ -5,7 +5,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 
 // CRITICAL: Firestore custom Database ID retrieved from firebase-applet-config.json
-const FIRESTORE_DATABASE_ID = "ai-studio-3f0e07d3-583e-41cd-9f39-778730aa16a2";
+const FIRESTORE_DATABASE_ID = process.env.FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2";
 
 // Set production-grade v2 Global Options to minimize latency and eliminate cold starts
 setGlobalOptions({

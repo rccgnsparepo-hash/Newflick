@@ -106,7 +106,7 @@ export async function generateEncryptedChatLogsJson(
     summary: {
       totalChats: chats.length,
       totalMessages: messages.length,
-      totalEncryptedItems: messages.filter(m => m.encryptedText).length
+      totalEncryptedItems: messages.filter(m => Boolean((m as any).encryptedText || m.text)).length
     },
     chats,
     messages

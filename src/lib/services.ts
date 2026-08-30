@@ -16,7 +16,8 @@ import {
   writeBatch,
   arrayUnion,
   arrayRemove,
-  increment
+  increment,
+  deleteField
 } from 'firebase/firestore';
 import { db, OperationType, handleFirestoreError } from './firebase';
 import { UserProfile, Post, DirectChat, ChatMessage, InAppNotification, MessageReaction, Story, CallLogItem } from '../types';

@@ -72,6 +72,26 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // Ephemeral Stories (/stories/{storyId})
+    match /stories/{storyId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || request.auth.uid == 'admin');
+      match /{allSubpaths=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // Posts & Social Feed (/posts/{postId})
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || request.auth.uid == 'admin');
+      match /{allSubpaths=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
     // Feedbacks (/feedbacks/{feedbackId})
     match /feedbacks/{feedbackId} {
       allow read, write: if isSignedIn();

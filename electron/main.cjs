@@ -191,13 +191,17 @@ function setupCrashRecovery(win) {
 function createWindow() {
   const windowState = getSavedWindowState();
 
+  const defaultIconPath = fs.existsSync(path.join(__dirname, '../dist/icon.png'))
+    ? path.join(__dirname, '../dist/icon.png')
+    : path.join(__dirname, '../public/icon.png');
+
   mainWindow = new BrowserWindow({
     width: windowState.width,
     height: windowState.height,
     x: windowState.x,
     y: windowState.y,
     show: false, // Don't show until ready
-    icon: path.join(__dirname, '../dist/icon.png'),
+    icon: defaultIconPath,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -214,7 +218,12 @@ function createWindow() {
   // Create & mount the tailored application menu
   createApplicationMenu();
   
-  mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  const distHtml = path.join(__dirname, '../dist/index.html');
+  if (fs.existsSync(distHtml)) {
+    mainWindow.loadFile(distHtml);
+  } else {
+    mainWindow.loadURL('http://localhost:3000');
+  }
 
   mainWindow.once('ready-to-show', () => {
     // Artificial delay for smooth splash screen viewing
@@ -306,7 +315,9 @@ function createWindow() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, '../dist/icon.png');
+  const iconPath = fs.existsSync(path.join(__dirname, '../dist/icon.png'))
+    ? path.join(__dirname, '../dist/icon.png')
+    : path.join(__dirname, '../public/icon.png');
   // Check if icon exists, otherwise fail gracefully
   if (!fs.existsSync(iconPath)) {
     console.warn('Tray icon file missing, skipping tray instantiation.');
@@ -372,7 +383,9 @@ function showAboutDialog() {
     type: 'info',
     message: 'Flick',
     detail: 'Version: ' + app.getVersion() + '\nCompany: Faratech\n\nFlick is the secure, end-to-end encrypted communication and social platform.\n\nUpcoming Features:\n- Multi-device syncing\n- Voice/Video Rooms\n- Decentralized File Sharing',
-    icon: path.join(__dirname, '../dist/icon.png'),
+    icon: fs.existsSync(path.join(__dirname, '../dist/icon.png'))
+      ? path.join(__dirname, '../dist/icon.png')
+      : path.join(__dirname, '../public/icon.png'),
     buttons: ['OK', 'Website']
   }).then(result => {
     if (result.response === 1) {

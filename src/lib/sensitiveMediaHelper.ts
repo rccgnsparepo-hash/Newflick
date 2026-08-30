@@ -32,6 +32,7 @@ export interface SensitiveDetectionResult {
   reason?: string;
   category?: 'spoiler' | 'violence' | 'adult' | 'medical' | 'general';
   confidence: number;
+  matchedKeywords: string[];
 }
 
 /**
@@ -39,29 +40,34 @@ export interface SensitiveDetectionResult {
  */
 export function detectSensitiveContent(text: string = ''): SensitiveDetectionResult {
   if (!text) {
-    return { isSensitive: false, confidence: 0 };
+    return { isSensitive: false, confidence: 0, matchedKeywords: [] };
   }
 
   const normalized = text.toLowerCase();
-  
+  const matchedKeywords: string[] = [];
+  let detectedCategory: 'spoiler' | 'violence' | 'adult' | 'medical' | 'general' = 'general';
+
   for (const kw of SENSITIVE_KEYWORDS) {
     if (normalized.includes(kw)) {
-      let category: 'spoiler' | 'violence' | 'adult' | 'medical' | 'general' = 'general';
-      if (kw.includes('spoiler')) category = 'spoiler';
-      else if (kw.includes('violence') || kw.includes('gore') || kw.includes('blood')) category = 'violence';
-      else if (kw.includes('18+') || kw.includes('adult') || kw.includes('nsfw')) category = 'adult';
-      else if (kw.includes('injury') || kw.includes('accident')) category = 'medical';
-
-      return {
-        isSensitive: true,
-        reason: `Matched sensitive keyword filter: [${kw.toUpperCase()}]`,
-        category,
-        confidence: 0.95
-      };
+      matchedKeywords.push(kw.toUpperCase());
+      if (kw.includes('spoiler')) detectedCategory = 'spoiler';
+      else if (kw.includes('violence') || kw.includes('gore') || kw.includes('blood')) detectedCategory = 'violence';
+      else if (kw.includes('18+') || kw.includes('adult') || kw.includes('nsfw')) detectedCategory = 'adult';
+      else if (kw.includes('injury') || kw.includes('accident')) detectedCategory = 'medical';
     }
   }
 
-  return { isSensitive: false, confidence: 0 };
+  if (matchedKeywords.length > 0) {
+    return {
+      isSensitive: true,
+      reason: `Matched sensitive keyword filter: [${matchedKeywords.join(', ')}]`,
+      category: detectedCategory,
+      confidence: 0.95,
+      matchedKeywords
+    };
+  }
+
+  return { isSensitive: false, confidence: 0, matchedKeywords: [] };
 }
 
 /**

@@ -97,6 +97,12 @@ async function startServer() {
   });
 
   // Serve dynamic bootstrap configuration to clients (Web, PWA, Electron) 
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", service: "Flick Secure Conduit", uptime: process.uptime() });
+  });
+
+  // Dynamic Bootstrap Configuration API for Secure Client Injection,
   // replacing VITE_* environment variables.
   app.get("/api/bootstrap", (req, res) => {
     // Only return public safe configuration. DO NOT return admin secrets.
@@ -2305,7 +2311,7 @@ YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
 }`;
 
       const generateWithRetryAndFallback = async (prompt: string): Promise<any> => {
-        const models = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+        const models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
         let lastError: any = null;
 
         // Attempt 1: Try with Google Search Grounding first (WITHOUT responseMimeType: "application/json" as they are mutually exclusive)

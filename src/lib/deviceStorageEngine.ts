@@ -470,6 +470,75 @@ export async function getDeviceStorageStats(): Promise<DeviceStorageStats> {
 }
 
 /**
+ * Retrieve all local chats / conversations
+ */
+export const getAllLocalChats = getAllLocalConversations;
+
+/**
+ * Retrieve all stored local messages across all conversations
+ */
+export async function getAllLocalMessages(): Promise<LocalChatMessage[]> {
+  try {
+    const db = await getDeviceVaultDB();
+    const all = await db.getAll('messages');
+    return all.sort((a, b) => a.timestamp - b.timestamp);
+  } catch (e) {
+    console.warn('[DeviceStorage] getAllLocalMessages error:', e);
+    return [];
+  }
+}
+
+/**
+ * Ingest / restore a full vault archive into IndexedDB
+ */
+export async function importVaultArchive(
+  archive: {
+    chats?: any[];
+    conversations?: any[];
+    messages?: any[];
+    media?: any[];
+    mediaBlobs?: any[];
+    voiceNotes?: any[];
+    voiceMemories?: any[];
+  },
+  strategy: 'merge' | 'replace' = 'merge'
+): Promise<void> {
+  const db = await getDeviceVaultDB();
+  const tx = db.transaction(['conversations', 'messages', 'media_blobs', 'voice_memories'], 'readwrite');
+
+  if (strategy === 'replace') {
+    await Promise.all([
+      tx.objectStore('conversations').clear(),
+      tx.objectStore('messages').clear(),
+      tx.objectStore('media_blobs').clear(),
+      tx.objectStore('voice_memories').clear(),
+    ]);
+  }
+
+  const chatsToInsert = archive.chats || archive.conversations || [];
+  for (const c of chatsToInsert) {
+    await tx.objectStore('conversations').put(c);
+  }
+
+  const msgsToInsert = archive.messages || [];
+  for (const m of msgsToInsert) {
+    await tx.objectStore('messages').put(m);
+  }
+
+  const mediaToInsert = archive.media || archive.mediaBlobs || [];
+  for (const b of mediaToInsert) {
+    await tx.objectStore('media_blobs').put(b);
+  }
+
+  const voicesToInsert = archive.voiceNotes || archive.voiceMemories || [];
+  for (const v of voicesToInsert) {
+    await tx.objectStore('voice_memories').put(v);
+  }
+
+  await tx.done;
+}
+
+/**
  * Completely wipe local storage on explicit user request
  */
 export async function wipeAllLocalDeviceData(): Promise<void> {
