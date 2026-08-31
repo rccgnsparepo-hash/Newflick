@@ -174,6 +174,23 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Story timestamp" }
       },
       "required": ["id", "userId", "mediaUrl", "createdAt"]
+    },
+    "DeviceAuthorization": {
+      "title": "Device Login Authorization Request",
+      "description": "Multi-device account sync lock authorization request and pairing handshake.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique auth request identifier" },
+        "userId": { "type": "string", "description": "Target account user ID" },
+        "deviceId": { "type": "string", "description": "Requesting client device ID" },
+        "deviceName": { "type": "string", "description": "Requesting device name" },
+        "deviceType": { "type": "string", "enum": ["desktop", "mobile", "web"], "description": "Client device form factor" },
+        "verificationCode": { "type": "string", "description": "6-digit authorization PIN code" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "expired"], "description": "Request status" },
+        "syncPin": { "type": "string", "description": "Vault relay synchronization PIN" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Request timestamp" }
+      },
+      "required": ["id", "userId", "deviceId", "verificationCode", "status", "syncPin", "createdAt"]
     }
   },
   "firestore": {
@@ -192,6 +209,10 @@
     "/stories/{storyId}": {
       "schema": "Story",
       "description": "Ephemeral stories and media vignettes."
+    },
+    "/device_authorizations/{authId}": {
+      "schema": "DeviceAuthorization",
+      "description": "Multi-device sign-in approval requests and pairing locks."
     },
     "/chats/{chatId}": {
       "schema": "Chat",

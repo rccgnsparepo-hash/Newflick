@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, Laptop, Smartphone, Globe, LogOut, Key, Lock, RefreshCw, History } from 'lucide-react';
+import {
+  Shield,
+  ShieldAlert,
+  Laptop,
+  Smartphone,
+  Globe,
+  LogOut,
+  Key,
+  Lock,
+  RefreshCw,
+  History,
+  QrCode,
+  ArrowRightLeft,
+  CheckCircle2,
+  AlertTriangle
+} from 'lucide-react';
 import {
   getUserDeviceSessions,
   logoutDeviceSession,
@@ -8,6 +23,8 @@ import {
   UserDeviceSession,
   SecurityEvent
 } from '../lib/securityService';
+import { isAccountSyncLockEnabled, setAccountSyncLockEnabled } from '../lib/deviceAuthSyncService';
+import { DeviceVaultTransferModal } from './DeviceVaultTransferModal';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 import { showBrutalistToast } from '../lib/toast';
 
@@ -21,8 +38,13 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
+  // App & Chat Lock PIN
   const [chatLock, setChatLock] = useState<boolean>(() => localStorage.getItem('flick_chat_lock') === 'true');
   const [pin, setPin] = useState<string>(() => localStorage.getItem('flick_chat_lock_pin') || '');
+
+  // Account Sync Lock (Telegram / WhatsApp Multi-Device Protection)
+  const [syncLock, setSyncLock] = useState<boolean>(() => isAccountSyncLockEnabled(userId));
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   const loadData = async () => {
     if (!userId) return;
@@ -40,6 +62,7 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
 
   useEffect(() => {
     loadData();
+    setSyncLock(isAccountSyncLockEnabled(userId));
   }, [userId]);
 
   const handleLogoutDevice = async (deviceId: string) => {
@@ -68,28 +91,101 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
     localStorage.setItem('flick_chat_lock_pin', newPin);
   };
 
+  const handleToggleSyncLock = async (enabled: boolean) => {
+    playGlitchClickSound();
+    setSyncLock(enabled);
+    await setAccountSyncLockEnabled(userId, enabled);
+    showBrutalistToast(
+      'ACCOUNT SYNC LOCK',
+      enabled
+        ? 'Account Sync Lock ENABLED. New sign-ins will require approval from this device.'
+        : 'Account Sync Lock DISABLED.',
+      'info'
+    );
+  };
+
   return (
     <div className="space-y-6 text-[var(--color-text)]">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-[var(--neon-green)]/30 pb-3">
-        <Shield className="w-5 h-5 text-[var(--neon-green)]" />
-        <h3 className="font-mono text-sm font-bold uppercase tracking-wider">SECURITY & DEVICE MANAGEMENT</h3>
+      <div className="flex items-center justify-between border-b border-[var(--neon-green)]/30 pb-3">
+        <div className="flex items-center gap-2">
+          <Shield className="w-5 h-5 text-[var(--neon-green)]" />
+          <h3 className="font-mono text-sm font-bold uppercase tracking-wider">
+            SECURITY & DEVICE SYNC LOCK
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={loadData}
+          className="p-1 hover:text-[var(--neon-green)] transition-colors cursor-pointer"
+          title="Refresh active devices"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* App & Chat Lock */}
+      {/* Account Sync Lock Card (Telegram/WhatsApp Multi-Device Guard) */}
+      <div className="bg-[var(--color-background)] border-2 border-[var(--neon-green)] p-4 shadow-[4px_4px_0px_0px_#00ff66] space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-[var(--neon-green)]/10 border border-[var(--neon-green)] flex items-center justify-center text-[var(--neon-green)] shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-mono text-xs font-black uppercase text-[var(--neon-green)]">
+                ACCOUNT SYNC LOCK (MULTI-DEVICE GUARD)
+              </p>
+              <p className="text-[10px] text-zinc-300 leading-relaxed mt-0.5">
+                Require a 6-digit confirmation code and approval from your active device whenever signing in to a new terminal or phone. Ensures E2EE keyrings and chat vaults transfer securely.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleToggleSyncLock(!syncLock)}
+            className={`px-3 py-1.5 text-[10px] font-mono uppercase font-black border transition-all shrink-0 cursor-pointer ${
+              syncLock
+                ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)] shadow-[2px_2px_0px_#000000]'
+                : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
+            }`}
+          >
+            {syncLock ? 'PROTECTION ON' : 'PROTECTION OFF'}
+          </button>
+        </div>
+
+        <div className="pt-2 border-t border-[var(--neon-green)]/20 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span className="text-[10px] font-mono text-zinc-400 uppercase flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+            Instant zero-knowledge device-to-device vault bridge
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              playGlitchClickSound();
+              setIsTransferModalOpen(true);
+            }}
+            className="w-full sm:w-auto px-3 py-1 bg-black border border-[var(--neon-green)] text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition-all text-[10px] font-mono font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>LINK / PAIR COMPANION DEVICE</span>
+          </button>
+        </div>
+      </div>
+
+      {/* App & Chat Passcode Lock */}
       <div className="bg-[var(--color-background)] border border-[var(--neon-green-border)] p-4 rounded-none space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-[var(--neon-green)]" />
             <div>
               <p className="font-mono text-xs font-bold uppercase">Passcode / Chat Lock</p>
-              <p className="text-[10px] text-zinc-400">Require a PIN code when launching or unlocking sensitive chats</p>
+              <p className="text-[10px] text-zinc-400">Require a PIN code when unlocking sensitive chats on this local terminal</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => handleToggleChatLock(!chatLock)}
-            className={`px-3 py-1 text-[10px] font-mono uppercase font-bold border transition-all ${
+            className={`px-3 py-1 text-[10px] font-mono uppercase font-bold border transition-all cursor-pointer ${
               chatLock
                 ? 'bg-[var(--neon-green)] text-black border-[var(--neon-green)]'
                 : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
@@ -119,7 +215,7 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
         <div className="flex items-center justify-between">
           <h4 className="font-mono text-xs font-bold uppercase flex items-center gap-2 text-zinc-300">
             <Laptop className="w-4 h-4 text-[var(--neon-green)]" />
-            ACTIVE SIGNED-IN DEVICES
+            ACTIVE SIGNED-IN DEVICES ({sessions.length})
           </h4>
           {sessions.length > 1 && (
             <button
@@ -170,7 +266,7 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
                   onClick={() => handleLogoutDevice(s.id)}
                   className="px-2 py-1 text-[9px] font-mono uppercase text-red-400 hover:bg-red-500/10 border border-red-500/30 cursor-pointer"
                 >
-                  Log Out
+                  Revoke
                 </button>
               )}
             </div>
@@ -182,7 +278,7 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
       <div className="space-y-3 pt-2 border-t border-[var(--neon-green)]/20">
         <h4 className="font-mono text-xs font-bold uppercase flex items-center gap-2 text-zinc-300">
           <History className="w-4 h-4 text-[var(--neon-green)]" />
-          SECURITY EVENT HISTORY
+          SECURITY EVENT AUDIT LOG
         </h4>
 
         <div className="space-y-1.5 max-h-40 overflow-y-auto">
@@ -201,6 +297,14 @@ export function SettingsSecurityTab({ userId }: SettingsSecurityTabProps) {
           )}
         </div>
       </div>
+
+      {/* Vault Companion Pairing Modal */}
+      {isTransferModalOpen && (
+        <DeviceVaultTransferModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

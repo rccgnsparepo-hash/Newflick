@@ -25,6 +25,8 @@ interface AuthContextType {
   localPrivateKey: string | null; // RSA private key string stored client side
   loading: boolean;
   isAuthReady: boolean; // Tracks whether initial auth check is finished
+  pendingDeviceVerification: boolean;
+  setPendingDeviceVerification: (val: boolean) => void;
   loginWithGoogle: () => Promise<void>;
   registerWithEmail: (email: string, password: string, displayName: string, avatarSeed: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   });
+  const [pendingDeviceVerification, setPendingDeviceVerification] = useState(false);
   const [loading, setLoading] = useState(() => {
     try {
       const cachedUser = localStorage.getItem('flick_cached_user');
@@ -160,6 +163,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } catch {}
             } catch (err) {
               console.warn("Auto-decrypt of existing key with cached password failed:", err);
+            }
+          }
+
+          // If still no local private key, check if other active devices or account sync lock requires verification
+          if (!privLocal) {
+            try {
+              const { getOtherActiveDevices, isAccountSyncLockEnabled } = await import('../lib/deviceAuthSyncService');
+              const syncLockOn = isAccountSyncLockEnabled(uid);
+              const otherActive = await getOtherActiveDevices(uid);
+              if (syncLockOn && otherActive.length > 0) {
+                setPendingDeviceVerification(true);
+              }
+            } catch (syncErr) {
+              console.warn('[AuthContext] Sync lock check notice:', syncErr);
             }
           }
         }
@@ -654,6 +671,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localPrivateKey,
         loading,
         isAuthReady,
+        pendingDeviceVerification,
+        setPendingDeviceVerification,
         loginWithGoogle,
         registerWithEmail,
         loginWithEmail,

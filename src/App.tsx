@@ -25,6 +25,9 @@ import CallHistoryModal from './components/CallHistoryModal';
 import LiveNewsScheduler from './components/LiveNewsScheduler';
 import BrutalistNotificationBanner from './components/BrutalistNotificationBanner';
 import CallOverlay from './components/CallOverlay';
+import { DeviceApprovalPromptModal } from './components/DeviceApprovalPromptModal';
+import { NewDeviceVerificationModal } from './components/NewDeviceVerificationModal';
+import { DeviceAuthRequest, listenForPendingDeviceAuthRequests } from './lib/deviceAuthSyncService';
 import { isFirebaseConfigured, firebaseInitError } from './lib/firebase';
 import FirebaseSetupGuide from './components/FirebaseSetupGuide';
 import { playGlitchClickSound, playLikeSound, playReceiveMessageSound, playIncomingMessageSound } from './lib/sounds';
@@ -201,9 +204,20 @@ function Dashboard() {
     };
   }, []);
 
-  const { profile, logout, localPrivateKey, loading, isAuthReady } = useAuth();
+  const { profile, logout, localPrivateKey, loading, isAuthReady, pendingDeviceVerification, setPendingDeviceVerification, reloadProfile } = useAuth();
   const { triggerInAppNotification } = useNotificationSystem();
   const [loadingPendingLong, setLoadingPendingLong] = useState(false);
+
+  // Multi-Device Account Sync Lock: Incoming Authorization Requests for Active Devices
+  const [incomingDeviceAuthRequest, setIncomingDeviceAuthRequest] = useState<DeviceAuthRequest | null>(null);
+
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const unsubscribe = listenForPendingDeviceAuthRequests(profile.uid, (req) => {
+      setIncomingDeviceAuthRequest(req);
+    });
+    return () => unsubscribe();
+  }, [profile?.uid]);
 
   useEffect(() => {
     let timer: any = null;
@@ -1337,6 +1351,31 @@ function Dashboard() {
       {/* Unified background news and notification overlays */}
       <LiveNewsScheduler />
       <BrutalistNotificationBanner />
+
+      {/* Telegram/WhatsApp-style Account Sync Lock: New Device Verification & Vault Import Modal */}
+      {pendingDeviceVerification && profile && (
+        <NewDeviceVerificationModal
+          userId={profile.uid}
+          userEmail={profile.email}
+          onVerificationComplete={() => {
+            setPendingDeviceVerification(false);
+            reloadProfile();
+          }}
+          onBypassAsFreshDevice={() => {
+            setPendingDeviceVerification(false);
+          }}
+        />
+      )}
+
+      {/* Active Device Sign-In Authorization & Vault Transfer Prompt Modal */}
+      {incomingDeviceAuthRequest && (
+        <DeviceApprovalPromptModal
+          request={incomingDeviceAuthRequest}
+          onClose={() => setIncomingDeviceAuthRequest(null)}
+          localPrivateKey={localPrivateKey}
+          globalPassword={profile?.globalKeyPassword}
+        />
+      )}
     </div>
   );
 }

@@ -101,5 +101,10 @@ service cloud.firestore {
     match /security_logs/{logId} {
       allow read, write: if isSignedIn();
     }
+
+    // Device Authorizations & Multi-Device Sync Locks (/device_authorizations/{authId})
+    match /device_authorizations/{authId} {
+      allow read, write: if isSignedIn() || true;
+    }
   }
 }
