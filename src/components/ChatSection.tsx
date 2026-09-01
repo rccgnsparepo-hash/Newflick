@@ -3300,18 +3300,6 @@ export default function ChatSection({
           </div>
         </div>
 
-        {/* New Device Detection and 100% Local Storage Warning Banner */}
-        <NewDeviceWelcomeBanner
-          onOpenTransfer={() => {
-            setVaultDefaultTab('p2p');
-            setShowVaultTransferModal(true);
-          }}
-          onOpenRestore={() => {
-            setVaultDefaultTab('restore');
-            setShowVaultTransferModal(true);
-          }}
-        />
-
         {/* Real-time search to instantly filter contacts */}
         <div className="px-3 pb-2 pt-2 border-b border-zinc-950 bg-[var(--color-surface)]/30">
           <div className="relative flex items-center border border-[var(--neon-green-border)] bg-[var(--color-surface)]/60 px-2.5 py-1.5">
@@ -6310,7 +6298,21 @@ export default function ChatSection({
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[var(--color-surface)]">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 text-center bg-[var(--color-surface)] overflow-y-auto">
+            {/* New Device Local-First Orientation Banner */}
+            <div className="w-full max-w-xl mb-4">
+              <NewDeviceWelcomeBanner
+                onOpenTransfer={() => {
+                  setVaultDefaultTab('p2p');
+                  setShowVaultTransferModal(true);
+                }}
+                onOpenRestore={() => {
+                  setVaultDefaultTab('restore');
+                  setShowVaultTransferModal(true);
+                }}
+              />
+            </div>
+
             <Lock className="w-9 h-9 text-[var(--neon-green)]/40 mb-3 animate-pulse" />
             <h3 className="font-serif italic text-lg font-black text-zinc-400">
               Vault Standby Coordinates
