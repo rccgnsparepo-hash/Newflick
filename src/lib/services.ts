@@ -1428,6 +1428,7 @@ export async function createStory(storyData: {
   mentions?: string[];
   hashtags?: string[];
   gradientPreset?: string;
+  blockedViewers?: string[];
 }): Promise<void> {
   const storyId = doc(collection(db, 'stories')).id;
   const path = `stories/${storyId}`;
@@ -1458,6 +1459,9 @@ export async function createStory(storyData: {
     if (storyData.mentions !== undefined) raw.mentions = storyData.mentions;
     if (storyData.hashtags !== undefined) raw.hashtags = storyData.hashtags;
     if (storyData.gradientPreset !== undefined) raw.gradientPreset = storyData.gradientPreset;
+    if (storyData.blockedViewers !== undefined && storyData.blockedViewers.length > 0) {
+      raw.blockedViewers = storyData.blockedViewers;
+    }
 
     // Validate schema
     StorySchema.parse(raw);
@@ -1530,7 +1534,13 @@ export function subscribeToStories(
   });
 }
 
-export async function viewStory(storyId: string, userId: string): Promise<void> {
+export async function viewStory(
+  storyId: string,
+  viewer: string | { uid: string; displayName?: string; photoURL?: string }
+): Promise<void> {
+  const viewerUid = typeof viewer === 'string' ? viewer : viewer.uid;
+  const viewerName = typeof viewer === 'string' ? 'Registered Peer' : (viewer.displayName || 'Registered Peer');
+  const viewerPhoto = typeof viewer === 'string' ? '' : (viewer.photoURL || '');
   const path = `stories/${storyId}`;
   try {
     await runTransaction(db, async (transaction) => {
@@ -1538,18 +1548,52 @@ export async function viewStory(storyId: string, userId: string): Promise<void> 
       const snap = await transaction.get(ref);
       if (!snap.exists()) return;
       const data = snap.data() as Story;
-      
+
+      // Do not count the author's own viewing as an external viewer
+      if (data.authorId === viewerUid) return;
+
+      // If user is blocked from viewing this story, prevent recording
+      if (data.blockedViewers && data.blockedViewers.includes(viewerUid)) return;
+
       const viewedBy = data.viewedBy || [];
-      if (!viewedBy.includes(userId)) {
-        const updatedViewed = [...viewedBy, userId];
+      const viewersDetails = data.viewersDetails || {};
+
+      if (!viewedBy.includes(viewerUid)) {
+        const updatedViewed = [...viewedBy, viewerUid];
+        const updatedDetails = {
+          ...viewersDetails,
+          [viewerUid]: {
+            userId: viewerUid,
+            userName: viewerName,
+            userPhoto: viewerPhoto,
+            viewedAt: new Date().toISOString()
+          }
+        };
+
         transaction.update(ref, {
           viewedBy: updatedViewed,
+          viewersDetails: updatedDetails,
           viewsCount: (data.viewsCount || 0) + 1
         });
       }
     });
   } catch (error) {
     console.warn("Failed tracking story view transactional update:", error);
+  }
+}
+
+export async function updateBlockedStatusViewers(
+  currentUserId: string,
+  blockedUserIds: string[]
+): Promise<void> {
+  const path = `users/${currentUserId}`;
+  try {
+    await updateDoc(doc(db, 'users', currentUserId), {
+      blockedStatusViewers: blockedUserIds,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 

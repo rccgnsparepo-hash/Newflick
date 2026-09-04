@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, setLogLevel } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { readFileSync } from 'fs';
+import fs from 'fs';
 import { newsAggregator } from './server/newsAggregator';
 
 // Suppress Firestore verbose/warning logs (such as offline connection warnings)
@@ -58,8 +58,10 @@ async function startServer() {
       console.log("[Backend] Firebase configured securely via environment variables (with VITE_ fallback).");
     } else {
       const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-      firebaseConfig = JSON.parse(readFileSync(configPath, 'utf8'));
-      console.log("[Backend] Firebase configured via local firebase-applet-config.json file.");
+      if (fs.existsSync(configPath)) {
+        firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        console.log("[Backend] Firebase configured via local firebase-applet-config.json file.");
+      }
     }
   } catch (err) {
     console.error("[Backend] Failed to load Firebase config:", err);
@@ -126,6 +128,85 @@ async function startServer() {
       res.json(firebaseConfig);
     } else {
       res.status(500).json({ error: "Firebase configuration is not initialized on the server." });
+    }
+  });
+
+  // Dedicated Static Uploads Storage & Serving Directory
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    try {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    } catch (e) {
+      console.warn("Failed to create uploads directory:", e);
+    }
+  }
+  app.use('/uploads', express.static(uploadsDir));
+
+  // Media File Upload API for Status Stories, Voice Notes & Chat Attachments
+  app.post("/api/upload", (req, res) => {
+    try {
+      const { fileData, fileName, mimeType } = req.body;
+      if (!fileData) {
+        return res.status(400).json({ error: "Missing fileData payload" });
+      }
+
+      let buffer: Buffer;
+      let ext = 'bin';
+
+      const dataUriMatches = typeof fileData === 'string' ? fileData.match(/^data:([A-Za-z0-9-+\/]+);base64,(.+)$/) : null;
+
+      if (dataUriMatches && dataUriMatches.length === 3) {
+        const detectedMime = dataUriMatches[1].toLowerCase();
+        buffer = Buffer.from(dataUriMatches[2], 'base64');
+        const extMap: Record<string, string> = {
+          'image/jpeg': 'jpg',
+          'image/jpg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/webp': 'webp',
+          'image/tiff': 'tiff',
+          'image/tif': 'tiff',
+          'image/svg+xml': 'svg',
+          'video/mp4': 'mp4',
+          'video/webm': 'webm',
+          'video/quicktime': 'mov',
+          'video/x-matroska': 'mkv',
+          'video/ogg': 'ogv',
+          'audio/mpeg': 'mp3',
+          'audio/mp3': 'mp3',
+          'audio/wav': 'wav',
+          'audio/webm': 'webm',
+          'audio/ogg': 'ogg',
+          'audio/m4a': 'm4a',
+          'audio/aac': 'aac',
+          'audio/mp4': 'm4a',
+          'audio/x-m4a': 'm4a'
+        };
+        ext = extMap[detectedMime] || (fileName ? path.extname(fileName).replace('.', '') : 'bin');
+      } else {
+        buffer = Buffer.from(fileData, 'base64');
+        if (fileName) {
+          ext = path.extname(fileName).replace('.', '') || 'bin';
+        }
+      }
+
+      const safeId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const safeFileName = `flick_${safeId}.${ext}`;
+      const destinationPath = path.join(uploadsDir, safeFileName);
+      fs.writeFileSync(destinationPath, buffer);
+
+      const publicUrl = `/uploads/${safeFileName}`;
+      console.log(`[Upload Service] Stored media file: ${safeFileName} (${buffer.length} bytes)`);
+
+      return res.json({
+        url: publicUrl,
+        fileName: fileName || safeFileName,
+        size: buffer.length,
+        mimeType: mimeType || 'application/octet-stream'
+      });
+    } catch (err: any) {
+      console.error("[Upload Service Error]", err);
+      return res.status(500).json({ error: err.message || "Failed to process media upload" });
     }
   });
 

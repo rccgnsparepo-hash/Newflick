@@ -20,7 +20,8 @@ export const UserProfileSchema = z.object({
   followers: z.array(z.string()).optional(),
   following: z.array(z.string()).optional(),
   followersCount: z.number().optional(),
-  followingCount: z.number().optional()
+  followingCount: z.number().optional(),
+  blockedStatusViewers: z.array(z.string()).optional()
 });
 
 export const PrivateUserInfoSchema = z.object({
@@ -147,6 +148,13 @@ export const StorySchema = z.object({
   mediaType: z.enum(['image', 'video', 'audio', 'none']),
   viewsCount: z.number().nonnegative(),
   viewedBy: z.array(z.string().min(1).max(128)),
+  viewersDetails: z.record(z.string(), z.object({
+    userId: z.string().optional(),
+    userName: z.string(),
+    userPhoto: z.string().optional(),
+    viewedAt: z.any()
+  })).optional(),
+  blockedViewers: z.array(z.string()).optional(),
   createdAt: z.any(),
   link: z.string().max(1024).optional(),
   musicTitle: z.string().max(256).optional(),

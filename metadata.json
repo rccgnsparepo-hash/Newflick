@@ -1,6 +1,6 @@
 {
   "name": "Flick",
-  "description": "Flick - Voice-First, Local-First Decentralized Audio Communication Platform with End-to-End Encrypted Tunnels and Local Device Audio Vaults.",
+  "description": "Flick - Desktop E2EE Messenger with Status Stories, Encrypted Direct Tunnels, Real News, and Local Peer Architecture.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

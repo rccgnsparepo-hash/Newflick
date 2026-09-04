@@ -6,8 +6,8 @@ import { playGlitchClickSound } from '../../lib/sounds';
 import { triggerVibration } from '../../lib/haptics';
 import { showBrutalistToast } from '../../lib/toast';
 import {
-  Home as HomeIcon,
   MessageSquare,
+  CircleDot,
   Newspaper,
   User,
   Search,
@@ -61,17 +61,17 @@ export function UnifiedNavigation({
 
   const navItems = [
     {
-      id: 'home' as const,
-      label: 'Home',
-      icon: HomeIcon,
-      color: 'text-[var(--neon-green)]'
-    },
-    {
       id: 'chat' as const,
       label: 'Chats',
       icon: MessageSquare,
       color: 'text-[var(--neon-green)]',
       badge: unreadE2EECount
+    },
+    {
+      id: 'status' as const,
+      label: 'Status',
+      icon: CircleDot,
+      color: 'text-[var(--neon-green)]'
     },
     {
       id: 'news' as const,

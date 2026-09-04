@@ -23,6 +23,7 @@ export interface UserProfile {
   following?: string[];
   followersCount?: number;
   followingCount?: number;
+  blockedStatusViewers?: string[]; // List of user IDs blocked from seeing my status updates
 }
 
 export interface PrivateUserInfo {
@@ -141,6 +142,13 @@ export interface MessageReaction {
   createdAt: any;
 }
 
+export interface StoryViewerDetail {
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  viewedAt: any;
+}
+
 export interface Story {
   id: string;
   authorId: string;
@@ -153,6 +161,8 @@ export interface Story {
   mediaType: 'image' | 'video' | 'audio' | 'none';
   viewsCount: number;
   viewedBy: string[]; // List of user IDs who viewed this story
+  viewersDetails?: Record<string, StoryViewerDetail>; // Map of userId -> viewer detail
+  blockedViewers?: string[]; // List of user IDs blocked from seeing this story
   createdAt: any;
   link?: string;
   musicTitle?: string;

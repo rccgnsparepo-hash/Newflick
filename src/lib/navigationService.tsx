@@ -3,8 +3,10 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 // ==========================================
 // 1. Navigation Types & Interfaces
 // ==========================================
+export type NavigationTab = 'chat' | 'status' | 'news' | 'profile' | 'home' | 'feed' | 'match';
+
 export interface NavigationState {
-  tab: 'home' | 'match' | 'chat' | 'news' | 'profile';
+  tab: NavigationTab;
   chatPeerId: string | null;
   chatGroupId: string | null;
   profileId: string | null;
@@ -12,8 +14,8 @@ export interface NavigationState {
 
 export interface NavigationContextType {
   // Navigation State
-  activeTab: 'home' | 'match' | 'chat' | 'news' | 'profile';
-  setActiveTab: (tab: 'home' | 'match' | 'chat' | 'news' | 'profile') => void;
+  activeTab: NavigationTab;
+  setActiveTab: (tab: NavigationTab) => void;
   deepLinkedPeerId: string | null;
   setDeepLinkedPeerId: (id: string | null) => void;
   deepLinkedGroupId: string | null;
@@ -60,12 +62,13 @@ export function useNavigation() {
 // ==========================================
 export const CustomNavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Main Navigation States with local storage fallbacks to protect against process death
-  const [activeTab, setLocalActiveTab] = useState<'home' | 'match' | 'chat' | 'news' | 'profile'>(() => {
+  const [activeTab, setLocalActiveTab] = useState<NavigationTab>(() => {
     try {
       const saved = localStorage.getItem('faraflick_active_tab');
-      return (saved as any) || 'home';
+      if (saved === 'status' || saved === 'news' || saved === 'profile') return saved as NavigationTab;
+      return 'chat';
     } catch {
-      return 'home';
+      return 'chat';
     }
   });
 
@@ -260,8 +263,12 @@ export const CustomNavigationProvider: React.FC<{ children: React.ReactNode }> =
   const clearHistory = () => setHistory([]);
 
   // Wrapped states setters to sync with history perfectly
-  const setActiveTab = (tab: 'home' | 'match' | 'chat' | 'news' | 'profile') => {
-    if (tab !== activeTab) {
+  const setActiveTab = (tab: NavigationTab) => {
+    let targetTab: NavigationTab = tab;
+    if (tab === 'home' || tab === 'feed') {
+      targetTab = 'chat';
+    }
+    if (targetTab !== activeTab) {
       pushToHistory({
         tab: activeTab,
         chatPeerId: deepLinkedPeerId,
@@ -269,7 +276,7 @@ export const CustomNavigationProvider: React.FC<{ children: React.ReactNode }> =
         profileId: viewedProfileId
       });
     }
-    setLocalActiveTab(tab);
+    setLocalActiveTab(targetTab);
   };
 
   const setDeepLinkedPeerId = (id: string | null) => {

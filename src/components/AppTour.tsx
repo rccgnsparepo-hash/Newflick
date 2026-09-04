@@ -4,8 +4,8 @@ import { Compass, Sparkles, Sliders, MessageSquare, ArrowRight, ArrowLeft, X, Ch
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
 
 interface AppTourProps {
-  activeTab: 'feed' | 'chat';
-  setActiveTab: (tab: 'feed' | 'chat') => void;
+  activeTab: string;
+  setActiveTab: (tab: any) => void;
   setIsSettingsOpen: (open: boolean) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -24,44 +24,33 @@ export default function AppTour({
   const steps = [
     {
       target: 'body',
-      title: '🌌 SECURE TRANSMISSION BRIEFING',
-      subtitle: 'Welcome to your sandbox terminal',
-      description: 'You have entered Faratech Flick—a high-fidelity sovereign messaging cell. Let\'s run a 1-minute briefing to configure your node and guide you through posting, chats, and ephemeral loops.',
+      title: '🌌 SECURE MESSENGER BRIEFING',
+      subtitle: 'Welcome to your desktop terminal',
+      description: 'You have entered Flick—a sovereign, end-to-end encrypted desktop messenger with ephemeral status stories and campus news.',
       placement: 'center',
       action: () => {
         setIsSettingsOpen(false);
       }
     },
     {
-      target: '#tour-post-box',
-      title: '✏️ CHRONICLE CREATOR',
-      subtitle: 'Where to post updates',
-      description: 'This is the Chronicle Post creator. Share a text log, attach external audio/video or secure image links to publish real-time journals. Your circle of peers will see them inside their customized feeds instantly.',
-      placement: 'bottom',
+      target: 'body',
+      title: '💬 ENCRYPTED CHATS HUB',
+      subtitle: 'Direct & Group Tunnels',
+      description: 'Your primary messaging workspace. Connect directly with peers using client-side cryptographic keys with vanishing messages, voice notes, and media.',
+      placement: 'center',
       action: () => {
-        setActiveTab('feed');
+        setActiveTab('chat');
         setIsSettingsOpen(false);
       }
     },
     {
-      target: '#tour-stories-bar',
-      title: '⭕ EPHEMERAL CHRONICLES',
-      subtitle: 'Disappearing 24h stories',
-      description: 'Stories published here naturally decay and self-destruct after 24 hours. Tap on any peer\'s circular avatar to view their active telemetry clips, leave custom reactions, or explore viewer analytics.',
-      placement: 'bottom',
+      target: 'body',
+      title: '⭕ STATUS STORIES MATRIX',
+      subtitle: '24-hour Ephemeral Telemetry',
+      description: 'Broadcast ephemeral status updates with custom color themes, photos, video clips, and voice soundscapes that naturally expire after 24 hours.',
+      placement: 'center',
       action: () => {
-        setActiveTab('feed');
-        setIsSettingsOpen(false);
-      }
-    },
-    {
-      target: '#tour-tab-chat',
-      title: '🎛️ COMMUNICATION ENGINES',
-      subtitle: 'Switching tabs',
-      description: 'To look for peers, transmit messages, or inspect current encryption key streams, toggle over to the "Encryption Tunnels" panel.',
-      placement: 'bottom',
-      action: () => {
-        setActiveTab('feed');
+        setActiveTab('status');
         setIsSettingsOpen(false);
       }
     },

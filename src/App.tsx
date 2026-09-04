@@ -3,10 +3,14 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ConnectivityProvider, useConnectivity } from './contexts/ConnectivityContext';
 import { OperationProvider } from './contexts/OperationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import { useScrollLock } from './hooks/useScrollLock';
 import AuthScreen from './components/AuthScreen';
 import ChatSection from './components/ChatSection';
-import FeedSection from './components/FeedSection';
+import StatusSection from './components/StatusSection';
+import { NewsSection } from './components/news/NewsSection';
+import BentoProfile from './components/BentoProfile';
+import { showBrutalistToast } from './lib/toast';
 import { UnifiedNavigation } from './components/layout/UnifiedNavigation';
 import { AppHeader } from './components/layout/AppHeader';
 import { applyFont, getSavedFont } from './lib/theme';
@@ -1136,19 +1140,43 @@ function Dashboard() {
             triggerVibration={triggerVibration}
           />
 
-          {/* Center Content Column (Feed / Messaging / News / Profile / Workspace) */}
-          <main className="flex-1 min-h-0 flex flex-col min-w-0 h-full relative overflow-hidden">
-            <FeedSection 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-              unreadE2EECount={unreadE2EECount}
-              deepLinkedPeerId={deepLinkedPeerId}
-              onClearDeepLink={() => setDeepLinkedPeerId(null)}
-              deepLinkedGroupId={deepLinkedGroupId}
-              onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
-              deepLinkedNewsId={deepLinkedNewsId}
-              onClearDeepLinkedNews={() => setDeepLinkedNewsId(null)}
-            />
+          {/* Center Content Column (Chat / Status / News / Profile) */}
+          <main className="flex-1 min-h-0 flex flex-col min-w-0 h-full relative overflow-hidden bg-[var(--color-surface)]">
+            {activeTab === 'chat' && (
+              <ChatSection 
+                deepLinkedPeerId={deepLinkedPeerId} 
+                onClearDeepLink={() => setDeepLinkedPeerId(null)} 
+                deepLinkedGroupId={deepLinkedGroupId}
+                onClearDeepLinkedGroup={() => setDeepLinkedGroupId(null)}
+              />
+            )}
+
+            {activeTab === 'status' && (
+              <StatusSection />
+            )}
+
+            {activeTab === 'news' && (
+              <div className="w-full h-full overflow-y-auto flex flex-col p-0 pb-20 md:pb-4 select-text">
+                <NewsSection
+                  currentUser={profile}
+                  deepLinkedArticleId={deepLinkedNewsId}
+                  onClearDeepLink={() => setDeepLinkedNewsId(null)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'profile' && (
+              <div className="w-full h-full overflow-y-auto flex flex-col p-2 sm:p-4 pb-28 md:pb-4 select-text">
+                <BentoProfile
+                  profile={profile}
+                  firebasePosts={[]}
+                  deletePost={async () => {}}
+                  playGlitchClickSound={playGlitchClickSound}
+                  triggerVibration={triggerVibration}
+                  showBrutalistToast={showBrutalistToast}
+                />
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -1388,7 +1416,9 @@ export default function App() {
           <OperationProvider>
             <NotificationProvider>
               <CustomNavigationProvider>
-                <Dashboard />
+                <ConfirmProvider>
+                  <Dashboard />
+                </ConfirmProvider>
               </CustomNavigationProvider>
             </NotificationProvider>
           </OperationProvider>

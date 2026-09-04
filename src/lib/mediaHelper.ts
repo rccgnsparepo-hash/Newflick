@@ -109,3 +109,84 @@ export function getMediaTypeFromMime(mimeType: string): 'image' | 'video' | 'aud
   if (mimeType.startsWith('audio/')) return 'audio';
   return 'none';
 }
+
+/**
+ * Format bytes to human readable string (e.g. 1.2 MB)
+ */
+export function formatBytes(bytes: number, decimals = 1): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+/**
+ * Client-Side Media Uploader for Status Stories & Messages.
+ * Sends raw or compressed media to the local backend /api/upload endpoint,
+ * with automatic fallback to client-side data URLs when suitable.
+ */
+export async function uploadMediaFile(
+  fileOrBlob: File | Blob,
+  fileName?: string
+): Promise<{ url: string; mediaType: 'image' | 'video' | 'audio'; name: string; size: number }> {
+  const mimeType = fileOrBlob.type || 'application/octet-stream';
+  const mediaType = getMediaTypeFromMime(mimeType);
+  const resolvedName = fileName || (fileOrBlob instanceof File ? fileOrBlob.name : `recording_${Date.now()}`);
+
+  let base64Data: string;
+
+  if (fileOrBlob instanceof File && mediaType === 'image') {
+    // Compress images to high-def web dimensions (e.g., 1080x1080) for instant loading
+    try {
+      base64Data = await compressImage(fileOrBlob, 1080, 1080, 0.8);
+    } catch {
+      base64Data = await fileToBase64(fileOrBlob);
+    }
+  } else if (fileOrBlob instanceof File) {
+    base64Data = await fileToBase64(fileOrBlob);
+  } else {
+    // It's a Blob (e.g. recorded audio)
+    base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => reject(new Error('Failed to read media blob'));
+      reader.readAsDataURL(fileOrBlob);
+    });
+  }
+
+  // Attempt backend storage upload
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileData: base64Data,
+        fileName: resolvedName,
+        mimeType
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        url: data.url,
+        mediaType: mediaType === 'none' ? 'image' : mediaType,
+        name: data.fileName || resolvedName,
+        size: data.size || fileOrBlob.size
+      };
+    }
+  } catch (err) {
+    console.warn('[uploadMediaFile] Remote upload API unavailable, evaluating data URL fallback:', err);
+  }
+
+  // If server storage upload fails, use data URL directly
+  return {
+    url: base64Data,
+    mediaType: mediaType === 'none' ? 'image' : mediaType,
+    name: resolvedName,
+    size: fileOrBlob.size
+  };
+}
+

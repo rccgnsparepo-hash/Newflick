@@ -68,12 +68,54 @@ import { ConversationNotificationManager } from '../lib/notificationSystem';
 import { requestMicrophonePermission, getOptimalAudioMimeType, createSpeechRecognitionInstance, triggerAndroidNativePermissions } from '../lib/permissions';
 import { useNavigation } from '../lib/navigationService';
 import { getBackendUrl } from '../lib/bootstrap';
+import { useConfirm } from '../contexts/ConfirmContext';
 import { VoicePlayerBubble } from './VoicePlayerBubble';
 import { VoiceFirstBar } from './VoiceFirstBar';
 import { VoiceMemoriesModal } from './VoiceMemoriesModal';
 import { DeviceVaultTransferModal } from './DeviceVaultTransferModal';
 import { NewDeviceWelcomeBanner } from './NewDeviceWelcomeBanner';
 import { saveVoiceNoteToVault } from '../lib/voiceVault';
+import { ChatWallpaperConfig } from '../types/wallpaper';
+import {
+  getChatWallpaperConfig,
+  DEFAULT_WALLPAPER_CONFIG,
+  calculateEffectiveDim,
+  loadWallpaperFromFirestore
+} from '../lib/wallpaperData';
+import { ChatWallpaperModal } from './ChatWallpaperModal';
+
+const getChatWallpaperStyle = (cfg: ChatWallpaperConfig): React.CSSProperties => {
+  const blurStyle = cfg.blur > 0 ? { filter: `blur(${cfg.blur}px)`, transform: 'scale(1.05)' } : {};
+
+  if (cfg.type === 'photo' || cfg.type === 'custom') {
+    return {
+      backgroundColor: '#09090b',
+      backgroundImage: `url("${cfg.value}")`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center center',
+      ...blurStyle
+    };
+  }
+
+  if (cfg.type === 'gradient') {
+    return {
+      background: cfg.value,
+      ...blurStyle
+    };
+  }
+
+  if (cfg.type === 'solid') {
+    return {
+      backgroundColor: cfg.value || '#09090b',
+      ...blurStyle
+    };
+  }
+
+  // Default
+  return {
+    backgroundColor: 'var(--color-background)'
+  };
+};
 
 function formatLastSeen(lastChanged: any): string {
   if (!lastChanged) return 'offline';
@@ -182,6 +224,7 @@ function DecryptedMessageBubble({
   senderPublicKey?: string;
   onDeleteLocally?: (msgId: string) => void;
 }) {
+  const { confirm } = useConfirm();
   const onDecryptedRef = useRef(onDecrypted);
   useEffect(() => {
     onDecryptedRef.current = onDecrypted;
@@ -377,23 +420,21 @@ function DecryptedMessageBubble({
     playGlitchClickSound();
     triggerVibration('medium');
     if (everyone) {
-      if (window.confirm("Delete this message for everyone? This action cannot be undone.")) {
-        try {
-          await updateDoc(doc(db, 'chats', chatId, 'messages', message.id), {
-            plainText: "🚫 This message was deleted.",
-            encryptedText: "",
-            encryptedKey: "",
-            senderEncryptedKey: "",
-            isDeleted: true,
-            mediaUrl: "",
-            mediaType: "",
-            mediaName: ""
-          });
-          showBrutalistToast('DELETED', 'Message deleted for all participants.', 'info');
-        } catch (err) {
-          console.error("Failed to delete message for everyone:", err?.message || err);
-          showBrutalistToast('DELETE FAILED', 'Permission denied.', 'error');
-        }
+      try {
+        await updateDoc(doc(db, 'chats', chatId, 'messages', message.id), {
+          plainText: "🚫 This message was deleted.",
+          encryptedText: "",
+          encryptedKey: "",
+          senderEncryptedKey: "",
+          isDeleted: true,
+          mediaUrl: "",
+          mediaType: "",
+          mediaName: ""
+        });
+        showBrutalistToast('DELETED', 'Message deleted for all participants.', 'info');
+      } catch (err) {
+        console.error("Failed to delete message for everyone:", err?.message || err);
+        showBrutalistToast('DELETE FAILED', 'Permission denied.', 'error');
       }
     } else {
       try {
@@ -898,17 +939,26 @@ function DecryptedMessageBubble({
                 </button>
               )}
 
-              {/* Delete trigger icon */}
+              {/* Delete trigger icon with confirmation */}
               <button
                 type="button"
-                onClick={() => {
-                  const choice = window.prompt(
-                    `Delete Message Options:\nType "1" for Delete for Me\n${message.senderId === currentUserId ? 'Type "2" for Delete for Everyone\n' : ''}Type anything else or cancel to close.`
-                  );
-                  if (choice === "1") {
-                    handleDeleteMessage(false);
-                  } else if (choice === "2" && message.senderId === currentUserId) {
-                    handleDeleteMessage(true);
+                onClick={async () => {
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  const isOwn = message.senderId === currentUserId;
+                  const confirmed = await confirm({
+                    title: isOwn ? 'Delete Message for Everyone?' : 'Delete Message for Me?',
+                    message: isOwn
+                      ? 'Are you sure you want to delete this message? It will be removed for everyone in this conversation.'
+                      : 'Are you sure you want to delete this message from your device history?',
+                    confirmText: isOwn ? 'Delete for Everyone' : 'Delete for Me',
+                    cancelText: 'Cancel',
+                    variant: 'danger',
+                    icon: 'trash',
+                    badge: 'CONFIRM DELETION'
+                  });
+                  if (confirmed) {
+                    handleDeleteMessage(isOwn);
                   }
                 }}
                 className="p-1 text-zinc-500 hover:text-red-500 transition cursor-pointer"
@@ -1193,10 +1243,30 @@ export default function ChatSection({
     } catch { return []; }
   });
   
-  // Wallpapers Configuration
-  const [chatWallpaper, setChatWallpaper] = useState<string>(() => {
-    return localStorage.getItem('flick_global_wallpaper') || 'none';
+  // Wallpapers Configuration (Telegram & WhatsApp Style with Auto-Contrast & Firestore Cloud Sync)
+  const [activeWallpaperConfig, setActiveWallpaperConfig] = useState<ChatWallpaperConfig>(() => {
+    return getChatWallpaperConfig();
   });
+  const [previewWallpaperConfig, setPreviewWallpaperConfig] = useState<ChatWallpaperConfig | null>(null);
+  const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
+
+  const effectiveWallpaper = previewWallpaperConfig || activeWallpaperConfig;
+  const effectiveDimValue = calculateEffectiveDim(effectiveWallpaper);
+  const isHighBrightnessWallpaper = effectiveWallpaper.autoContrast && ((effectiveWallpaper.luminance ?? 50) >= 120);
+
+  // Sync wallpaper when chat changes and hydrate preferred wallpaper from Firestore
+  useEffect(() => {
+    const localCfg = getChatWallpaperConfig(currentChat?.id);
+    setActiveWallpaperConfig(localCfg);
+
+    if (profile?.uid) {
+      loadWallpaperFromFirestore(profile.uid, currentChat?.id).then((cloudCfg) => {
+        if (cloudCfg) {
+          setActiveWallpaperConfig(cloudCfg);
+        }
+      }).catch((e) => console.warn('Could not fetch cloud wallpaper:', e));
+    }
+  }, [currentChat?.id, profile?.uid]);
 
   // PIN authentication temporary verification state per chat session
   const [authenticatedLockedChats, setAuthenticatedLockedChats] = useState<string[]>([]);
@@ -1472,11 +1542,10 @@ export default function ChatSection({
     if (currentChat?.id) {
       const savedTheme = localStorage.getItem(`fara_accent_${currentChat.id}`);
       setChatAccentTheme(savedTheme || 'cyber-poison');
-      const savedWall = localStorage.getItem(`flick_wallpaper_${currentChat.id}`) || localStorage.getItem('flick_global_wallpaper') || 'none';
-      setChatWallpaper(savedWall);
+      setActiveWallpaperConfig(getChatWallpaperConfig(currentChat.id));
     } else {
       setChatAccentTheme('cyber-poison');
-      setChatWallpaper(localStorage.getItem('flick_global_wallpaper') || 'none');
+      setActiveWallpaperConfig(getChatWallpaperConfig());
     }
     // Auto-close info drawer temporarily to keep workspace fluid and focused
     setIsChatInfoOpen(false);
@@ -4861,6 +4930,21 @@ export default function ChatSection({
                   )}
                 </div>
 
+                {/* Chat Wallpaper Studio Toggler (Telegram & WhatsApp Style) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playGlitchClickSound();
+                    triggerVibration('light');
+                    setIsWallpaperModalOpen(true);
+                  }}
+                  className="p-1 px-1.5 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)]/15 uppercase font-bold text-[9px] cursor-pointer flex items-center gap-1 transition shrink-0"
+                  title="Configure Chat Wallpaper (Telegram & WhatsApp style)"
+                >
+                  <Wallpaper className="w-3 h-3 text-[var(--neon-green)]" />
+                  <span className="hidden sm:inline">WALLPAPER</span>
+                </button>
+
                 {/* Tunnel Settings toggler */}
                 <button
                   type="button"
@@ -4973,6 +5057,20 @@ export default function ChatSection({
 
             {/* Messages Stream Wrapper with Info drawer sidebar layout */}
             <div className="flex-1 min-h-0 min-w-0 flex overflow-hidden relative">
+              {/* Active Wallpaper Background Layer (Telegram & WhatsApp style) */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none">
+                {/* Wallpaper Canvas with blur */}
+                <div
+                  className="absolute inset-0 transition-all duration-300"
+                  style={getChatWallpaperStyle(effectiveWallpaper)}
+                />
+                {/* Dimming Layer with Automatic Contrast Guard */}
+                <div
+                  className="absolute inset-0 bg-black transition-opacity duration-300"
+                  style={{ opacity: effectiveDimValue / 100 }}
+                />
+              </div>
+
               {/* Active chat messages history stream (AnimatePresence transitions) */}
               <div 
                 ref={messagesContainerRef}
@@ -4982,7 +5080,9 @@ export default function ChatSection({
                   const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
                   isNearBottomRef.current = distanceToBottom < 120;
                 }}
-                className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 bg-[var(--color-background)] relative scrollbar select-text"
+                className={`flex-1 min-h-0 min-w-0 overflow-y-auto p-4 ${
+                  effectiveWallpaper.type === 'default' ? 'bg-[var(--color-background)]' : 'bg-transparent'
+                } relative z-[1] scrollbar select-text`}
                 style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
               >
                 <div className="max-w-md mx-auto text-center border border-[var(--neon-green)]/15 bg-[var(--color-surface)]/45 p-3 mb-6 font-mono text-[9px] uppercase text-zinc-500 tracking-wider">
@@ -5876,42 +5976,37 @@ export default function ChatSection({
                       </div>
                     </div>
 
-                    {/* Background Wallpapers selector */}
-                    <div className="p-4 space-y-2">
+                    {/* Background Wallpapers selector (Telegram & WhatsApp style) */}
+                    <div className="p-4 space-y-2.5">
                       <span className="text-[9px] uppercase tracking-widest font-black text-zinc-500 block border-l border-[var(--neon-green)] pl-1.5">
-                        TUNNEL BACKGROUND
+                        CHAT WALLPAPER & ATMOSPHERE
                       </span>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {[
-                          { name: 'STEALTH', value: 'none' },
-                          { name: 'MATRIX GRID', value: 'grid' },
-                          { name: 'CRITICAL DOTS', value: 'dots' },
-                          { name: 'CYBER CHAOS', value: 'chaos' }
-                        ].map((wall) => {
-                          const isActive = chatWallpaper === wall.value;
-                          return (
-                            <button
-                              key={wall.value}
-                              type="button"
-                              onClick={() => {
-                                playGlitchClickSound();
-                                setChatWallpaper(wall.value);
-                                if (currentChat?.id) {
-                                  localStorage.setItem(`flick_wallpaper_${currentChat.id}`, wall.value);
-                                } else {
-                                  localStorage.setItem('flick_global_wallpaper', wall.value);
-                                }
-                              }}
-                              className={`p-1.5 border text-center text-[8px] uppercase tracking-wider font-bold cursor-pointer transition ${
-                                isActive
-                                  ? 'bg-[var(--neon-green)] text-black border-transparent font-extrabold shadow-sm'
-                                  : 'border-[var(--neon-green)]/25 text-zinc-400 hover:text-[var(--color-text)] hover:bg-neutral-900'
-                              }`}
-                            >
-                              {wall.name}
-                            </button>
-                          );
-                        })}
+                      <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-8 h-8 rounded-lg border border-zinc-700 shrink-0 overflow-hidden"
+                            style={getChatWallpaperStyle(activeWallpaperConfig)}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-white uppercase truncate">
+                              {activeWallpaperConfig.name || 'Default Wallpaper'}
+                            </p>
+                            <p className="text-[8px] text-zinc-400">
+                              Dim: {activeWallpaperConfig.dim}% · Blur: {activeWallpaperConfig.blur}px
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playGlitchClickSound();
+                            triggerVibration('light');
+                            setIsWallpaperModalOpen(true);
+                          }}
+                          className="px-2.5 py-1.5 bg-[var(--neon-green)] text-black rounded-lg text-[9px] font-black uppercase transition hover:bg-white cursor-pointer shrink-0"
+                        >
+                          Change
+                        </button>
                       </div>
                     </div>
 
@@ -6719,6 +6814,21 @@ export default function ChatSection({
           defaultTab={vaultDefaultTab}
           onDataRestored={() => {
             showBrutalistToast('VAULT SYNCED', 'Your local conversations and media have been updated.', 'success');
+          }}
+        />
+      )}
+
+      {/* Telegram & WhatsApp Style Chat Wallpaper Modal */}
+      {isWallpaperModalOpen && currentChat && (
+        <ChatWallpaperModal
+          isOpen={isWallpaperModalOpen}
+          onClose={() => setIsWallpaperModalOpen(false)}
+          chatId={currentChat.id}
+          chatName={currentChat.isGroup ? (currentChat.name || 'Group Conduit') : (selectedPeer?.displayName || 'Active Chat')}
+          currentConfig={activeWallpaperConfig}
+          onApply={(newConfig) => {
+            setActiveWallpaperConfig(newConfig);
+            showBrutalistToast('WALLPAPER UPDATED', `Atmospheric wallpaper applied: ${newConfig.name}`, 'success');
           }}
         />
       )}

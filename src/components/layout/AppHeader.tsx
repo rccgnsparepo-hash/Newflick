@@ -323,40 +323,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     onClick={() => {
                       playGlitchClickSound();
                       triggerVibration('light');
-                      setActiveTab('feed');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
-                      activeTab === 'feed'
-                        ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
-                        : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
-                    }`}
-                  >
-                    <Sparkle className="w-3.5 h-3.5" />
-                    <span>Chronicles</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      playGlitchClickSound();
-                      triggerVibration('light');
-                      setActiveTab('news');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
-                      activeTab === 'news'
-                        ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
-                        : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
-                    }`}
-                  >
-                    <Radio className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>News Wire</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      playGlitchClickSound();
-                      triggerVibration('light');
                       setActiveTab('chat');
                       setIsMobileMenuOpen(false);
                     }}
@@ -374,7 +340,41 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                         </span>
                       )}
                     </div>
-                    <span>Tunnels</span>
+                    <span>Chats</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playGlitchClickSound();
+                      triggerVibration('light');
+                      setActiveTab('status');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
+                      activeTab === 'status'
+                        ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
+                        : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
+                    }`}
+                  >
+                    <Sparkle className="w-3.5 h-3.5" />
+                    <span>Status</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playGlitchClickSound();
+                      triggerVibration('light');
+                      setActiveTab('news');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`p-2 text-center border font-bold uppercase transition flex flex-col items-center justify-center gap-1 text-[8px] ${
+                      activeTab === 'news'
+                        ? 'border-[var(--neon-green)] bg-[var(--neon-green)] text-black font-black font-serif italic'
+                        : 'border-[var(--neon-green)]/20 text-zinc-400 bg-[var(--color-background)]/40 hover:text-[var(--color-text)]'
+                    }`}
+                  >
+                    <Radio className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>News</span>
                   </button>
                 </div>
               </div>
