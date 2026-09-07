@@ -5183,10 +5183,14 @@ export default function ChatSection({
                             className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full relative min-w-0 ${isGrouped ? 'mt-1' : 'mt-4'}`}
                           >
                           <div className={`p-3 max-w-[85%] sm:max-w-md md:max-w-lg border min-w-0 break-words [overflow-wrap:anywhere] ${
-                            isMe 
+                            isHighBrightnessWallpaper
+                              ? isMe
+                                ? 'bg-emerald-950/95 text-white border-emerald-400/80 shadow-[0_8px_30px_rgba(0,0,0,0.6)] rounded-2xl rounded-tr-sm ring-1 ring-emerald-500/30'
+                                : 'bg-zinc-950/95 text-zinc-100 border-zinc-700 shadow-[0_8px_30px_rgba(0,0,0,0.6)] rounded-2xl rounded-tl-sm ring-1 ring-zinc-750'
+                              : isMe 
                               ? 'bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--neon-green)]/35 shadow-[0_4px_16px_rgba(0,0,0,0.3)] rounded-2xl rounded-tr-sm theme-chat-bubble-me' 
                               : 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]/15 shadow-[0_4px_16px_rgba(0,255,102,0.05)] rounded-2xl rounded-tl-sm theme-chat-bubble-peer'
-                            } theme-chat-bubble space-y-1 relative`}
+                            } theme-chat-bubble space-y-1 relative backdrop-blur-sm`}
                           >
                             {/* Burning timer header (suppress if grouped to save space) */}
                             {secondsRemaining !== null && !isGrouped && (
@@ -6822,12 +6826,18 @@ export default function ChatSection({
       {isWallpaperModalOpen && currentChat && (
         <ChatWallpaperModal
           isOpen={isWallpaperModalOpen}
-          onClose={() => setIsWallpaperModalOpen(false)}
+          onClose={() => {
+            setIsWallpaperModalOpen(false);
+            setPreviewWallpaperConfig(null);
+          }}
           chatId={currentChat.id}
           chatName={currentChat.isGroup ? (currentChat.name || 'Group Conduit') : (selectedPeer?.displayName || 'Active Chat')}
           currentConfig={activeWallpaperConfig}
+          userId={profile?.uid}
+          onLivePreview={(previewCfg) => setPreviewWallpaperConfig(previewCfg)}
           onApply={(newConfig) => {
             setActiveWallpaperConfig(newConfig);
+            setPreviewWallpaperConfig(null);
             showBrutalistToast('WALLPAPER UPDATED', `Atmospheric wallpaper applied: ${newConfig.name}`, 'success');
           }}
         />
