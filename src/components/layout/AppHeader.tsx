@@ -12,7 +12,8 @@ import {
   Sliders,
   Sparkle,
   Radio,
-  MessageSquare
+  MessageSquare,
+  Zap
 } from 'lucide-react';
 import { ConnectionStatusBadge } from '../ConnectionStatusBadge';
 
@@ -22,6 +23,87 @@ interface NotificationItem {
   title: string;
   body: string;
 }
+
+export const VisualBatteryGauge: React.FC<{
+  batteryLevel: number | null;
+  isCharging: boolean;
+  compact?: boolean;
+}> = ({ batteryLevel, isCharging, compact = false }) => {
+  const percentage = batteryLevel !== null ? Math.round(batteryLevel * 100) : null;
+  
+  // Dynamic color configuration
+  let colorClasses = 'border-[var(--neon-green)]/35 bg-[var(--color-surface)] text-[var(--neon-green)]';
+  let barFillColor = 'bg-[var(--neon-green)]';
+  let statusBadge = 'OPTIMAL';
+
+  if (isCharging) {
+    colorClasses = 'border-cyan-400 bg-cyan-950/40 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.35)]';
+    barFillColor = 'bg-cyan-400';
+    statusBadge = 'CHARGING';
+  } else if (percentage !== null) {
+    if (percentage > 60) {
+      colorClasses = 'border-emerald-500/50 bg-emerald-950/25 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)]';
+      barFillColor = 'bg-emerald-400';
+      statusBadge = 'OPTIMAL';
+    } else if (percentage > 25) {
+      colorClasses = 'border-amber-500/60 bg-amber-950/30 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.2)]';
+      barFillColor = 'bg-amber-400';
+      statusBadge = 'MODERATE';
+    } else if (percentage > 10) {
+      colorClasses = 'border-orange-500/70 bg-orange-950/40 text-orange-400 animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.3)]';
+      barFillColor = 'bg-orange-500';
+      statusBadge = 'LOW';
+    } else {
+      colorClasses = 'border-red-500 bg-red-955/50 text-red-400 animate-pulse shadow-[0_0_14px_rgba(239,68,68,0.5)]';
+      barFillColor = 'bg-red-500';
+      statusBadge = 'CRITICAL';
+    }
+  }
+
+  const tooltipText = percentage !== null
+    ? `${isCharging ? '⚡ Grid Power Active (Charging)' : `Battery Level: ${percentage}%`} [${statusBadge}] - Mobile Session Stamina`
+    : 'Continuous Grid Power Online (AC Standard)';
+
+  return (
+    <div 
+      className={`flex items-center space-x-2 font-mono uppercase tracking-wider font-bold transition-all duration-300 select-none ${
+        compact 
+          ? 'p-1.5 border justify-center text-[9px]' 
+          : 'px-2.5 py-1.5 border text-xs shadow-sm'
+      } ${colorClasses}`}
+      title={tooltipText}
+    >
+      {/* Physical Battery Chassis with Positive Terminal Cap */}
+      <div className="relative flex items-center shrink-0">
+        <div className={`border rounded-[2px] p-[1.5px] flex items-center overflow-hidden transition-colors duration-300 ${
+          compact ? 'w-6 h-3' : 'w-7 sm:w-8 h-3.5'
+        } border-current bg-black/50`}>
+          <div 
+            className={`h-full rounded-[1px] transition-all duration-500 ${barFillColor} ${
+              isCharging ? 'animate-pulse' : ''
+            }`}
+            style={{ width: `${percentage !== null ? Math.max(10, percentage) : 100}%` }}
+          />
+        </div>
+        {/* Positive terminal nub */}
+        <div className="w-[2px] h-1.5 bg-current rounded-r-[1px] absolute -right-[3px] top-1/2 -translate-y-1/2 opacity-90" />
+      </div>
+
+      {/* Percentage and indicator readout */}
+      <div className="flex items-center space-x-1">
+        {isCharging && <Zap className="w-3.5 h-3.5 text-cyan-300 animate-bounce" />}
+        <span className="font-mono font-black tracking-tight">
+          {percentage !== null ? `${percentage}%` : 'GRID'}
+        </span>
+        {isCharging && !compact && (
+          <span className="text-[8.5px] font-black text-cyan-300 ml-0.5 tracking-tighter">
+            [CHRG]
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface AppHeaderProps {
   profile: {
@@ -129,22 +211,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             )}
           </div>
 
-          <div 
-            className={`flex items-center space-x-1.5 px-2.5 py-1.5 border font-mono text-xs uppercase tracking-wider font-bold transition-all select-none ${
-              (batteryLevel !== null && batteryLevel <= 0.20)
-                ? 'border-red-500 bg-red-955/20 text-red-500 animate-pulse' 
-                : 'border-[var(--neon-green)]/20 bg-[var(--color-surface)] text-[var(--neon-green)]'
-            }`}
-            title={batteryLevel !== null ? (isCharging ? "Battery is Charging" : `Battery level: ${Math.round(batteryLevel * 100)}%`) : "Connected to Grid Power"}
-          >
-            {isCharging ? (
-              <BatteryCharging className="w-4 h-4 text-[var(--neon-green)]" />
-            ) : (
-              <Battery className={`w-4 h-4 ${(batteryLevel !== null && batteryLevel <= 0.20) ? 'text-red-500 animate-bounce' : 'text-[var(--neon-green)]'}`} />
-            )}
-            <span>{batteryLevel !== null ? `${Math.round(batteryLevel * 100)}%` : 'GRID'}</span>
-            {isCharging && <span className="text-[9px] text-[var(--neon-green)] font-mono font-black">[CHRG]</span>}
-          </div>
+          {/* Dynamic Visual Battery Gauge Indicator */}
+          <VisualBatteryGauge batteryLevel={batteryLevel} isCharging={isCharging} />
 
           {/* Notifications Dropdown */}
           <div className="relative border-[var(--neon-green)]/20 pl-1">
@@ -396,10 +464,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
                 <div className="flex flex-col space-y-1">
                   <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black">Power Reserves</span>
-                  <div className="p-2 border border-[var(--neon-green)]/20 bg-[var(--color-background)]/40 text-[var(--neon-green)] text-center font-bold flex items-center justify-center space-x-1 text-[8.5px]">
-                    {isCharging ? <BatteryCharging className="w-3.5 h-3.5 text-[var(--neon-green)]" /> : <Battery className="w-3.5 h-3.5" />}
-                    <span>{batteryLevel !== null ? `${Math.round(batteryLevel * 100)}%` : 'GRID'}</span>
-                  </div>
+                  <VisualBatteryGauge batteryLevel={batteryLevel} isCharging={isCharging} compact />
                 </div>
               </div>
 

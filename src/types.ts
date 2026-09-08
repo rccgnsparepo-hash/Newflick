@@ -140,6 +140,8 @@ export interface MessageReaction {
   userId: string;
   userName: string;
   createdAt: any;
+  encryptedPayload?: string; // AES-GCM encrypted reaction payload for zero-knowledge verification
+  algorithm?: string;
 }
 
 export interface StoryViewerDetail {

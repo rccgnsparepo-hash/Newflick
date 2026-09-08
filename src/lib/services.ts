@@ -30,7 +30,7 @@ import {
   MessageReactionSchema,
   StorySchema
 } from './schemas';
-import { encryptE2EEMessage } from './crypto';
+import { encryptE2EEMessage, encryptSymmetrically } from './crypto';
 
 // --- User Profile Services ---
 
@@ -1267,11 +1267,30 @@ export async function addOrUpdateMessageReaction(
 ): Promise<void> {
   const path = `chats/${chatId}/messages/${messageId}/message_reactions/${reaction.userId}`;
   try {
+    let encryptedPayload = reaction.encryptedSignal || '';
+    if (!encryptedPayload) {
+      try {
+        const rawEnvelope = JSON.stringify({
+          emoji: reaction.emoji,
+          userId: reaction.userId,
+          userName: reaction.userName,
+          messageId,
+          chatId,
+          timestamp: Date.now()
+        });
+        encryptedPayload = await encryptSymmetrically(rawEnvelope, chatId);
+      } catch (encErr) {
+        console.warn("Reaction encryption fallback:", encErr);
+      }
+    }
+
     const reactionData: any = {
       id: reaction.userId,
       emoji: reaction.emoji,
       userId: reaction.userId,
       userName: reaction.userName,
+      encryptedPayload: encryptedPayload || undefined,
+      algorithm: 'AES-GCM-256',
       createdAt: serverTimestamp()
     };
     
@@ -1287,8 +1306,8 @@ export async function addOrUpdateMessageReaction(
       const updateData: any = {
         [`reactions.${reaction.userId}`]: reaction.emoji
       };
-      if (reaction.encryptedSignal) {
-        updateData[`encryptedReactions.${reaction.userId}`] = reaction.encryptedSignal;
+      if (encryptedPayload) {
+        updateData[`encryptedReactions.${reaction.userId}`] = encryptedPayload;
       }
       await updateDoc(msgRef, updateData);
     } catch (docErr) {

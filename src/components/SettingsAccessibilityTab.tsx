@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Shield, Laptop, Cpu, Type, Sparkles, Check } from 'lucide-react';
+import { Eye, Shield, Laptop, Cpu, Type, Sparkles, Check, Smartphone, Zap } from 'lucide-react';
 import { BrutalistTheme, APP_FONTS, UIAppFont, applyFont, getSavedFont, applyTheme } from '../lib/theme';
-import { VibrationIntensity } from '../lib/haptics';
+import {
+  VibrationIntensity,
+  triggerVibration,
+  isHapticTriggerEnabled,
+  setHapticTriggerEnabled,
+  HAPTIC_TRIGGER_DEFINITIONS,
+  HapticTriggerEvent,
+  triggerEventHaptic
+} from '../lib/haptics';
 import { playGlitchClickSound, playLikeSound } from '../lib/sounds';
-import { triggerVibration } from '../lib/haptics';
 import { useTheme, AccentColor } from '../contexts/ThemeContext';
 
 interface AccessibilityTabProps {
@@ -308,6 +315,56 @@ export function SettingsAccessibilityTab({
                 {level}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Individual Haptic Feedback Event Triggers */}
+        <div className="pt-2 border-t border-[var(--neon-green-border)]/40 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase font-bold text-zinc-400 font-mono tracking-wider">
+              Individual Event Triggers
+            </span>
+            <span className="text-[8px] text-[var(--neon-green)] font-mono">GRANULAR PROTOCOL</span>
+          </div>
+          <div className="grid grid-cols-1 gap-1.5">
+            {HAPTIC_TRIGGER_DEFINITIONS.map(trigger => {
+              const enabled = isHapticTriggerEnabled(trigger.id);
+              return (
+                <div
+                  key={`acc-trig-${trigger.id}`}
+                  className="flex items-center justify-between p-2 border border-zinc-900 bg-black/40 hover:border-zinc-700 transition-colors text-xs font-mono"
+                >
+                  <label className="flex items-center gap-2 cursor-pointer select-none min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={(e) => {
+                        setHapticTriggerEnabled(trigger.id, e.target.checked);
+                        playGlitchClickSound();
+                        if (e.target.checked) triggerEventHaptic(trigger.id);
+                      }}
+                      className="accent-[var(--neon-green)] cursor-pointer w-3.5 h-3.5"
+                    />
+                    <span className="text-[10px] text-zinc-300 font-bold uppercase truncate">{trigger.label}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playLikeSound();
+                      triggerEventHaptic(trigger.id);
+                    }}
+                    disabled={!enabled}
+                    className={`px-2 py-0.5 text-[8px] uppercase font-mono border transition ${
+                      enabled
+                        ? 'border-zinc-700 text-zinc-400 hover:border-[var(--neon-green)] hover:text-[var(--neon-green)] cursor-pointer'
+                        : 'border-zinc-900 text-zinc-600 opacity-40 cursor-not-allowed'
+                    }`}
+                  >
+                    TEST
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

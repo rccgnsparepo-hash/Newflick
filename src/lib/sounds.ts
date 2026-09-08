@@ -1,6 +1,8 @@
 // Self-contained sound synthesizer using the native Web Audio API
 // No static media file dependency to avoid cross-origin, latency, or 404 hazards.
 
+import { triggerEventHaptic } from './haptics';
+
 let audioCtx: AudioContext | null = null;
 
 export function isSoundEnabled(): boolean {
@@ -256,6 +258,7 @@ export function playTypingSound(key?: string, customStyle?: TypingSoundStyle) {
  * Play a beautiful E2EE message sent chime (whoosh + bright pop)
  */
 export function playSendMessageSound() {
+  triggerEventHaptic('message_sent');
   if (!isInteractionSoundsEnabled() || !isSendMessageSoundEnabled()) return;
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -288,6 +291,7 @@ export const playMessageSentSound = playSendMessageSound;
  * Play an E2EE message received double whistle / alert chime
  */
 export function playReceiveMessageSound() {
+  triggerEventHaptic('message_received');
   if (!isInteractionSoundsEnabled() || !isReceiveMessageSoundEnabled()) return;
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -393,6 +397,7 @@ export function playMessageDeliveredSound() {
  * Play a heart reaction/like sound sweep
  */
 export function playLikeSound() {
+  triggerEventHaptic('like');
   if (!isInteractionSoundsEnabled()) return;
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -421,6 +426,7 @@ export function playLikeSound() {
  * Play a glitch tech feedback noise
  */
 export function playGlitchClickSound() {
+  triggerEventHaptic('button_click');
   if (!isInteractionSoundsEnabled()) return;
   const ctx = getAudioContext();
   if (!ctx) return;

@@ -61,7 +61,7 @@ import { useThemeListener } from '../contexts/ThemeContext';
 import { TheFatherOrb } from './TheFatherOrb';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
 import { queueOfflineMessage, syncOfflineMessages } from '../lib/offlineQueue';
-import { triggerVibration } from '../lib/haptics';
+import { triggerVibration, triggerEventHaptic } from '../lib/haptics';
 import { triggerViewProfile } from '../lib/profileTrigger';
 import EmoStickerBoard from './EmoStickerBoard';
 import { ConversationNotificationManager } from '../lib/notificationSystem';
@@ -509,7 +509,7 @@ function DecryptedMessageBubble({
   const toggleReaction = async (emoji: string) => {
     try {
       playGlitchClickSound();
-      triggerVibration('light');
+      triggerEventHaptic('reaction');
       const existing = reactions.find(r => r.userId === currentUserId) || (message.reactions && message.reactions[currentUserId] ? { userId: currentUserId, userName: currentUserDisplayName, emoji: message.reactions[currentUserId] } : null);
       if (existing && existing.emoji === emoji) {
         await removeMessageReaction(chatId, message.id, currentUserId);
@@ -550,11 +550,25 @@ function DecryptedMessageBubble({
   const longPressTimerRef = useRef<any>(null);
   const handleTouchStart = () => {
     longPressTimerRef.current = setTimeout(() => {
-      triggerVibration('medium');
+      triggerEventHaptic('long_press');
+      setShowPicker(true);
+    }, 400);
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    longPressTimerRef.current = setTimeout(() => {
+      triggerEventHaptic('long_press');
       setShowPicker(true);
     }, 450);
   };
-  const handleTouchEnd = () => {
+  const handleMouseUp = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -653,9 +667,12 @@ function DecryptedMessageBubble({
         onTouchStart={handleTouchStartCustom}
         onTouchEnd={handleTouchEndCustom}
         onTouchMove={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         onContextMenu={(e) => {
           e.preventDefault();
-          triggerVibration('medium');
+          triggerEventHaptic('long_press');
           setShowPicker(true);
         }}
         className="space-y-1 relative pointer-events-auto w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-visible select-text"

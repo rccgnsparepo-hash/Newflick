@@ -133,7 +133,9 @@ export const MessageReactionSchema = z.object({
   emoji: z.string().min(1).max(32),
   userId: z.string().min(1).max(128),
   userName: z.string().min(1).max(128),
-  createdAt: z.any()
+  createdAt: z.any(),
+  encryptedPayload: z.string().optional(),
+  algorithm: z.string().optional()
 });
 
 export const StorySchema = z.object({

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield, Volume2 } from 'lucide-react';
+import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield, Volume2, Smartphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { showBrutalistToast } from '../lib/toast';
@@ -20,6 +20,7 @@ import { SettingsStoragePurgeTab } from './SettingsStoragePurgeTab';
 import { SettingsSecurityTab } from './SettingsSecurityTab';
 import { SettingsPrivacyTab } from './SettingsPrivacyTab';
 import { SettingsAboutTab } from './SettingsAboutTab';
+import { SettingsHapticsTab } from './SettingsHapticsTab';
 import { UserProfile } from '../types';
 import { getSavedTheme, applyTheme, BrutalistTheme, THEMES } from '../lib/theme';
 import { isVibrationEnabled, setVibrationEnabled, triggerVibration, getVibrationIntensity, setVibrationIntensity, VibrationIntensity } from '../lib/haptics';
@@ -58,7 +59,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'account' | 'privacy' | 'security' | 'audio' | 'notifications' | 'accessibility' | 'storage' | 'about'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'privacy' | 'security' | 'audio' | 'haptics' | 'notifications' | 'accessibility' | 'storage' | 'about'>('account');
   const [interactionSoundsEnabled, setInteractionSoundsEnabledState] = useState<boolean>(() => isInteractionSoundsEnabled());
   const [eduModeEnabled, setEduModeEnabled] = useState<boolean>(() => localStorage.getItem('flick_edu_mode') === 'true');
   const [newsFeedStyle, setNewsFeedStyle] = useState<'vapor' | 'brutalist' | 'silicon'>(() => {
@@ -475,6 +476,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                     { id: 'privacy', label: 'Privacy', icon: Eye },
                     { id: 'security', label: 'Security', icon: Shield },
                     { id: 'audio', label: 'Audio', icon: Volume2 },
+                    { id: 'haptics', label: 'Haptic Triggers', icon: Smartphone },
                     { id: 'notifications', label: 'Notifications', icon: Bell },
                     { id: 'accessibility', label: 'Appearance', icon: Layout },
                     { id: 'storage', label: 'Storage', icon: HardDrive },
@@ -566,6 +568,18 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                           interactionSoundsEnabled={interactionSoundsEnabled}
                           setInteractionSoundsEnabled={setInteractionSoundsEnabledState}
                         />
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'haptics' && (
+                      <motion.div
+                        key="tab-panel-haptics"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <SettingsHapticsTab />
                       </motion.div>
                     )}
 
