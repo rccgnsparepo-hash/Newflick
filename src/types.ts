@@ -71,6 +71,17 @@ export interface DirectChat {
   announcementsOnly?: boolean;
   pinnedMessages?: string[];
   unreadCounts?: { [userId: string]: number };
+  lastMessageId?: string;
+  lastMessageText?: string;
+  lastMessageType?: 'text' | 'image' | 'video' | 'voice' | 'audio' | 'document' | 'location' | 'poll' | 'system' | string;
+  lastMessageSenderId?: string;
+  lastMessageSenderName?: string;
+  updatedAt?: any;
+  pinnedFor?: { [userId: string]: boolean };
+  archivedFor?: { [userId: string]: boolean };
+  mutedFor?: { [userId: string]: boolean };
+  clearedFor?: { [userId: string]: any };
+  deletedFor?: { [userId: string]: boolean };
 
   // New WhatsApp-style group properties
   groupType?: 'friends' | 'school' | 'church' | 'business' | 'community' | 'custom';
@@ -103,7 +114,7 @@ export interface ChatMessage {
   readAt?: any;
   isGroupMessage?: boolean;
   plainText?: string;
-  messageType?: 'text' | 'system' | 'poll' | 'shared_post' | 'shared_profile';
+  messageType?: 'text' | 'system' | 'poll' | 'shared_post' | 'shared_profile' | 'voice' | 'image' | 'video' | 'document' | 'location' | string;
   mediaUrl?: string;
   mediaType?: string;
   mediaName?: string;
@@ -119,6 +130,8 @@ export interface ChatMessage {
   isEdited?: boolean;
   editedAt?: any;
   isDeleted?: boolean;
+  deliveryStatus?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  optimisticId?: string;
 }
 
 export interface InAppNotification {

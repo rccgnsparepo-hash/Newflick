@@ -623,18 +623,55 @@ export async function sendE2EEMessage(params: {
     
     // Update or create parent Chat snippet details
     let previewSnippet = "Message";
-    if (plainText.startsWith('{"type":"voice_flick"')) {
-      previewSnippet = "🎙️ Voice Flick";
+    let detectedType: string = "text";
+    if (plainText.startsWith('{"type":"voice_flick"') || plainText.startsWith('🎙️')) {
+      previewSnippet = plainText.startsWith('🎙️') ? plainText : "🎤 Voice message";
+      detectedType = "voice";
+    } else if (plainText.startsWith('{') && plainText.includes('"attachmentType"')) {
+      try {
+        const parsed = JSON.parse(plainText);
+        const attType = parsed.attachmentType || parsed.mediaType;
+        if (attType === 'image' || attType?.startsWith('image/')) {
+          previewSnippet = '📷 Photo';
+          detectedType = 'image';
+        } else if (attType === 'video' || attType?.startsWith('video/')) {
+          previewSnippet = '🎥 Video';
+          detectedType = 'video';
+        } else if (attType === 'audio' || attType?.startsWith('audio/')) {
+          previewSnippet = parsed.text && parsed.text.startsWith('🎙️') ? parsed.text : '🎤 Voice message';
+          detectedType = 'voice';
+        } else if (attType === 'document' || attType === 'file') {
+          previewSnippet = parsed.attachmentName ? `📄 ${parsed.attachmentName}` : '📄 Document';
+          detectedType = 'document';
+        } else if (parsed.text) {
+          previewSnippet = parsed.text.length > 50 ? parsed.text.slice(0, 50) + '...' : parsed.text;
+        }
+      } catch {
+        previewSnippet = plainText.length > 50 ? plainText.slice(0, 50) + '...' : plainText;
+      }
+    } else if (plainText.startsWith('📊 POLL_DATA:') || plainText.startsWith('📊 Poll:')) {
+      previewSnippet = plainText.startsWith('📊 Poll:') ? plainText : '📊 Poll';
+      detectedType = 'poll';
+    } else if (plainText.startsWith('📍 Location:')) {
+      previewSnippet = plainText;
+      detectedType = 'location';
     } else if (plainText) {
-      previewSnippet = plainText.length > 40 ? plainText.slice(0, 40) + '...' : plainText;
+      previewSnippet = plainText.length > 50 ? plainText.slice(0, 50) + '...' : plainText;
     }
 
     batch.set(chatRef, {
       id: chatId,
       participantIds: [senderId, receiverId].sort() as [string, string],
       lastMessage: previewSnippet,
+      lastMessageText: previewSnippet,
+      lastMessageId: messageId,
+      lastMessageType: detectedType,
+      lastMessageSenderId: senderId,
+      lastMessageSenderName: senderDisplayName,
       lastMessageAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      [`unreadCounts.${receiverId}`]: increment(1),
+      [`unreadCounts.${senderId}`]: 0
     }, { merge: true });
 
     // Submit push Notification metadata so recipient's device triggers sound/banners
@@ -959,15 +996,61 @@ export async function sendGroupMessageService(params: {
     const messageRef = doc(db, 'chats', chatId, 'messages', messageId);
 
     let snippet = plainText;
-    if (messageType === 'poll') snippet = `📊 Poll: ${pollData?.question || ""}`;
-    else if (messageType === 'system') snippet = plainText;
-    else if (mediaUrl) snippet = `📎 Attachment: ${mediaName || mediaType}`;
+    let detectedType: string = messageType || 'text';
+    if (messageType === 'poll') {
+      snippet = `📊 Poll: ${pollData?.question || ""}`;
+      detectedType = 'poll';
+    } else if (messageType === 'system') {
+      snippet = plainText;
+      detectedType = 'system';
+    } else if (plainText.startsWith('{"type":"voice_flick"') || plainText.startsWith('🎙️')) {
+      snippet = plainText.startsWith('🎙️') ? plainText : '🎤 Voice message';
+      detectedType = 'voice';
+    } else if (mediaUrl) {
+      if (mediaType?.startsWith('image/')) {
+        snippet = '📷 Photo';
+        detectedType = 'image';
+      } else if (mediaType?.startsWith('video/')) {
+        snippet = '🎥 Video';
+        detectedType = 'video';
+      } else if (mediaType?.startsWith('audio/')) {
+        snippet = '🎤 Voice message';
+        detectedType = 'voice';
+      } else {
+        snippet = mediaName ? `📄 ${mediaName}` : '📄 Document';
+        detectedType = 'document';
+      }
+    } else if (plainText.startsWith('📍 Location:')) {
+      snippet = plainText;
+      detectedType = 'location';
+    } else if (plainText) {
+      snippet = plainText.length > 50 ? plainText.slice(0, 50) + '...' : plainText;
+    }
 
     await runTransaction(db, async (transaction) => {
+      const chatSnap = await transaction.get(chatRef);
+      const participantIds: string[] = chatSnap.exists() ? (chatSnap.data().participantIds || []) : [];
+      
+      const unreadUpdates: Record<string, any> = {
+        [`unreadCounts.${senderId}`]: 0
+      };
+      participantIds.forEach(destUid => {
+        if (destUid && destUid !== senderId) {
+          unreadUpdates[`unreadCounts.${destUid}`] = increment(1);
+        }
+      });
+
       transaction.set(messageRef, messageData);
       transaction.update(chatRef, {
-        lastMessage: messageType === 'system' ? snippet : `${senderDisplayName.toUpperCase()}: ${snippet.slice(0, 50)}`,
-        lastMessageAt: serverTimestamp()
+        lastMessage: snippet,
+        lastMessageText: snippet,
+        lastMessageId: messageId,
+        lastMessageType: detectedType,
+        lastMessageSenderId: senderId,
+        lastMessageSenderName: senderDisplayName,
+        lastMessageAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        ...unreadUpdates
       });
     });
 
@@ -1020,66 +1103,28 @@ export async function sendGroupMessageService(params: {
   }
 }
 
+import { subscribeToUserConversations } from './conversationService';
+
+export { 
+  subscribeToUserConversations, 
+  markConversationAsRead, 
+  formatConversationPreview, 
+  getConversationUnreadCount,
+  calculateTotalUnreadCount,
+  sortConversations,
+  setActiveConversationId,
+  getActiveConversationId,
+  isConversationActive,
+  toggleChatPinned,
+  toggleChatMuted,
+  toggleChatArchived,
+  clearChatHistory,
+  deleteChatForUser
+} from './conversationService';
+
 // Subscribe to conversational listings in real-time
 export function subscribeToChats(userId: string, callback: (chats: DirectChat[]) => void, onError?: (err: any) => void) {
-  const path = 'chats';
-  const q = query(
-    collection(db, 'chats'),
-    where('participantIds', 'array-contains', userId)
-  );
-  return onSnapshot(q, (snap) => {
-    const rawChats = snap.docs.map(doc => doc.data() as DirectChat);
-    
-    // Group and deduplicate chats by canonical conversation identity
-    const deduplicatedMap = new Map<string, DirectChat>();
-
-    for (const chat of rawChats) {
-      // If group chat, unique key is group id
-      if (chat.isGroup) {
-        deduplicatedMap.set(chat.id, chat);
-        continue;
-      }
-
-      // If direct chat, canonical key is the sorted pair of participants
-      const participants = Array.isArray(chat.participantIds) ? [...chat.participantIds].sort() : [];
-      const canonicalKey = participants.length >= 2 ? `direct_${participants.join('_')}` : `direct_${chat.id}`;
-      const canonicalId = participants.length >= 2 ? getDeterministicChatId(participants[0], participants[1]) : chat.id;
-
-      if (!deduplicatedMap.has(canonicalKey)) {
-        deduplicatedMap.set(canonicalKey, {
-          ...chat,
-          id: canonicalId // Guarantee canonical chat ID
-        });
-      } else {
-        const existing = deduplicatedMap.get(canonicalKey)!;
-        const existingTime = existing.lastMessageAt?.toMillis ? existing.lastMessageAt.toMillis() : (existing.lastMessageAt?.seconds ? existing.lastMessageAt.seconds * 1000 : 0);
-        const newTime = chat.lastMessageAt?.toMillis ? chat.lastMessageAt.toMillis() : (chat.lastMessageAt?.seconds ? chat.lastMessageAt.seconds * 1000 : 0);
-
-        // Keep the record with the newer message activity
-        if (newTime >= existingTime) {
-          deduplicatedMap.set(canonicalKey, {
-            ...chat,
-            id: canonicalId,
-            unreadCounts: {
-              ...(existing.unreadCounts || {}),
-              ...(chat.unreadCounts || {})
-            }
-          });
-        }
-      }
-    }
-
-    const chats = Array.from(deduplicatedMap.values());
-    chats.sort((a, b) => {
-      const aTime = a.lastMessageAt?.toMillis ? a.lastMessageAt.toMillis() : (a.lastMessageAt?.seconds ? a.lastMessageAt.seconds * 1000 : 0);
-      const bTime = b.lastMessageAt?.toMillis ? b.lastMessageAt.toMillis() : (b.lastMessageAt?.seconds ? b.lastMessageAt.seconds * 1000 : 0);
-      return bTime - aTime;
-    });
-    callback(chats);
-  }, (err) => {
-    if (onError) onError(err);
-    else console.warn(`Silent listener error on ${path}:`, err);
-  });
+  return subscribeToUserConversations(userId, callback, onError);
 }
 
 /**

@@ -91,6 +91,10 @@ export const BadgeService = {
     return stored ? parseInt(stored, 10) : 0;
   },
 
+  set(count: number, userId?: string) {
+    return this.updateBadgeCount(count, userId);
+  },
+
   async updateBadgeCount(count: number, userId?: string) {
     const normalizedCount = Math.max(0, count);
     localStorage.setItem('flick_badge_count', normalizedCount.toString());

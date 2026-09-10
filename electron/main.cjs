@@ -248,6 +248,11 @@ function createWindow() {
   // Track window modifications for persistence
   mainWindow.on('resize', () => saveWindowState(mainWindow));
   mainWindow.on('move', () => saveWindowState(mainWindow));
+  mainWindow.on('focus', () => {
+    try {
+      mainWindow.flashFrame(false);
+    } catch (e) {}
+  });
 
   // Lock down Zoom Limits when loading completes
   mainWindow.webContents.on('did-finish-load', () => {

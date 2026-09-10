@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, doc, setLogLevel } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import { getBootstrapConfig } from './bootstrap';
 
 // Suppress Firestore verbose/warning logs (such as offline connection warnings)
@@ -41,6 +42,7 @@ export let app: any = null;
 export let db: any = null;
 export let auth: any = null;
 export let rtdb: any = null;
+export let storage: any = null;
 export let isFirebaseConfigured = false;
 export let firebaseInitError: string | null = null;
 
@@ -53,6 +55,11 @@ try {
     auth = getAuth(app);
     const rtdbUrl = config.databaseURL || `https://${config.projectId || 'gen-lang-client-0982710068'}-default-rtdb.firebaseio.com`;
     rtdb = getDatabase(app, rtdbUrl);
+    try {
+      storage = getStorage(app);
+    } catch (storageErr) {
+      console.warn("[Firebase Storage] Initialization warning:", storageErr);
+    }
     isFirebaseConfigured = true;
     console.log("[Firebase Client] Initialized successfully.");
   } else {
@@ -81,6 +88,13 @@ export function reinitializeFirebaseWithConfig(newConfig: any): boolean {
     if (!rtdb) {
       const rtdbUrl = newConfig.databaseURL || `https://${newConfig.projectId || 'gen-lang-client-0982710068'}-default-rtdb.firebaseio.com`;
       rtdb = getDatabase(app, rtdbUrl);
+    }
+    if (!storage) {
+      try {
+        storage = getStorage(app);
+      } catch (storageErr) {
+        console.warn("[Firebase Storage] Re-init warning:", storageErr);
+      }
     }
     isFirebaseConfigured = true;
     firebaseInitError = null;

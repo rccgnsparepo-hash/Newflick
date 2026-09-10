@@ -50,6 +50,11 @@ import {
   joinGroupCall,
   leaveGroupCall
 } from './lib/services';
+import {
+  subscribeToUserConversations,
+  calculateTotalUnreadCount,
+  getConversationsCache
+} from './lib/conversationService';
 import { InAppNotification } from './types';
 import {
   showPushNotification,
@@ -695,6 +700,35 @@ function Dashboard() {
 
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
 
+  // Server-authoritative unread count for conversations
+  const [chatUnreadCount, setChatUnreadCount] = useState<number>(() => {
+    if (!profile?.uid) return 0;
+    return calculateTotalUnreadCount(getConversationsCache(profile.uid), profile.uid);
+  });
+
+  // Real-time synchronization of conversations unread sum
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const unsub = subscribeToUserConversations(profile.uid, (chats) => {
+      const total = calculateTotalUnreadCount(chats, profile.uid);
+      setChatUnreadCount(total);
+      BadgeService.set(total);
+    });
+    return () => unsub();
+  }, [profile?.uid]);
+
+  // Immediate local event listener for snappy in-tab badge zeroing
+  useEffect(() => {
+    const handleUnreadChanged = (e: any) => {
+      if (typeof e.detail?.totalUnread === 'number') {
+        setChatUnreadCount(e.detail.totalUnread);
+        BadgeService.set(e.detail.totalUnread);
+      }
+    };
+    window.addEventListener('flick-unread-count-changed' as any, handleUnreadChanged);
+    return () => window.removeEventListener('flick-unread-count-changed' as any, handleUnreadChanged);
+  }, []);
+
   // Theme support
   const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark for premium green-black look
 
@@ -1098,7 +1132,7 @@ function Dashboard() {
     return <AuthScreen />;
   }
 
-  const unreadE2EECount = notifications.filter(n => n.type === 'message').length;
+  const unreadE2EECount = chatUnreadCount;
 
   return (
     <div className="fixed inset-0 h-full w-full flex flex-col md:flex-row overflow-hidden bg-[var(--color-background)] text-[var(--color-text)] dark:text-[var(--color-text)] font-mono selection:bg-[var(--neon-green)] selection:text-black transition-colors duration-200">

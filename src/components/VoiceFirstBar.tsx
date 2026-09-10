@@ -35,6 +35,7 @@ import {
 import { showBrutalistToast } from '../lib/toast';
 import { microphoneService } from '../lib/microphoneService';
 import { MicrophoneDiagnosticPanel } from './MicrophoneDiagnosticPanel';
+import { saveChatDraft, getChatDraft, clearChatDraft } from '../lib/draftStorage';
 
 interface VoiceFirstBarProps {
   chatId: string;
@@ -51,6 +52,10 @@ interface VoiceFirstBarProps {
   onPickAttachment?: () => void;
   onTypingStatusChange?: (isTyping: boolean, type?: string) => void;
   disabled?: boolean;
+  text?: string;
+  onTextChange?: (text: string) => void;
+  peerId?: string;
+  isGroup?: boolean;
 }
 
 export function VoiceFirstBar({
@@ -63,6 +68,10 @@ export function VoiceFirstBar({
   onPickAttachment,
   onTypingStatusChange,
   disabled = false,
+  text: textProp,
+  onTextChange,
+  peerId,
+  isGroup,
 }: VoiceFirstBarProps) {
   const [recorderState, setRecorderState] = useState<VoiceRecordingState>({
     isRecording: false,
@@ -84,8 +93,33 @@ export function VoiceFirstBar({
   const [previewPlaybackRate, setPreviewPlaybackRate] = useState<number>(1.0);
   const [isSavedToVault, setIsSavedToVault] = useState<boolean>(false);
 
-  const [auxiliaryText, setAuxiliaryText] = useState<string>('');
+  const [auxiliaryText, setAuxiliaryText] = useState<string>(() => {
+    if (textProp !== undefined) return textProp;
+    return getChatDraft(senderId, chatId, peerId, isGroup);
+  });
+  const [isDraftSaved, setIsDraftSaved] = useState<boolean>(() => {
+    const d = textProp !== undefined ? textProp : getChatDraft(senderId, chatId, peerId, isGroup);
+    return Boolean(d && d.trim().length > 0);
+  });
   const [isSending, setIsSending] = useState<boolean>(false);
+
+  // Keep auxiliaryText in sync when external textProp changes (e.g. from Emojis, Location, Poll, or chat switch)
+  useEffect(() => {
+    if (textProp !== undefined && textProp !== auxiliaryText) {
+      setAuxiliaryText(textProp);
+      setIsDraftSaved(Boolean(textProp && textProp.trim().length > 0));
+    }
+  }, [textProp]);
+
+  // Restore draft when chatId or recipient changes
+  useEffect(() => {
+    const draft = textProp !== undefined ? textProp : getChatDraft(senderId, chatId, peerId, isGroup);
+    setAuxiliaryText(draft);
+    setIsDraftSaved(Boolean(draft && draft.trim().length > 0));
+    if (onTextChange && textProp === undefined && draft) {
+      onTextChange(draft);
+    }
+  }, [chatId, senderId, peerId, isGroup]);
 
   // Gesture tracking for Slide-To-Cancel and Slide-Up-To-Lock
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -426,8 +460,11 @@ export function VoiceFirstBar({
     const textToSubmit = auxiliaryText.trim();
     if (!textToSubmit || !onSendTextMessage || isSending) return;
 
-    // 1. Immediately reset the input field so UI clears on the very same frame
+    // 1. Immediately reset the input field and clear draft so UI clears on the very same frame
     setAuxiliaryText('');
+    if (onTextChange) onTextChange('');
+    clearChatDraft(senderId, chatId, peerId, isGroup);
+    setIsDraftSaved(false);
     setIsSending(true);
 
     try {
@@ -436,11 +473,27 @@ export function VoiceFirstBar({
       }
       await onSendTextMessage(textToSubmit);
     } catch (err: any) {
-      // 2. If transmission fails, safely restore draft into input box
+      // 2. If transmission fails, safely restore draft into input box and storage
       setAuxiliaryText(textToSubmit);
+      if (onTextChange) onTextChange(textToSubmit);
+      saveChatDraft(senderId, chatId, textToSubmit, peerId, isGroup);
+      setIsDraftSaved(true);
       showBrutalistToast('SEND FAILED', 'Could not transmit dialogue packet. Message draft restored.', 'error');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleInputChange = (newVal: string) => {
+    setAuxiliaryText(newVal);
+    if (onTextChange) {
+      onTextChange(newVal);
+    }
+    saveChatDraft(senderId, chatId, newVal, peerId, isGroup);
+    setIsDraftSaved(newVal.trim().length > 0);
+    playTypingSound(newVal.slice(-1));
+    if (onTypingStatusChange) {
+      onTypingStatusChange(newVal.trim().length > 0, 'text');
     }
   };
 
@@ -747,11 +800,7 @@ export function VoiceFirstBar({
               <input
                 type="text"
                 value={auxiliaryText}
-                onChange={(e) => {
-                  setAuxiliaryText(e.target.value);
-                  playTypingSound(e.target.value.slice(-1));
-                  if (onTypingStatusChange) onTypingStatusChange(true, 'text');
-                }}
+                onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -759,8 +808,17 @@ export function VoiceFirstBar({
                   }
                 }}
                 placeholder="Type a message or hold mic to talk..."
-                className="w-full px-4 py-2.5 rounded-2xl bg-zinc-900/80 border border-zinc-700/60 focus:border-[var(--neon-green)] text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans transition-all duration-200 shadow-inner"
+                className="w-full pl-4 pr-16 py-2.5 rounded-2xl bg-zinc-900/80 border border-zinc-700/60 focus:border-[var(--neon-green)] text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans transition-all duration-200 shadow-inner"
               />
+              {isDraftSaved && auxiliaryText.trim().length > 0 && (
+                <div 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[8.5px] font-mono uppercase tracking-wider text-[var(--neon-green)] bg-black/75 px-1.5 py-0.5 rounded border border-[var(--neon-green)]/30 pointer-events-none select-none transition-opacity duration-200"
+                  title="Draft auto-saved to local storage"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--neon-green)] animate-pulse" />
+                  <span className="hidden sm:inline font-bold">SAVED</span>
+                </div>
+              )}
             </form>
 
             {/* RIGHT SIDE: SEND BUTTON (When typing) OR HOLD TO TALK / TAP TO RECORD (When idle) */}

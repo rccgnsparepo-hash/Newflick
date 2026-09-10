@@ -18,6 +18,10 @@ export interface ChatWallpaperConfig {
   // Desktop upload metadata
   fileName?: string;
   fileFormat?: string; // png, jpg, jpeg, tiff, webp
+  cropAspectRatio?: string; // 16:9, 9:16, 16:10, 21:9, 4:3, 1:1, device, freeform
+  originalSourceUrl?: string; // Pre-crop master source
+  storagePath?: string; // Firebase Storage destination path
+  isCloudStored?: boolean; // True if hosted on Firebase Storage
 }
 
 export interface WallpaperPreset {

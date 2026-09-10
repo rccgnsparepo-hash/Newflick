@@ -37,6 +37,16 @@
         "participantIds": { "type": "array", "description": "Array of participant user IDs" },
         "lastMessage": { "type": "string", "description": "Last message preview snippet" },
         "lastMessageAt": { "type": "string", "format": "date-time", "description": "Timestamp of last message" },
+        "lastMessageId": { "type": "string", "description": "Unique ID of latest message" },
+        "lastMessageText": { "type": "string", "description": "Raw or formatted text of latest message" },
+        "lastMessageType": { "type": "string", "description": "Message category (text, image, voice, etc.)" },
+        "lastMessageSenderId": { "type": "string", "description": "UID of user who dispatched latest message" },
+        "lastMessageSenderName": { "type": "string", "description": "Display name of latest message author" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of latest conversation update" },
+        "unreadCounts": { "type": "object", "description": "Per-user unread message counters map" },
+        "pinnedFor": { "type": "object", "description": "Per-user pinned flag map" },
+        "archivedFor": { "type": "object", "description": "Per-user archived flag map" },
+        "mutedFor": { "type": "object", "description": "Per-user muted flag map" },
         "typing": { "type": "object", "description": "Realtime map of participant ID to typing state" }
       },
       "required": ["id", "participantIds", "lastMessage", "lastMessageAt"]

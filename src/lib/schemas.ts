@@ -66,6 +66,18 @@ export const DirectChatSchema = z.object({
   roles: z.record(z.string(), z.enum(['owner', 'admin', 'moderator', 'member', 'muted', 'guest', 'bot'])).optional(),
   announcementsOnly: z.boolean().optional(),
   pinnedMessages: z.array(z.string()).optional(),
+  unreadCounts: z.record(z.string(), z.number()).optional(),
+  lastMessageId: z.string().optional(),
+  lastMessageText: z.string().optional(),
+  lastMessageType: z.string().optional(),
+  lastMessageSenderId: z.string().optional(),
+  lastMessageSenderName: z.string().optional(),
+  updatedAt: z.any().optional(),
+  pinnedFor: z.record(z.string(), z.boolean()).optional(),
+  archivedFor: z.record(z.string(), z.boolean()).optional(),
+  mutedFor: z.record(z.string(), z.boolean()).optional(),
+  clearedFor: z.record(z.string(), z.any()).optional(),
+  deletedFor: z.record(z.string(), z.boolean()).optional(),
 
   // New WhatsApp-style group properties
   groupType: z.enum(['friends', 'school', 'church', 'business', 'community', 'custom']).optional(),
@@ -112,7 +124,9 @@ export const ChatMessageSchema = z.object({
   }).nullable().optional(),
   isEdited: z.boolean().optional(),
   editedAt: z.any().optional(),
-  isDeleted: z.boolean().optional()
+  isDeleted: z.boolean().optional(),
+  deliveryStatus: z.enum(['sending', 'sent', 'delivered', 'read', 'failed']).optional(),
+  optimisticId: z.string().optional()
 });
 
 export const InAppNotificationSchema = z.object({

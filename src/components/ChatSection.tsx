@@ -49,8 +49,18 @@ import {
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
   Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard, Archive,
-  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield
+  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield, Clock, AlertCircle
 } from 'lucide-react';
+import {
+  getConversationUnreadCount,
+  calculateTotalUnreadCount,
+  formatConversationPreview,
+  getChatTimestampMs,
+  markConversationAsRead,
+  setActiveConversationId,
+  getActiveConversationId,
+  getConversationsCache
+} from '../lib/conversationService';
 import {
   subscribeToPeersStatus
 } from '../lib/rtdbService';
@@ -73,6 +83,20 @@ import { VoicePlayerBubble } from './VoicePlayerBubble';
 import { VoiceFirstBar } from './VoiceFirstBar';
 import { VoiceMemoriesModal } from './VoiceMemoriesModal';
 import { DeviceVaultTransferModal } from './DeviceVaultTransferModal';
+import {
+  saveChatDraft,
+  getChatDraft,
+  clearChatDraft,
+  saveActiveChatSession,
+  getLastActiveChatSession,
+  clearActiveChatSession,
+  savePollDraft,
+  getPollDraft,
+  clearPollDraft,
+  saveMessageEditDraft,
+  getMessageEditDraft,
+  clearMessageEditDraft
+} from '../lib/draftStorage';
 import { NewDeviceWelcomeBanner } from './NewDeviceWelcomeBanner';
 import { saveVoiceNoteToVault } from '../lib/voiceVault';
 import { ChatWallpaperConfig } from '../types/wallpaper';
@@ -133,6 +157,38 @@ function formatLastSeen(lastChanged: any): string {
     return `${days}d ago`;
   } catch (e) {
     return 'offline';
+  }
+}
+
+function formatConversationTimestamp(timestamp: any): string {
+  if (!timestamp) return '';
+  try {
+    const ms = typeof timestamp === 'number'
+      ? timestamp
+      : (timestamp.toMillis ? timestamp.toMillis() : (timestamp.toDate ? timestamp.toDate().getTime() : (timestamp.seconds ? timestamp.seconds * 1000 : Date.parse(timestamp))));
+    if (!ms || isNaN(ms)) return '';
+    const date = new Date(ms);
+    const now = new Date();
+
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    }
+
+    return date.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' });
+  } catch {
+    return '';
   }
 }
 
@@ -242,6 +298,23 @@ function DecryptedMessageBubble({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Restore edit draft if previously in progress
+  useEffect(() => {
+    if (isEditing && currentUserId && message.id) {
+      const editDraft = getMessageEditDraft(currentUserId, message.id);
+      if (editDraft) {
+        setEditText(editDraft);
+      }
+    }
+  }, [isEditing, currentUserId, message.id]);
+
+  // Auto-save edit text to localStorage as user edits
+  useEffect(() => {
+    if (isEditing && currentUserId && message.id) {
+      saveMessageEditDraft(currentUserId, message.id, editText);
+    }
+  }, [editText, isEditing, currentUserId, message.id]);
 
   // Subscribe to reactions in this message's subcollection
   useEffect(() => {
@@ -407,6 +480,9 @@ function DecryptedMessageBubble({
         });
       }
       setIsEditing(false);
+      if (currentUserId && message.id) {
+        clearMessageEditDraft(currentUserId, message.id);
+      }
       showBrutalistToast('EDIT SYNCHRONIZED', 'Your message has been updated in real-time!', 'success');
     } catch (err) {
       console.error("Failed to edit message:", err?.message || err);
@@ -714,7 +790,12 @@ function DecryptedMessageBubble({
             />
             <div className="flex justify-end space-x-1.5 pointer-events-auto">
               <button
-                onClick={() => setIsEditing(false)}
+                onClick={() => {
+                  setIsEditing(false);
+                  if (currentUserId && message.id) {
+                    clearMessageEditDraft(currentUserId, message.id);
+                  }
+                }}
                 className="px-2 py-1 text-[8.5px] font-black uppercase font-mono tracking-wider border border-[var(--neon-green-border)] hover:border-zinc-500 text-zinc-400 hover:text-[var(--color-text)] cursor-pointer"
                 disabled={isUpdating}
               >
@@ -1507,15 +1588,8 @@ export default function ChatSection({
       setText('');
       return;
     }
-    if (currentChat.isGroup) {
-      const savedDraft = localStorage.getItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`);
-      setText(savedDraft || '');
-    } else if (selectedPeer) {
-      const savedDraft = localStorage.getItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
-      setText(savedDraft || '');
-    } else {
-      setText('');
-    }
+    const savedDraft = getChatDraft(profile.uid, currentChat.id, selectedPeer?.uid, currentChat.isGroup);
+    setText(savedDraft);
   }, [currentChat?.id, selectedPeer?.uid, profile?.uid]);
 
   // Synchronize active group metadata into edit states when current chat changes
@@ -1539,20 +1613,34 @@ export default function ChatSection({
   // Save partially typed messages drafts to localStorage as typing progresses
   useEffect(() => {
     if (!profile || !currentChat) return;
-    if (currentChat.isGroup) {
-      if (text.trim()) {
-        localStorage.setItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`, text);
-      } else {
-        localStorage.removeItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`);
-      }
-    } else if (selectedPeer) {
-      if (text.trim()) {
-        localStorage.setItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`, text);
-      } else {
-        localStorage.removeItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
+    saveChatDraft(profile.uid, currentChat.id, text, selectedPeer?.uid, currentChat.isGroup);
+  }, [text, currentChat?.id, selectedPeer?.uid, profile?.uid]);
+
+  // Persist active chat session so navigating away or refreshing restores the conversation
+  useEffect(() => {
+    if (!profile?.uid) return;
+    if (currentChat) {
+      saveActiveChatSession(profile.uid, currentChat.id, selectedPeer?.uid, currentChat.isGroup);
+    }
+  }, [currentChat?.id, selectedPeer?.uid, profile?.uid]);
+
+  // Restore and auto-save in-progress poll creator drafts
+  useEffect(() => {
+    if (!profile || !currentChat) return;
+    const pollDraft = getPollDraft(profile.uid, currentChat.id);
+    if (pollDraft) {
+      setPollQuestion(pollDraft.question || '');
+      setPollOptions(pollDraft.options && pollDraft.options.length >= 2 ? pollDraft.options : ['', '']);
+      if (pollDraft.question.trim().length > 0 || pollDraft.options.some(o => o.trim().length > 0)) {
+        setIsPollCreatorOpen(true);
       }
     }
-  }, [text, currentChat?.id, selectedPeer?.uid, profile?.uid]);
+  }, [currentChat?.id, profile?.uid]);
+
+  useEffect(() => {
+    if (!profile || !currentChat) return;
+    savePollDraft(profile.uid, currentChat.id, pollQuestion, pollOptions);
+  }, [pollQuestion, pollOptions, currentChat?.id, profile?.uid]);
 
   // Sync per-chat brutalist background or theme settings when starting/switching conversation channels
   useEffect(() => {
@@ -1569,8 +1657,8 @@ export default function ChatSection({
   }, [currentChat?.id]);
 
   // Active chat tunnels and search filter type states
-  const [activeChatTunnels, setActiveChatTunnels] = useState<DirectChat[]>([]);
-  const [isChatsLoading, setIsChatsLoading] = useState<boolean>(true);
+  const [activeChatTunnels, setActiveChatTunnels] = useState<DirectChat[]>(() => profile?.uid ? getConversationsCache(profile.uid) : []);
+  const [isChatsLoading, setIsChatsLoading] = useState<boolean>(() => !profile?.uid || getConversationsCache(profile.uid).length === 0);
   const [isChatsPendingLong, setIsChatsPendingLong] = useState<boolean>(false);
   const [isMessagesLoading, setIsMessagesLoading] = useState<boolean>(false);
   const [isMessagesPendingLong, setIsMessagesPendingLong] = useState<boolean>(false);
@@ -1897,6 +1985,65 @@ export default function ChatSection({
     }
   }, [activeChatTunnels, currentChat]);
 
+  // Restore last active chat session upon returning to chat or page reload
+  const hasRestoredActiveSessionRef = useRef(false);
+  useEffect(() => {
+    if (!profile?.uid || currentChat || hasRestoredActiveSessionRef.current) return;
+    if (deepLinkedPeerId || deepLinkedGroupId) return;
+
+    const session = getLastActiveChatSession(profile.uid);
+    if (!session || !session.chatId) return;
+
+    if (activeChatTunnels.length > 0) {
+      const matchedTunnel = activeChatTunnels.find(c => c.id === session.chatId);
+      if (matchedTunnel) {
+        hasRestoredActiveSessionRef.current = true;
+        if (matchedTunnel.isGroup) {
+          setSelectedGroup(matchedTunnel);
+          setSelectedPeer(null);
+          setCurrentChat(matchedTunnel);
+        } else {
+          const otherUid = matchedTunnel.participantIds.find(p => p !== profile.uid);
+          if (otherUid === 'my-ai-bot-uid') {
+            openChatRoom({
+              uid: 'my-ai-bot-uid',
+              displayName: 'My AI',
+              email: 'ai@flick.local',
+              photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=my-ai-bot-uid',
+              status: 'online',
+              publicKey: '',
+              updatedAt: new Date()
+            });
+          } else {
+            const peer = users.find(u => u.uid === otherUid);
+            if (peer) {
+              openChatRoom(peer);
+            } else if (otherUid) {
+              openChatRoom({
+                uid: otherUid,
+                displayName: (matchedTunnel as any).lastMessageSenderName || 'Peer Node',
+                email: `${otherUid.slice(0, 8)}@flick.local`,
+                photoURL: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${otherUid}`,
+                status: 'offline',
+                publicKey: '',
+                updatedAt: new Date()
+              });
+            }
+          }
+        }
+        return;
+      }
+    }
+
+    if (session.peerId && !session.isGroup && users.length > 0) {
+      const peer = users.find(u => u.uid === session.peerId);
+      if (peer) {
+        hasRestoredActiveSessionRef.current = true;
+        openChatRoom(peer);
+      }
+    }
+  }, [profile?.uid, currentChat, activeChatTunnels, users, deepLinkedPeerId, deepLinkedGroupId]);
+
   // Subscribe to real-time typing states of all conversation tunnels
   useEffect(() => {
     if (!profile?.uid || activeChatTunnels.length === 0) return;
@@ -2093,7 +2240,23 @@ export default function ChatSection({
   // Shortcuts menu state
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
   
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      return localStorage.getItem('fara_flick_search_draft') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (searchQuery) {
+        localStorage.setItem('fara_flick_search_draft', searchQuery);
+      } else {
+        localStorage.removeItem('fara_flick_search_draft');
+      }
+    } catch {}
+  }, [searchQuery]);
   const [error, setError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -2567,11 +2730,7 @@ export default function ChatSection({
 
     // Clear saved draft in local storage
     try {
-      if (currentChat.isGroup) {
-        localStorage.removeItem(`fara_flick_draft_${profile.uid}_group_${currentChat.id}`);
-      } else if (selectedPeer) {
-        localStorage.removeItem(`fara_flick_draft_${profile.uid}_${selectedPeer.uid}`);
-      }
+      clearChatDraft(profile.uid, currentChat.id, selectedPeer?.uid, currentChat.isGroup);
     } catch {
       // Ignore
     }
@@ -2812,6 +2971,9 @@ export default function ChatSection({
     } catch (err: any) {
       if (customText === undefined) {
         setText(textRestoreValue);
+        if (profile && currentChat) {
+          saveChatDraft(profile.uid, currentChat.id, textRestoreValue, selectedPeer?.uid, currentChat.isGroup);
+        }
       }
       setSelectedAttachment(attachmentRestoreValue); 
       let errMsg = "Handshake packaging failure: " + sanitizeErrorMessage(err);
@@ -3243,7 +3405,7 @@ export default function ChatSection({
     return true;
   });
 
-  const unreadTunnelsCount = notifications.filter(n => n.type === 'message').length;
+  const unreadTunnelsCount = calculateTotalUnreadCount(activeChatTunnels, profile?.uid || '');
 
   const filteredActiveTunnels = activeChatTunnels.filter(chat => {
     // Filter by deleted/trash status
@@ -3268,14 +3430,7 @@ export default function ChatSection({
     if (filterType === 'favorites' && !favoriteChats.includes(chat.id)) return false;
 
     if (filterType === 'unread') {
-      const peerId = chat.participantIds.find(id => id !== profile?.uid);
-      const peer = users.find(u => u.uid === peerId);
-      const unreadCount = notifications.filter(n => 
-        n.type === 'message' && (
-          n.chatId === chat.id || 
-          (peer && (n.senderId === peer.uid || n.senderName === peer.displayName))
-        )
-      ).length;
+      const unreadCount = getConversationUnreadCount(chat, profile?.uid || '');
       if (unreadCount === 0) return false;
     }
 
@@ -4103,17 +4258,6 @@ export default function ChatSection({
             /* Render unified active conversations (chats & groups) */
             <AnimatePresence initial={false}>
             {filteredActiveTunnels.filter(chat => {
-              const peerId = chat.participantIds.find(id => id !== profile?.uid);
-              const peer = users.find(u => u.uid === peerId);
-              const unreadCount = notifications.filter(n => 
-                n.type === 'message' && (
-                  n.chatId === chat.id || 
-                  (peer && (n.senderId === peer.uid || n.senderName === peer.displayName))
-                )
-              ).length;
-              
-              if (filterType === 'unread' && unreadCount === 0) return false;
-
               // Filter by folders
               if (selectedFolder !== 'All') {
                 const folderChats = chatFolders[selectedFolder] || [];
@@ -4125,63 +4269,48 @@ export default function ChatSection({
                 const q = searchQuery.toLowerCase();
                 if (chat.isGroup) {
                   const nameMatch = chat.name?.toLowerCase().includes(q);
-                  const lastMsgMatch = chat.lastMessage?.toLowerCase().includes(q);
+                  const lastMsgMatch = (chat.lastMessageText || chat.lastMessage)?.toLowerCase().includes(q);
                   if (!nameMatch && !lastMsgMatch) return false;
                 } else {
-                  if (!peer) return false;
-                  const nameMatch = peer.displayName.toLowerCase().includes(q);
-                  const emailMatch = peer.email?.toLowerCase().includes(q);
-                  const aliasMatch = (renamedNicknames[peer.uid] || '').toLowerCase().includes(q);
-                  const lastMsgMatch = chat.lastMessage?.toLowerCase().includes(q);
+                  const peerId = chat.participantIds.find(id => id !== profile?.uid);
+                  const peer = users.find(u => u.uid === peerId);
+                  const nameMatch = peer?.displayName?.toLowerCase().includes(q);
+                  const emailMatch = peer?.email?.toLowerCase().includes(q);
+                  const aliasMatch = (renamedNicknames[peerId || ''] || '').toLowerCase().includes(q);
+                  const lastMsgMatch = (chat.lastMessageText || chat.lastMessage)?.toLowerCase().includes(q);
                   if (!nameMatch && !emailMatch && !aliasMatch && !lastMsgMatch) return false;
                 }
               }
               return true;
             }).sort((a, b) => {
-              // 1. Pinned chats sort to the very top
-              const isPinnedA = pinnedChats.includes(a.id);
-              const isPinnedB = pinnedChats.includes(b.id);
+              // 1. Pinned conversations pin to top
+              const isPinnedA = pinnedChats.includes(a.id) || !!(a.pinnedFor && profile?.uid && a.pinnedFor[profile.uid]);
+              const isPinnedB = pinnedChats.includes(b.id) || !!(b.pinnedFor && profile?.uid && b.pinnedFor[profile.uid]);
               if (isPinnedA && !isPinnedB) return -1;
               if (isPinnedB && !isPinnedA) return 1;
 
-              const getUnread = (c: typeof a) => {
-                if (c.isGroup) {
-                  return notifications.filter(n => n.type === 'message' && n.chatId === c.id).length;
-                } else {
-                  const pId = c.participantIds.find(id => id !== profile?.uid);
-                  const p = users.find(u => u.uid === pId);
-                  return p ? notifications.filter(n => n.type === 'message' && (n.senderId === p.uid || n.senderName === p.displayName)).length : 0;
-                }
-              };
-
-              const unreadA = getUnread(a);
-              const unreadB = getUnread(b);
-
-              if (unreadA > 0 && unreadB === 0) return -1;
-              if (unreadB > 0 && unreadA === 0) return 1;
-
-              const timeA = a.lastMessageAt ? (a.lastMessageAt.seconds ? a.lastMessageAt.seconds * 1000 : (a.lastMessageAt.toDate ? a.lastMessageAt.toDate().getTime() : Date.parse(a.lastMessageAt))) : 0;
-              const timeB = b.lastMessageAt ? (b.lastMessageAt.seconds ? b.lastMessageAt.seconds * 1000 : (b.lastMessageAt.toDate ? b.lastMessageAt.toDate().getTime() : Date.parse(b.lastMessageAt))) : 0;
+              // 2. Strict conversation ordering by latest message timestamp DESC
+              const timeA = getChatTimestampMs(a);
+              const timeB = getChatTimestampMs(b);
               return timeB - timeA;
             }).map((chat) => {
               const isSelected = (currentChat?.id === chat.id) || (selectedPeer && !chat.isGroup && chat.participantIds?.includes(selectedPeer.uid)) || (selectedGroup && chat.isGroup && selectedGroup.id === chat.id);
               const isFavorite = favoriteChats.includes(chat.id);
-              const isPinned = pinnedChats.includes(chat.id);
+              const isPinned = pinnedChats.includes(chat.id) || !!(chat.pinnedFor && profile?.uid && chat.pinnedFor[profile.uid]);
               const isMuted = mutedChats.includes(chat.id);
               const isArchived = archivedChats.includes(chat.id);
               const isDeleted = deletedChats.includes(chat.id);
 
+              // Server-authoritative unread count for current user
+              const unreadCount = getConversationUnreadCount(chat, profile?.uid || '');
+              const timeString = formatConversationTimestamp(chat.lastMessageAt);
+              const { preview, isMine } = formatConversationPreview(chat, profile?.uid || '');
+
               // Draft retrieval
               let draftText: string | null = null;
               if (profile) {
-                if (chat.isGroup) {
-                  draftText = localStorage.getItem(`fara_flick_draft_${profile.uid}_group_${chat.id}`);
-                } else {
-                  const pId = chat.participantIds.find(id => id !== profile?.uid);
-                  if (pId) {
-                    draftText = localStorage.getItem(`fara_flick_draft_${profile.uid}_${pId}`);
-                  }
-                }
+                const pId = chat.participantIds.find(id => id !== profile?.uid);
+                draftText = getChatDraft(profile.uid, chat.id, pId, chat.isGroup);
               }
 
               // Folder retrieval
@@ -4204,6 +4333,10 @@ export default function ChatSection({
                     setSelectedGroup(chat);
                     setSelectedPeer(null);
                     setCurrentChat(chat);
+                    setActiveConversationId(chat.id);
+                    if (profile?.uid) {
+                      markConversationAsRead(chat.id, profile.uid).catch(() => {});
+                    }
                   } else {
                     const peerId = chat.participantIds.find(id => id !== profile?.uid);
                     const peer = users.find(u => u.uid === peerId) || {
@@ -4230,11 +4363,8 @@ export default function ChatSection({
                 const chatName = chat.name || 'GLOBAL CONCOURSE';
                 const avatarUrl = chat.avatarUrl || "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120";
                 
-                const unreadCount = notifications.filter(n => n.type === 'message' && n.chatId === chat.id).length;
                 const groupTypers = Object.keys(allTunnelsTyping[chat.id] || {}).filter(uid => allTunnelsTyping[chat.id][uid] === true && uid !== profile?.uid);
                 const isGroupTyping = groupTypers.length > 0;
-                
-                const timeString = chat.lastMessageAt ? formatLastSeen(chat.lastMessageAt) : '';
 
                 return (
                   <motion.div
@@ -4267,7 +4397,7 @@ export default function ChatSection({
                       <img
                         src={avatarUrl}
                         alt={chatName}
-                        className={`w-12 h-12 rounded-full border-2 object-cover transition-all ${unreadCount > 0 ? 'border-sky-450 scale-105' : 'border-[var(--neon-green-border)]'}`}
+                        className={`w-12 h-12 rounded-full border-2 object-cover transition-all ${unreadCount > 0 ? 'border-[var(--neon-green)] ring-2 ring-[var(--neon-green)]/40 scale-105' : 'border-[var(--neon-green-border)]'}`}
                         referrerPolicy="no-referrer"
                       />
                       <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black bg-sky-400" title="Group Conduit" />
@@ -4276,7 +4406,7 @@ export default function ChatSection({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                          <p className="text-[13px] font-sans font-bold truncate text-[var(--color-text)]">
+                          <p className={`text-[13px] font-sans truncate ${unreadCount > 0 ? 'font-black text-[var(--color-text)]' : 'font-bold text-[var(--color-text)]'}`}>
                             👥 {chatName}
                           </p>
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
@@ -4288,7 +4418,7 @@ export default function ChatSection({
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           {/* Hover action overlay panel */}
                           <div className="opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 flex items-center gap-1 mr-1">
                             <button
@@ -4361,6 +4491,12 @@ export default function ChatSection({
                           >
                             <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current text-yellow-500' : ''}`} />
                           </button>
+
+                          {timeString && (
+                            <span className={`text-[11px] font-sans ${unreadCount > 0 ? 'text-[var(--neon-green)] font-bold' : 'text-zinc-500'}`}>
+                              {timeString}
+                            </span>
+                          )}
                         </div>
                       </div>
                       
@@ -4380,17 +4516,23 @@ export default function ChatSection({
                             </p>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {unreadCount > 0 ? (
-                              <span className="w-3 h-3 bg-sky-400 rounded-[3px] flex-shrink-0 animate-pulse" title="Unread Group chat" />
-                            ) : (
-                              <span className="w-3 h-3 border-2 border-sky-400 rounded-[3px] flex-shrink-0" title="Opened Group chat" />
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+                            {isMine && (
+                              <span className="text-zinc-400 shrink-0">
+                                <CheckCheck className="w-3.5 h-3.5 text-zinc-400" />
+                              </span>
                             )}
-                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadCount > 0 ? 'text-[var(--color-text)] font-extrabold' : 'text-zinc-400'}`}>
-                              {unreadCount > 0 ? 'New Chat' : (chat.lastMessage || 'Channel empty')}
-                              {timeString && `  •  ${timeString}`}
+                            <p className={`text-[12px] font-sans truncate flex-1 ${unreadCount > 0 ? 'text-[var(--color-text)] font-bold' : 'text-zinc-400'}`}>
+                              {preview || 'Channel empty'}
                             </p>
                           </div>
+                        )}
+
+                        {/* WhatsApp-style unread counter badge */}
+                        {unreadCount > 0 && (
+                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--neon-green)] text-black text-[11px] font-black flex items-center justify-center shadow-[0_0_8px_rgba(34,197,94,0.5)] shrink-0 select-none">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -4424,9 +4566,7 @@ export default function ChatSection({
                       ? `LAST SEEN ${formatLastSeen(peer.lastSeen).toUpperCase()}`
                       : 'OFFLINE'));
 
-                const unreadFromPeer = notifications.filter(n => n.type === 'message' && (n.chatId === chat.id || n.senderId === peer.uid || n.senderName === peer.displayName)).length;
                 const isPeerTyping = !!(allTunnelsTyping[chat.id]?.[peer.uid]);
-                const timeString = chat.lastMessageAt ? formatLastSeen(chat.lastMessageAt) : '';
 
                 return (
                   <motion.div
@@ -4464,7 +4604,7 @@ export default function ChatSection({
                             playGlitchClickSound();
                             triggerViewProfile(peer.uid);
                           }}
-                          className={`w-12 h-12 rounded-full flex items-center justify-center bg-[var(--color-surface)] border-2 overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${unreadFromPeer > 0 ? 'border-rose-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]' : 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.6)]'}`}
+                          className={`w-12 h-12 rounded-full flex items-center justify-center bg-[var(--color-surface)] border-2 overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${unreadCount > 0 ? 'border-[var(--neon-green)] ring-2 ring-[var(--neon-green)]/40 shadow-[0_0_20px_rgba(34,197,94,0.6)]' : 'border-violet-500 shadow-[0_0_20px_rgba(139,92,246,0.6)]'}`}
                         >
                           <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
                           <div className="absolute inset-1.5 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
@@ -4483,13 +4623,13 @@ export default function ChatSection({
                             playGlitchClickSound();
                             triggerViewProfile(peer.uid);
                           }}
-                          className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadFromPeer > 0 ? 'border-rose-500 scale-105' : 'border-[var(--neon-green-border)]'}`}
+                          className={`w-12 h-12 rounded-full border-2 object-cover cursor-pointer hover:scale-105 transition-all ${unreadCount > 0 ? 'border-[var(--neon-green)] ring-2 ring-[var(--neon-green)]/40 scale-105' : 'border-[var(--neon-green-border)]'}`}
                           referrerPolicy="no-referrer"
                         />
                       )}
                       <span
                         className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-black ${
-                          peer.uid === 'my-ai-bot-uid' || isOnline ? 'bg-emerald-500' : 'bg-red-500'
+                          peer.uid === 'my-ai-bot-uid' || isOnline ? 'bg-emerald-500' : 'bg-zinc-600'
                         }`}
                       />
                     </div>
@@ -4497,7 +4637,7 @@ export default function ChatSection({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                          <p className="text-[13px] font-sans font-bold truncate text-[var(--color-text)]">
+                          <p className={`text-[13px] font-sans truncate ${unreadCount > 0 ? 'font-black text-[var(--color-text)]' : 'font-bold text-[var(--color-text)]'}`}>
                             {renamedNicknames[peer.uid] ? `${renamedNicknames[peer.uid]} *` : peer.displayName}
                           </p>
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
@@ -4509,7 +4649,7 @@ export default function ChatSection({
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           {/* Hover actions panel */}
                           <div className="opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 flex items-center gap-1 mr-1">
                             <button
@@ -4586,6 +4726,12 @@ export default function ChatSection({
                           <span className="text-[11px] font-sans text-zinc-400 font-semibold shrink-0" title="Conversation streak">
                             {peer.uid === 'my-ai-bot-uid' ? '🌟' : `🔥 ${getStreakNum(peer.uid)}`}
                           </span>
+
+                          {timeString && (
+                            <span className={`text-[11px] font-sans ml-1 ${unreadCount > 0 ? 'text-[var(--neon-green)] font-bold' : 'text-zinc-500'}`}>
+                              {timeString}
+                            </span>
+                          )}
                         </div>
                       </div>
                       
@@ -4605,17 +4751,23 @@ export default function ChatSection({
                             </p>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {unreadFromPeer > 0 ? (
-                              <span className="w-3.5 h-3.5 bg-rose-500 rounded-[3px] flex-shrink-0 animate-pulse animate-duration-1000" title="Unread chat" />
-                            ) : (
-                              <span className="w-3.5 h-3.5 border-2 border-rose-500 rounded-[3px] flex-shrink-0" title="Opened chat" />
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+                            {isMine && (
+                              <span className="text-zinc-400 shrink-0">
+                                <CheckCheck className="w-3.5 h-3.5 text-zinc-400" />
+                              </span>
                             )}
-                            <p className={`text-[11px] font-sans truncate flex-1 ${unreadFromPeer > 0 ? 'text-[var(--color-text)] font-extrabold' : 'text-zinc-400'}`}>
-                              {unreadFromPeer > 0 ? 'New Chat' : (chat.lastMessage || 'Tap to chat')}
-                              {timeString && `  •  ${timeString}`}
+                            <p className={`text-[12px] font-sans truncate flex-1 ${unreadCount > 0 ? 'text-[var(--color-text)] font-bold' : 'text-zinc-400'}`}>
+                              {preview || 'Tap to chat'}
                             </p>
                           </div>
+                        )}
+
+                        {/* WhatsApp-style unread counter badge */}
+                        {unreadCount > 0 && (
+                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--neon-green)] text-black text-[11px] font-black flex items-center justify-center shadow-[0_0_8px_rgba(34,197,94,0.5)] shrink-0 select-none">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -4734,6 +4886,7 @@ export default function ChatSection({
                     playGlitchClickSound();
                     setSelectedPeer(null);
                     setCurrentChat(null);
+                    if (profile) clearActiveChatSession(profile.uid);
                   }}
                   className="md:hidden p-1.5 rounded-full bg-[var(--color-surface)] text-zinc-300 hover:text-[var(--color-text)] hover:bg-zinc-800 transition shrink-0"
                   title="Back to conversations"
@@ -6307,7 +6460,14 @@ export default function ChatSection({
                     <span className="text-[9px] uppercase tracking-widest font-black text-[var(--neon-green)]">📊 POLL CREATOR STATION</span>
                     <button
                       type="button"
-                      onClick={() => setIsPollCreatorOpen(false)}
+                      onClick={() => {
+                        setIsPollCreatorOpen(false);
+                        if (profile && currentChat) {
+                          clearPollDraft(profile.uid, currentChat.id);
+                        }
+                        setPollQuestion('');
+                        setPollOptions(['', '']);
+                      }}
                       className="text-[8px] uppercase tracking-wider text-zinc-500 hover:text-[var(--color-text)] cursor-pointer"
                     >
                       [ CANCEL ]
@@ -6374,6 +6534,9 @@ export default function ChatSection({
                         options: validChoices.map(c => c.trim().toUpperCase())
                       })}`;
                       
+                      if (profile && currentChat) {
+                        clearPollDraft(profile.uid, currentChat.id);
+                      }
                       setText(customPollMsg);
                       setIsPollCreatorOpen(false);
                       setPollQuestion('');
@@ -6393,6 +6556,10 @@ export default function ChatSection({
                 recipientName={currentChat.isGroup ? currentChat.name || 'Group' : selectedPeer?.displayName || 'Peer'}
                 senderId={profile.uid}
                 senderName={profile.displayName || 'You'}
+                text={text}
+                onTextChange={(newVal) => setText(newVal)}
+                peerId={selectedPeer?.uid}
+                isGroup={currentChat.isGroup}
                 onSendVoiceMessage={async (params) => {
                   await handleSendVoiceFlick(params);
                 }}
