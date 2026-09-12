@@ -16,6 +16,7 @@ import {
   Zap
 } from 'lucide-react';
 import { ConnectionStatusBadge } from '../ConnectionStatusBadge';
+import { useNotificationSystem } from '../../lib/notificationSystem';
 
 interface NotificationItem {
   id: string;
@@ -152,6 +153,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { markAllMessagesAsRead } = useNotificationSystem();
 
   return (
     <header className="border-b border-[var(--neon-green-border)] shrink-0 h-16 z-40 bg-[var(--color-background)]/90 backdrop-blur-md font-mono relative w-full">
@@ -232,11 +234,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
             {showNotifDropdown && (
               <div className="absolute right-0 mt-3.5 w-80 bg-[var(--color-surface)] border-2 border-[var(--neon-green)] shadow-xl overflow-hidden z-50 text-left rounded-none">
-                <div className="p-4 border-b border-[var(--neon-green)]/20 bg-[var(--color-surface)] flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-widest font-black text-[var(--neon-green)]">NODE BROADCASTS</span>
-                  <span className="text-[8px] bg-red-600 border border-black px-1.5 py-0.5 font-mono text-[var(--color-text)]">
-                    {notifications.length} DISPATCHED
-                  </span>
+                <div className="p-3 border-b border-[var(--neon-green)]/20 bg-[var(--color-surface)] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] uppercase tracking-widest font-black text-[var(--neon-green)] truncate">NODE BROADCASTS</span>
+                    <span className="text-[8px] bg-red-600 border border-black px-1.5 py-0.5 font-mono text-[var(--color-text)] font-bold shrink-0">
+                      {notifications.length} DISPATCHED
+                    </span>
+                  </div>
+                  {(notifications.length > 0 || unreadE2EECount > 0) && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        playGlitchClickSound();
+                        triggerVibration('light');
+                        await markAllMessagesAsRead();
+                      }}
+                      className="text-[8px] uppercase tracking-wider font-mono font-bold text-[var(--neon-green)] hover:text-black hover:bg-[var(--neon-green)] px-2 py-0.5 border border-[var(--neon-green)]/40 transition cursor-pointer shrink-0"
+                      title="Globally mark all messages and notifications as read"
+                    >
+                      MARK ALL READ
+                    </button>
+                  )}
                 </div>
                 <div className="max-h-60 overflow-y-auto divide-y divide-[var(--neon-green)]/10 text-xs">
                   {notifications.length === 0 ? (

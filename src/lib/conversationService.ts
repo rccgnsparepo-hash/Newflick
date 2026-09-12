@@ -402,6 +402,118 @@ export async function markConversationAsRead(chatId: string, userId: string): Pr
 }
 
 /**
+ * Globally marks ALL conversations and messages as read for a given user.
+ * Optimistically zeroes out local caches, clears application badge counters,
+ * and updates Firestore in background batches.
+ */
+export async function markAllConversationsAsRead(userId: string): Promise<void> {
+  if (!userId) return;
+
+  // 1. Optimistically zero out local conversation cache
+  try {
+    const cached = getConversationsCache(userId);
+    if (cached && cached.length > 0) {
+      const updated = cached.map((c) => ({
+        ...c,
+        unreadCounts: {
+          ...(c.unreadCounts || {}),
+          [userId]: 0
+        }
+      }));
+      saveConversationsCache(userId, updated);
+    }
+  } catch (cacheErr) {
+    console.warn('[ConversationService] Failed updating local cache in markAllConversationsAsRead:', cacheErr);
+  }
+
+  // 2. Clear stored counts in localStorage and sessionStorage
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`flick_cached_unread_${userId}`, '0');
+      sessionStorage.setItem(`flick_cached_unread_${userId}`, '0');
+      localStorage.setItem('flick_badge_count', '0');
+    }
+  } catch (e) {}
+
+  // 3. Dispatch global events for immediate UI zeroing across the entire application
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('flick-unread-count-changed', {
+      detail: { totalUnread: 0, userId }
+    }));
+    window.dispatchEvent(new CustomEvent('flick-badge-updated', {
+      detail: { count: 0 }
+    }));
+    window.dispatchEvent(new CustomEvent('flick-all-messages-marked-read', {
+      detail: { userId }
+    }));
+  }
+
+  // 4. Update BadgeService
+  try {
+    await BadgeService.set(0, userId);
+  } catch (badgeErr) {
+    console.warn('[ConversationService] BadgeService clear failed:', badgeErr);
+  }
+
+  // 5. Update Firestore in batches
+  try {
+    // A. Clear unread counts across all active user chats
+    const chatsQuery = query(
+      collection(db, 'chats'),
+      where('participantIds', 'array-contains', userId)
+    );
+    const chatsSnap = await getDocs(chatsQuery);
+    if (!chatsSnap.empty) {
+      const batch = writeBatch(db);
+      let hasUpdates = false;
+
+      chatsSnap.docs.forEach((d) => {
+        const data = d.data() as DirectChat;
+        if (data.unreadCounts && data.unreadCounts[userId] && data.unreadCounts[userId] > 0) {
+          batch.update(d.ref, {
+            [`unreadCounts.${userId}`]: 0,
+            updatedAt: serverTimestamp()
+          });
+          hasUpdates = true;
+        }
+      });
+
+      if (hasUpdates) {
+        await batch.commit();
+      }
+    }
+
+    // B. Mark all unread notifications for this user as read
+    const notifsQuery = query(
+      collection(db, 'notifications'),
+      where('receiverId', '==', userId),
+      where('read', '==', false)
+    );
+    const notifsSnap = await getDocs(notifsQuery);
+    if (!notifsSnap.empty) {
+      const notifBatch = writeBatch(db);
+      notifsSnap.docs.forEach((d) => {
+        notifBatch.update(d.ref, { read: true });
+      });
+      await notifBatch.commit();
+    }
+
+    // C. Update user profile document unreadBadgeCount to 0
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        unreadBadgeCount: 0,
+        updatedAt: serverTimestamp()
+      });
+    } catch {
+      // User doc update optional
+    }
+  } catch (firestoreErr) {
+    console.warn('[ConversationService] markAllConversationsAsRead Firestore commit failed:', firestoreErr);
+  }
+}
+
+/**
  * Toggle pinned status for a conversation (persisted per-user)
  */
 export async function toggleChatPinned(chatId: string, userId: string, pinned: boolean): Promise<void> {

@@ -556,25 +556,118 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// Dynamic SVG-based badge overlay generator for Windows (.exe) Taskbar & System Tray
-function createBadgeNativeImage(count) {
-  if (!count || count <= 0) return null;
-  const displayCount = count > 99 ? '99+' : String(count);
-  const fontSize = displayCount.length >= 3 ? 10 : (displayCount.length === 2 ? 12 : 15);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-    <circle cx="16" cy="16" r="14" fill="#00ff66" stroke="#000000" stroke-width="2"/>
-    <text x="16" y="21" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="900" fill="#000000" text-anchor="middle">${displayCount}</text>
-  </svg>`;
-  try {
-    return nativeImage.createFromBuffer(Buffer.from(svg));
-  } catch (e) {
-    console.warn('Failed generating badge native image:', e);
-    return null;
+// Pure Node.js PNG encoder helper for standalone badge fallback
+function generateBadgePngBuffer(count) {
+  const zlib = require('zlib');
+  const width = 32;
+  const height = 32;
+  const rowSize = 1 + width * 4;
+  const rawData = Buffer.alloc(rowSize * height, 0);
+
+  const cx = 16, cy = 16, r = 13, rOuter = 15;
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * rowSize;
+    rawData[rowOffset] = 0; // Filter: None
+    for (let x = 0; x < width; x++) {
+      const pxOffset = rowOffset + 1 + x * 4;
+      const dx = x - cx + 0.5;
+      const dy = y - cy + 0.5;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= r) {
+        // Neon green fill #00ff66
+        rawData[pxOffset] = 0;
+        rawData[pxOffset + 1] = 255;
+        rawData[pxOffset + 2] = 102;
+        rawData[pxOffset + 3] = 255;
+      } else if (dist <= rOuter) {
+        // High contrast black border
+        rawData[pxOffset] = 0;
+        rawData[pxOffset + 1] = 0;
+        rawData[pxOffset + 2] = 0;
+        rawData[pxOffset + 3] = 255;
+      } else {
+        rawData[pxOffset + 3] = 0;
+      }
+    }
   }
+
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
+  }
+
+  function crc32(buf) {
+    let crc = -1;
+    for (let i = 0; i < buf.length; i++) {
+      crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xFF];
+    }
+    return (crc ^ (-1)) >>> 0;
+  }
+
+  function makeChunk(type, data) {
+    const len = data.length;
+    const chunk = Buffer.alloc(4 + 4 + len + 4);
+    chunk.writeUInt32BE(len, 0);
+    chunk.write(type, 4, 4, 'ascii');
+    data.copy(chunk, 8);
+    const toCrc = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    chunk.writeUInt32BE(crc32(toCrc), 8 + len);
+    return chunk;
+  }
+
+  const signature = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  const ihdrData = Buffer.alloc(13);
+  ihdrData.writeUInt32BE(width, 0);
+  ihdrData.writeUInt32BE(height, 4);
+  ihdrData[8] = 8;
+  ihdrData[9] = 6; // RGBA
+  ihdrData[10] = 0;
+  ihdrData[11] = 0;
+  ihdrData[12] = 0;
+
+  const ihdrChunk = makeChunk('IHDR', ihdrData);
+  const compressed = zlib.deflateSync(rawData);
+  const idatChunk = makeChunk('IDAT', compressed);
+  const iendChunk = makeChunk('IEND', Buffer.alloc(0));
+
+  return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
+}
+
+// Dynamic badge overlay generator for Windows (.exe) Taskbar & System Tray
+function createBadgeNativeImage(count, dataUrl) {
+  if (!count || count <= 0) return null;
+
+  // 1. If high-resolution rendered PNG dataUrl is provided from renderer canvas, use it directly
+  if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/png')) {
+    try {
+      const img = nativeImage.createFromDataURL(dataUrl);
+      if (img && !img.isEmpty()) return img;
+    } catch (e) {
+      console.warn('nativeImage.createFromDataURL failed:', e);
+    }
+  }
+
+  // 2. Fallback to raster PNG buffer generated natively
+  try {
+    const pngBuffer = generateBadgePngBuffer(count);
+    const img = nativeImage.createFromBuffer(pngBuffer);
+    if (img && !img.isEmpty()) return img;
+  } catch (e) {
+    console.warn('generateBadgePngBuffer failed:', e);
+  }
+
+  return null;
 }
 
 // IPC handler for App Badge Count (Windows EXE Taskbar Counter, macOS Dock, Tray)
-ipcMain.on('set-badge-count', (event, count) => {
+ipcMain.on('set-badge-count', (event, payload) => {
+  const count = typeof payload === 'object' && payload !== null ? payload.count : payload;
+  const dataUrl = typeof payload === 'object' && payload !== null ? payload.dataUrl : null;
   const numericCount = typeof count === 'number' && !isNaN(count) ? Math.max(0, count) : 0;
   
   // 1. macOS / Linux Unity Dock Badge
@@ -590,16 +683,22 @@ ipcMain.on('set-badge-count', (event, count) => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     try {
       if (numericCount > 0) {
-        const badgeImg = createBadgeNativeImage(numericCount);
+        const badgeImg = createBadgeNativeImage(numericCount, dataUrl);
         if (badgeImg && mainWindow.setOverlayIcon) {
-          mainWindow.setOverlayIcon(badgeImg, `${numericCount} unread items`);
+          mainWindow.setOverlayIcon(badgeImg, `${numericCount} unread message${numericCount > 1 ? 's' : ''}`);
         }
         mainWindow.setTitle(`(${numericCount}) Flick`);
+
+        // Flash the taskbar icon to attract user attention if the window is in background
+        if (!mainWindow.isFocused()) {
+          mainWindow.flashFrame(true);
+        }
       } else {
         if (mainWindow.setOverlayIcon) {
           mainWindow.setOverlayIcon(null, '');
         }
         mainWindow.setTitle('Flick');
+        mainWindow.flashFrame(false);
       }
     } catch (e) {
       console.warn('mainWindow overlay icon error:', e);
@@ -610,7 +709,7 @@ ipcMain.on('set-badge-count', (event, count) => {
   if (tray && !tray.isDestroyed()) {
     try {
       if (numericCount > 0) {
-        tray.setToolTip(`Flick - ${numericCount} unread notification${numericCount > 1 ? 's' : ''}`);
+        tray.setToolTip(`Flick - ${numericCount} unread message${numericCount > 1 ? 's' : ''}`);
         if (process.platform === 'darwin') {
           tray.setTitle(` ${numericCount}`);
         }

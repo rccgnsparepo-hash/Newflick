@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '../../lib/navigationService';
 import { playGlitchClickSound } from '../../lib/sounds';
@@ -19,9 +19,56 @@ import {
   Phone
 } from 'lucide-react';
 
+interface NavUnreadBadgeProps {
+  count: number;
+  variant?: 'icon' | 'row';
+  color?: 'neon' | 'red';
+}
+
+/**
+ * Animated numerical unread badge using framer-motion/motion spring physics.
+ * Scales smoothly in and out whenever unread counts increase or decrease.
+ */
+function NavUnreadBadge({ count, variant = 'icon', color = 'neon' }: NavUnreadBadgeProps) {
+  if (!count || count <= 0) return null;
+
+  const displayCount = count > 99 ? '99+' : String(count);
+
+  const colorStyles = color === 'red'
+    ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.7)]'
+    : 'bg-[var(--neon-green)] text-black shadow-[0_0_10px_rgba(0,255,102,0.7)]';
+
+  const positionStyles = variant === 'icon'
+    ? 'absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 text-[9px] font-black rounded-full flex items-center justify-center border border-black z-20 pointer-events-none'
+    : 'ml-auto text-[10px] font-black px-2 py-0.5 rounded-full border border-black/40 shrink-0';
+
+  return (
+    <AnimatePresence mode="popLayout">
+      <motion.span
+        key={`nav-badge-${count}-${variant}`}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0, opacity: 0 }}
+        transition={{
+          type: 'spring',
+          stiffness: 480,
+          damping: 22,
+          mass: 0.6
+        }}
+        className={`font-mono leading-none select-none tracking-tight ${colorStyles} ${positionStyles}`}
+      >
+        {displayCount}
+      </motion.span>
+    </AnimatePresence>
+  );
+}
+
 interface UnifiedNavigationProps {
   className?: string;
   unreadE2EECount?: number;
+  unreadCallsCount?: number;
+  unreadNewsCount?: number;
+  unreadNotificationsCount?: number;
   onOpenSearch?: () => void;
   onOpenSettings?: () => void;
   onOpenCreate?: () => void;
@@ -31,6 +78,9 @@ interface UnifiedNavigationProps {
 export function UnifiedNavigation({
   className = '',
   unreadE2EECount = 0,
+  unreadCallsCount = 0,
+  unreadNewsCount = 0,
+  unreadNotificationsCount = 0,
   onOpenSearch,
   onOpenSettings,
   onOpenCreate,
@@ -65,25 +115,32 @@ export function UnifiedNavigation({
       label: 'Chats',
       icon: MessageSquare,
       color: 'text-[var(--neon-green)]',
-      badge: unreadE2EECount
+      badge: unreadE2EECount,
+      badgeColor: 'neon' as const
     },
     {
       id: 'status' as const,
       label: 'Status',
       icon: CircleDot,
-      color: 'text-[var(--neon-green)]'
+      color: 'text-[var(--neon-green)]',
+      badge: 0,
+      badgeColor: 'neon' as const
     },
     {
       id: 'news' as const,
       label: 'Flick News',
       icon: Newspaper,
-      color: 'text-emerald-400'
+      color: 'text-emerald-400',
+      badge: unreadNewsCount,
+      badgeColor: 'neon' as const
     },
     {
       id: 'profile' as const,
       label: 'Profile',
       icon: User,
-      color: 'text-[var(--neon-green)]'
+      color: 'text-[var(--neon-green)]',
+      badge: unreadNotificationsCount,
+      badgeColor: 'red' as const
     }
   ];
 
@@ -174,14 +231,20 @@ export function UnifiedNavigation({
                 >
                   <div className="relative shrink-0">
                     <Icon className={`w-5 h-5 ${isActive ? item.color : 'text-zinc-400'}`} />
-                    {!!item.badge && item.badge > 0 && (
-                      <span className="absolute -top-1.5 -right-2 bg-red-600 text-white font-mono text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                        {item.badge}
-                      </span>
+                    {/* Collapsed mode: badge on top of icon */}
+                    {!sidebarExpanded && !!item.badge && item.badge > 0 && (
+                      <NavUnreadBadge count={item.badge} variant="icon" color={item.badgeColor} />
                     )}
                   </div>
 
-                  {sidebarExpanded && <span className="truncate">{item.label}</span>}
+                  {sidebarExpanded && (
+                    <div className="flex items-center justify-between flex-1 min-w-0">
+                      <span className="truncate">{item.label}</span>
+                      {!!item.badge && item.badge > 0 && (
+                        <NavUnreadBadge count={item.badge} variant="row" color={item.badgeColor} />
+                      )}
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -199,8 +262,20 @@ export function UnifiedNavigation({
               }`}
               title="Call History & Logs"
             >
-              <Phone className="w-5 h-5 shrink-0 text-emerald-400" />
-              {sidebarExpanded && <span className="truncate">Call Logs</span>}
+              <div className="relative shrink-0">
+                <Phone className="w-5 h-5 shrink-0 text-emerald-400" />
+                {!sidebarExpanded && unreadCallsCount > 0 && (
+                  <NavUnreadBadge count={unreadCallsCount} variant="icon" color="red" />
+                )}
+              </div>
+              {sidebarExpanded && (
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="truncate">Call Logs</span>
+                  {unreadCallsCount > 0 && (
+                    <NavUnreadBadge count={unreadCallsCount} variant="row" color="red" />
+                  )}
+                </div>
+              )}
             </button>
           </nav>
         </div>
@@ -295,9 +370,7 @@ export function UnifiedNavigation({
                   <div className="relative shrink-0 z-10">
                     <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 ' + item.color : ''}`} />
                     {!!item.badge && item.badge > 0 && (
-                      <span className="absolute -top-1.5 -right-2 bg-red-600 text-white font-mono font-bold text-[8px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                        {item.badge}
-                      </span>
+                      <NavUnreadBadge count={item.badge} variant="icon" color={item.badgeColor} />
                     )}
                   </div>
 

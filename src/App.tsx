@@ -65,6 +65,7 @@ import {
 } from './lib/pushNotifications';
 import { deepLinkManager } from './lib/deepLinkManager';
 import { NotificationProvider, useNotificationSystem, BadgeService } from './lib/notificationSystem';
+import { useCachedUnreadCount } from './lib/hooks/useCachedUnreadCount';
 import { CustomNavigationProvider, useNavigation } from './lib/navigationService';
 import {
   Shield,
@@ -700,11 +701,21 @@ function Dashboard() {
 
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
 
-  // Server-authoritative unread count for conversations
+  // Persistent cached unread badge count hook (ensures instantaneous badge display before Firestore connects)
+  const [cachedChatCount, setCachedChatCount] = useCachedUnreadCount(profile?.uid);
+
+  // Server-authoritative unread count for conversations (hydrated immediately from cache)
   const [chatUnreadCount, setChatUnreadCount] = useState<number>(() => {
+    if (cachedChatCount > 0) return cachedChatCount;
     if (!profile?.uid) return 0;
-    return calculateTotalUnreadCount(getConversationsCache(profile.uid), profile.uid);
+    const fromMemCache = calculateTotalUnreadCount(getConversationsCache(profile.uid), profile.uid);
+    return fromMemCache > 0 ? fromMemCache : cachedChatCount;
   });
+
+  // Keep localStorage/sessionStorage cache updated whenever chatUnreadCount transitions
+  useEffect(() => {
+    setCachedChatCount(chatUnreadCount);
+  }, [chatUnreadCount, setCachedChatCount]);
 
   // Real-time synchronization of conversations unread sum
   useEffect(() => {
@@ -712,7 +723,6 @@ function Dashboard() {
     const unsub = subscribeToUserConversations(profile.uid, (chats) => {
       const total = calculateTotalUnreadCount(chats, profile.uid);
       setChatUnreadCount(total);
-      BadgeService.set(total);
     });
     return () => unsub();
   }, [profile?.uid]);
@@ -722,12 +732,28 @@ function Dashboard() {
     const handleUnreadChanged = (e: any) => {
       if (typeof e.detail?.totalUnread === 'number') {
         setChatUnreadCount(e.detail.totalUnread);
-        BadgeService.set(e.detail.totalUnread);
       }
     };
+    const handleAllRead = () => {
+      setChatUnreadCount(0);
+      setNotifications([]);
+    };
+
     window.addEventListener('flick-unread-count-changed' as any, handleUnreadChanged);
-    return () => window.removeEventListener('flick-unread-count-changed' as any, handleUnreadChanged);
+    window.addEventListener('flick-all-messages-marked-read' as any, handleAllRead);
+
+    return () => {
+      window.removeEventListener('flick-unread-count-changed' as any, handleUnreadChanged);
+      window.removeEventListener('flick-all-messages-marked-read' as any, handleAllRead);
+    };
   }, []);
+
+  // Centralized real-time synchronization of unified unread badge count (chat messages + general notifications)
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const totalUnified = chatUnreadCount + notifications.length;
+    BadgeService.set(totalUnified, profile.uid);
+  }, [chatUnreadCount, notifications.length, profile?.uid]);
 
   // Theme support
   const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark for premium green-black look
@@ -888,7 +914,6 @@ function Dashboard() {
     if (!isAuthReady || !profile) return;
     const unsubscribe = subscribeToNotifications(profile.uid, (unread) => {
       setNotifications(unread);
-      BadgeService.updateBadgeCount(unread.length, profile.uid);
     });
     return () => unsubscribe();
   }, [isAuthReady, profile?.uid]);
@@ -1145,6 +1170,7 @@ function Dashboard() {
         <UnifiedNavigation
           className="shrink-0 h-full z-40"
           unreadE2EECount={unreadE2EECount}
+          unreadNotificationsCount={notifications.length}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenSearch={() => window.dispatchEvent(new CustomEvent('faraflick-trigger-search'))}
           onOpenCallHistory={() => setIsCallHistoryOpen(true)}

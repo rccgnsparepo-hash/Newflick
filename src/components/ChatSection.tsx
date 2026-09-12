@@ -74,7 +74,7 @@ import { queueOfflineMessage, syncOfflineMessages } from '../lib/offlineQueue';
 import { triggerVibration, triggerEventHaptic } from '../lib/haptics';
 import { triggerViewProfile } from '../lib/profileTrigger';
 import EmoStickerBoard from './EmoStickerBoard';
-import { ConversationNotificationManager } from '../lib/notificationSystem';
+import { ConversationNotificationManager, useNotificationSystem } from '../lib/notificationSystem';
 import { requestMicrophonePermission, getOptimalAudioMimeType, createSpeechRecognitionInstance, triggerAndroidNativePermissions } from '../lib/permissions';
 import { useNavigation } from '../lib/navigationService';
 import { getBackendUrl } from '../lib/bootstrap';
@@ -1214,6 +1214,7 @@ export default function ChatSection({
 } = {}) {
   const { profile, localPrivateKey, unlockE2EEKeysWithPassword, regenerateE2EEKeys: authRegenerateE2EEKeys } = useAuth();
   const { setIsChatScreenOpen } = useNavigation();
+  const { markAllMessagesAsRead } = useNotificationSystem();
   const operations = useOperations();
   useThemeListener();
 
@@ -3612,6 +3613,22 @@ export default function ChatSection({
               </button>
             );
           })}
+
+          {unreadTunnelsCount > 0 && (
+            <button
+              onClick={async () => {
+                playGlitchClickSound();
+                triggerVibration('light');
+                await markAllMessagesAsRead();
+                showBrutalistToast('TRANSMISSIONS', 'ALL MESSAGES MARKED READ', 'success');
+              }}
+              className="ml-auto px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--neon-green)] bg-[var(--neon-green)]/10 border border-[var(--neon-green)]/40 hover:bg-[var(--neon-green)] hover:text-black transition shrink-0 cursor-pointer flex items-center gap-1"
+              title="Globally mark all messages as read"
+            >
+              <CheckCheck className="w-3 h-3" />
+              <span>Mark all read</span>
+            </button>
+          )}
         </div>
 
         {/* Chat folders secondary filter bar */}

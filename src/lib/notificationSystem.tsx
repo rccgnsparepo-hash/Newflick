@@ -10,6 +10,8 @@ import { deepLinkManager, DeepLinkPayload } from './deepLinkManager';
 import { doc, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { markAllConversationsAsRead } from './conversationService';
+export { useCachedUnreadCount, getStoredUnreadCount } from './hooks/useCachedUnreadCount';
 
 // ==========================================
 // 1. Types & Interfaces
@@ -38,6 +40,7 @@ export interface NotificationSystemContextType {
   badgeCount: number;
   incrementBadge: () => void;
   clearBadges: () => void;
+  markAllMessagesAsRead: () => Promise<void>;
 }
 
 // ==========================================
@@ -81,6 +84,102 @@ class ConversationNotificationManagerImpl {
   }
 }
 export const ConversationNotificationManager = new ConversationNotificationManagerImpl();
+
+// Helper to generate a crisp 32x32 PNG data URL for Windows Taskbar overlay and dock badges
+export function generateBadgeDataUrl(count: number): string | null {
+  if (typeof document === 'undefined' || count <= 0) return null;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, 32, 32);
+
+    // High contrast black outer border ring (visible on all light & dark taskbars)
+    ctx.beginPath();
+    ctx.arc(16, 16, 15, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
+
+    // Vibrant neon green core (#00ff66)
+    ctx.beginPath();
+    ctx.arc(16, 16, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#00ff66';
+    ctx.fill();
+
+    // High contrast bold black text
+    const text = count > 99 ? '99+' : String(count);
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = text.length >= 3
+      ? '900 11px system-ui, -apple-system, sans-serif'
+      : (text.length === 2
+        ? '900 14px system-ui, -apple-system, sans-serif'
+        : '900 18px system-ui, -apple-system, sans-serif');
+    ctx.fillText(text, 16, 16.5);
+
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    console.warn('[BadgeService] Canvas badge generation error:', e);
+    return null;
+  }
+}
+
+// Helper to update dynamic favicon with unread badge counter
+export function updateFaviconWithBadge(count: number): void {
+  if (typeof document === 'undefined') return;
+  try {
+    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    if (count <= 0) {
+      link.href = '/icon.png';
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const baseImg = new Image();
+    baseImg.crossOrigin = 'anonymous';
+    baseImg.onload = () => {
+      ctx.drawImage(baseImg, 0, 0, 32, 32);
+      const bx = 22, by = 22, br = 9;
+      ctx.beginPath();
+      ctx.arc(bx, by, br + 1, 0, Math.PI * 2);
+      ctx.fillStyle = '#000000';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = '#00ff66';
+      ctx.fill();
+
+      ctx.fillStyle = '#000000';
+      ctx.font = '900 9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(count > 9 ? '9+' : String(count), bx, by + 0.5);
+
+      link.href = canvas.toDataURL('image/png');
+    };
+    baseImg.onerror = () => {
+      const fallbackBadge = generateBadgeDataUrl(count);
+      if (fallbackBadge) link.href = fallbackBadge;
+    };
+    baseImg.src = '/icon.png';
+  } catch (e) {
+    // Ignore in restricted environments
+  }
+}
 
 // ==========================================
 // 4. BadgeService
@@ -133,7 +232,11 @@ export const BadgeService = {
     if (typeof document !== 'undefined') {
       const cleanTitle = document.title.replace(/^\(\d+\)\s*/, '');
       document.title = normalizedCount > 0 ? `(${normalizedCount}) ${cleanTitle}` : cleanTitle;
+      updateFaviconWithBadge(normalizedCount);
     }
+
+    // Generate crisp 32x32 raster PNG for Electron Taskbar Overlay
+    const dataUrl = generateBadgeDataUrl(normalizedCount);
 
     // Sync directly to Electron main process (Windows Taskbar overlay icon & Linux/macOS dock counters)
     try {
@@ -141,7 +244,10 @@ export const BadgeService = {
         const uWin = window as any;
         const ipc = uWin?.electron?.ipcRenderer || uWin?.ipcRenderer || (uWin?.require ? uWin.require('electron')?.ipcRenderer : null);
         if (ipc?.send) {
-          ipc.send('set-badge-count', normalizedCount);
+          ipc.send('set-badge-count', {
+            count: normalizedCount,
+            dataUrl: dataUrl
+          });
         }
       }
     } catch (err) {
@@ -220,6 +326,62 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode, userId?
   const clearBadges = () => {
     setLocalBadgeCount(0);
     BadgeService.updateBadgeCount(0, resolvedUserId);
+  };
+
+  /**
+   * Globally marks all messages as read:
+   * - Dismisses in-app banners
+   * - Zeros local badge count
+   * - Clears taskbar/dock/favicon badges via BadgeService
+   * - Zeros out localStorage and sessionStorage cache
+   * - Dispatches global unread count update events across UI components
+   * - Persists conversation and notification read statuses to Firestore
+   */
+  const markAllMessagesAsRead = async () => {
+    // 1. Clear active notification popups immediately
+    setActiveBanners([]);
+
+    // 2. Clear local provider badge state
+    setLocalBadgeCount(0);
+
+    // 3. Clear system badges (Windows taskbar, macOS dock, browser favicon, tab title)
+    try {
+      await BadgeService.set(0, resolvedUserId);
+    } catch (e) {
+      console.warn('[NotificationProvider] BadgeService.set(0) error:', e);
+    }
+
+    // 4. Update localStorage and sessionStorage caches immediately
+    try {
+      if (typeof window !== 'undefined') {
+        const cacheKey = resolvedUserId ? `flick_cached_unread_${resolvedUserId}` : 'flick_cached_unread_default';
+        localStorage.setItem(cacheKey, '0');
+        sessionStorage.setItem(cacheKey, '0');
+        localStorage.setItem('flick_badge_count', '0');
+      }
+    } catch (e) {}
+
+    // 5. Fire global events to immediately clear all badge counts across the application
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flick-unread-count-changed', {
+        detail: { totalUnread: 0, userId: resolvedUserId }
+      }));
+      window.dispatchEvent(new CustomEvent('flick-badge-updated', {
+        detail: { count: 0 }
+      }));
+      window.dispatchEvent(new CustomEvent('flick-all-messages-marked-read', {
+        detail: { userId: resolvedUserId }
+      }));
+    }
+
+    // 6. Asynchronously update Firestore conversations and notifications in batches
+    if (resolvedUserId) {
+      try {
+        await markAllConversationsAsRead(resolvedUserId);
+      } catch (err) {
+        console.warn('[NotificationProvider] Failed to mark all conversations as read in Firestore:', err);
+      }
+    }
   };
 
   // Safe dismiss banner function
@@ -308,7 +470,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode, userId?
         },
         badgeCount,
         incrementBadge,
-        clearBadges
+        clearBadges,
+        markAllMessagesAsRead
       }}
     >
       {children}
