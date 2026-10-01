@@ -116,6 +116,8 @@ export const ChatMessageSchema = z.object({
   replyToId: z.string().optional(),
   replyToText: z.string().optional(),
   replyToSenderName: z.string().optional(),
+  threadRootId: z.string().optional(),
+  threadReplyCount: z.number().optional(),
   reactions: z.record(z.string(), z.string()).optional(),
   pollData: z.object({
     question: z.string(),

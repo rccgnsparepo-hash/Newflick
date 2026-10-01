@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, collection, serverTimestamp, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { doc, setDoc, collection, serverTimestamp, updateDoc, deleteDoc, deleteField, increment } from 'firebase/firestore';
 import { UserProfile, ChatMessage, DirectChat, MessageReaction, InAppNotification } from '../types';
 import {
   subscribeToUsers,
@@ -49,7 +49,7 @@ import {
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
   Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard, Archive,
-  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield, Clock, AlertCircle
+  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield, Clock, AlertCircle, RefreshCw
 } from 'lucide-react';
 import {
   getConversationUnreadCount,
@@ -70,7 +70,7 @@ import { showBrutalistToast } from '../lib/toast';
 import { useThemeListener } from '../contexts/ThemeContext';
 import { TheFatherOrb } from './TheFatherOrb';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
-import { queueOfflineMessage, syncOfflineMessages } from '../lib/offlineQueue';
+import { queueOfflineMessage, syncOfflineMessages, useOfflineQueue } from '../lib/offlineQueue';
 import { triggerVibration, triggerEventHaptic } from '../lib/haptics';
 import { triggerViewProfile } from '../lib/profileTrigger';
 import EmoStickerBoard from './EmoStickerBoard';
@@ -107,6 +107,7 @@ import {
   loadWallpaperFromFirestore
 } from '../lib/wallpaperData';
 import { ChatWallpaperModal } from './ChatWallpaperModal';
+import { ThreadView } from './ThreadView';
 
 const getChatWallpaperStyle = (cfg: ChatWallpaperConfig): React.CSSProperties => {
   const blurStyle = cfg.blur > 0 ? { filter: `blur(${cfg.blur}px)`, transform: 'scale(1.05)' } : {};
@@ -231,13 +232,14 @@ function escapeRegExp(string: string) {
 }
 
 function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query) return <span>{text}</span>;
-  const parts = text.split(new RegExp(`(${escapeRegExp(query)})`, 'gi'));
+  if (!text || typeof text !== 'string') return null;
+  if (!query || !query.trim()) return <span>{text}</span>;
+  const parts = text.split(new RegExp(`(${escapeRegExp(query.trim())})`, 'gi'));
   return (
     <span>
       {parts.map((part, i) => 
-        part.toLowerCase() === query.toLowerCase() 
-          ? <mark key={i} className="bg-[var(--neon-green)] text-black font-extrabold px-0.5">{part}</mark>
+        part.toLowerCase() === query.trim().toLowerCase() 
+          ? <mark key={i} className="bg-[var(--neon-green)] text-black font-extrabold px-0.5 rounded-sm">{part}</mark>
           : <span key={i}>{part}</span>
       )}
     </span>
@@ -261,7 +263,9 @@ function DecryptedMessageBubble({
   disabledReadReceipts,
   peerPublicKey,
   senderPublicKey,
-  onDeleteLocally
+  onDeleteLocally,
+  onOpenThread,
+  threadReplyCount
 }: {
   message: ChatMessage;
   currentUserId: string;
@@ -279,6 +283,8 @@ function DecryptedMessageBubble({
   peerPublicKey?: string;
   senderPublicKey?: string;
   onDeleteLocally?: (msgId: string) => void;
+  onOpenThread?: (message: ChatMessage) => void;
+  threadReplyCount?: number;
 }) {
   const { confirm } = useConfirm();
   const onDecryptedRef = useRef(onDecrypted);
@@ -769,7 +775,9 @@ function DecryptedMessageBubble({
         {quotedSnippet && (
           <div className="mb-1 p-2 bg-[var(--color-surface)]/90 border-l-2 border-[var(--neon-green)] text-left text-[10px] space-y-0.5 rounded-none max-w-sm opacity-85 select-none font-mono">
             <p className="font-bold text-[var(--neon-green)]">@{quotedAuthor}</p>
-            <p className="text-zinc-400 line-clamp-1 italic">"{quotedSnippet}"</p>
+            <p className="text-zinc-400 line-clamp-1 italic">
+              {searchQuery ? <HighlightedText text={quotedSnippet} query={searchQuery} /> : `"${quotedSnippet}"`}
+            </p>
           </div>
         )}
 
@@ -876,7 +884,9 @@ function DecryptedMessageBubble({
                         <div className="flex items-center gap-1.5 border-b border-[var(--neon-green)]/15 pb-1">
                           <span className="text-[10px] text-[var(--neon-green)] font-black">📊 SECURE DEMOCRACY PROTOCOL</span>
                         </div>
-                        <p className="text-[11px] font-bold text-[var(--color-text)] uppercase">{pollQuestion}</p>
+                        <p className="text-[11px] font-bold text-[var(--color-text)] uppercase">
+                          {searchQuery ? <HighlightedText text={pollQuestion} query={searchQuery} /> : pollQuestion}
+                        </p>
                         <div className="space-y-1.5 pt-1">
                           {pollOptions.map((opt: string, idx: number) => {
                             const optVotes = Object.values(votesMap).filter(v => v.toString() === idx.toString()).length;
@@ -899,7 +909,9 @@ function DecryptedMessageBubble({
                                   style={{ width: `${percentage}%` }}
                                 />
                                 <div className="relative flex justify-between items-center z-10 w-full leading-none">
-                                  <span className="truncate">{opt}</span>
+                                  <span className="truncate">
+                                    {searchQuery ? <HighlightedText text={opt} query={searchQuery} /> : opt}
+                                  </span>
                                   <span className="font-mono text-[9px] shrink-0 font-bold ml-2">
                                     {percentage}% ({optVotes})
                                   </span>
@@ -963,6 +975,24 @@ function DecryptedMessageBubble({
                 })()}
               </div>
             )}
+            {/* Sub-Thread Pill Indicator */}
+            {(threadReplyCount || 0) > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  onOpenThread?.(message);
+                }}
+                className="mt-2 flex items-center space-x-1.5 text-[8.5px] font-mono text-[var(--neon-green)] hover:text-white bg-[var(--neon-green)]/15 hover:bg-[var(--neon-green)]/25 px-2 py-1 border border-[var(--neon-green)]/35 rounded transition cursor-pointer select-none shadow-sm"
+                title="Open sub-thread view"
+              >
+                <MessageSquare className="w-3 h-3 text-[var(--neon-green)] shrink-0" />
+                <span className="font-extrabold">{threadReplyCount} {threadReplyCount === 1 ? 'reply' : 'replies'}</span>
+                <span className="text-zinc-400 font-normal">· View thread →</span>
+              </button>
+            )}
           </>
         )}
 
@@ -991,6 +1021,24 @@ function DecryptedMessageBubble({
                 title="Reply to thread"
               >
                 <CornerUpLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Sub-Thread trigger icon */}
+              <button
+                type="button"
+                onClick={() => {
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  onOpenThread?.(message);
+                }}
+                className={`p-1 transition cursor-pointer ${
+                  (threadReplyCount || 0) > 0 
+                    ? 'text-[var(--neon-green)] font-bold' 
+                    : 'text-zinc-500 hover:text-[var(--neon-green)]'
+                }`}
+                title="Reply in sub-thread"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
               </button>
 
               {/* Pin/Unpin trigger icon */}
@@ -1138,7 +1186,14 @@ function DecryptedMessageBubble({
           </span>
           {message.senderId === currentUserId && (
             <div className="flex items-center select-none gap-1 font-mono" style={{ minWidth: '16px' }}>
-              {!message.createdAt ? (
+              {message.isOfflineQueued ? (
+                <div className="flex items-center gap-1 font-mono text-amber-400" title="Stored in local IndexedDB vault - will sync when online">
+                  <span className="text-[7.5px] uppercase tracking-wider text-amber-400 font-bold">
+                    {message.syncStatus === 'syncing' ? 'syncing...' : message.syncStatus === 'failed' ? 'failed' : 'queued offline'}
+                  </span>
+                  <Clock className={`w-3.5 h-3.5 text-amber-400 ${message.syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                </div>
+              ) : !message.createdAt ? (
                 <Check className="w-3.5 h-3.5 text-zinc-500 opacity-60 animate-pulse" title="Sending message..." />
               ) : ((message.read || (message.readBy && message.readBy.length > 0)) && !(disabledReadReceipts && Object.values(disabledReadReceipts).some(val => val === true))) ? (
                 <motion.div
@@ -1249,8 +1304,185 @@ export default function ChatSection({
     };
   }, [currentChat?.id, setIsChatScreenOpen]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const {
+    messages: offlineQueuedForChat,
+    totalCount: totalOfflineQueuedCount,
+    isSyncing: isOfflineQueueSyncing,
+    syncNow: handleManualOfflineSync,
+  } = useOfflineQueue(currentChat?.id);
+
+  // Compute unified message stream combining Firestore real-time stream and IndexedDB offline queue
+  const displayedMessages = useMemo(() => {
+    if (!offlineQueuedForChat || offlineQueuedForChat.length === 0) {
+      return messages;
+    }
+
+    const offlineAsChat: ChatMessage[] = offlineQueuedForChat.map((q) => ({
+      id: q.id,
+      senderId: q.senderId,
+      receiverId: q.receiverId,
+      participantIds: [q.senderId, q.receiverId],
+      encryptedText: '',
+      encryptedKey: '',
+      senderEncryptedKey: '',
+      createdAt: { seconds: Math.floor(q.queuedAt / 1000), nanoseconds: 0 },
+      senderDisplayName: q.senderDisplayName,
+      plainText: q.plainText,
+      isGroupMessage: !!q.isGroup,
+      messageType: (q.messageType as any) || 'text',
+      mediaUrl: q.mediaUrl,
+      mediaType: q.mediaType,
+      mediaName: q.mediaName,
+      replyToId: q.replyToId,
+      replyToText: q.replyToText,
+      replyToSenderName: q.replyToSenderName,
+      pollData: q.pollData as any,
+      isOfflineQueued: true,
+      syncStatus: q.status,
+    }));
+
+    const existingIds = new Set(messages.map((m) => m.id));
+    const newQueued = offlineAsChat.filter((q) => !existingIds.has(q.id));
+
+    return [...messages, ...newQueued].sort((a, b) => {
+      const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      return tA - tB;
+    });
+  }, [messages, offlineQueuedForChat]);
+
   const [decryptedCache, setDecryptedCache] = useState<{[msgId: string]: string}>({});
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
+  const messageSearchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Eagerly decrypt incoming messages in active conversation to ensure local search works across all history
+  useEffect(() => {
+    if (!displayedMessages || displayedMessages.length === 0) return;
+    let isCancelled = false;
+
+    displayedMessages.forEach(async (msg) => {
+      if (decryptedCache[msg.id]) return;
+
+      if (msg.isDeleted) {
+        if (!isCancelled) {
+          setDecryptedCache(prev => ({ ...prev, [msg.id]: '🚫 This message was deleted.' }));
+        }
+        return;
+      }
+
+      if (msg.plainText) {
+        if (!isCancelled) {
+          setDecryptedCache(prev => ({ ...prev, [msg.id]: msg.plainText! }));
+        }
+        return;
+      }
+
+      if (localPrivateKey && msg.encryptedText) {
+        const wrappedKey = msg.senderId === profile?.uid ? msg.senderEncryptedKey : msg.encryptedKey;
+        try {
+          const text = await decryptE2EEMessage(msg.encryptedText, wrappedKey, localPrivateKey);
+          if (!isCancelled && text) {
+            setDecryptedCache(prev => ({ ...prev, [msg.id]: text }));
+            return;
+          }
+        } catch {
+          // Fallback below
+        }
+      }
+
+      const fallbackText = msg.plainText || (msg.encryptedText && !msg.encryptedText.includes(':') ? msg.encryptedText : '') || '';
+      if (!isCancelled && fallbackText) {
+        setDecryptedCache(prev => ({ ...prev, [msg.id]: fallbackText }));
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [displayedMessages, localPrivateKey, profile?.uid]);
+
+  // Memoized filter for conversation messages based on messageSearchQuery
+  const filteredMessages = useMemo(() => {
+    let deletedLocally: string[] = [];
+    try {
+      if (profile?.uid) {
+        const deletedLocallyStr = localStorage.getItem(`flick_deleted_messages_local_${profile.uid}`) || "[]";
+        deletedLocally = JSON.parse(deletedLocallyStr) as string[];
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const unDeleted = displayedMessages.filter(msg => !deletedLocally.includes(msg.id));
+    if (!messageSearchQuery.trim()) {
+      return unDeleted;
+    }
+
+    const q = messageSearchQuery.trim().toLowerCase();
+
+    return unDeleted.filter(msg => {
+      // 1. Check decrypted cache text (including raw text and parsed caption if JSON)
+      const cached = decryptedCache[msg.id];
+      if (cached) {
+        if (cached.toLowerCase().includes(q)) return true;
+        if (cached.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.text && typeof parsed.text === 'string' && parsed.text.toLowerCase().includes(q)) return true;
+            if (parsed.transcript && typeof parsed.transcript === 'string' && parsed.transcript.toLowerCase().includes(q)) return true;
+            if (parsed.attachmentName && typeof parsed.attachmentName === 'string' && parsed.attachmentName.toLowerCase().includes(q)) return true;
+            if (parsed.quotedSnippet && typeof parsed.quotedSnippet === 'string' && parsed.quotedSnippet.toLowerCase().includes(q)) return true;
+          } catch {
+            // Ignore JSON parse errors
+          }
+        }
+      }
+
+      // 2. Direct plainText property (e.g. offline queue, system, unencrypted)
+      if (msg.plainText && msg.plainText.toLowerCase().includes(q)) return true;
+
+      // 3. Media filenames, caption, or media types
+      if (msg.mediaName && msg.mediaName.toLowerCase().includes(q)) return true;
+      if (msg.mediaType && msg.mediaType.toLowerCase().includes(q)) return true;
+
+      // 4. Quoted snippet or reply text
+      if (msg.replyToText && msg.replyToText.toLowerCase().includes(q)) return true;
+      if (msg.replyToSenderName && msg.replyToSenderName.toLowerCase().includes(q)) return true;
+
+      // 5. Sender display name
+      if (msg.senderDisplayName && msg.senderDisplayName.toLowerCase().includes(q)) return true;
+
+      // 6. Poll question and options
+      if (msg.pollData) {
+        if (msg.pollData.question && msg.pollData.question.toLowerCase().includes(q)) return true;
+        if (Array.isArray(msg.pollData.options) && msg.pollData.options.some((opt: string) => typeof opt === 'string' && opt.toLowerCase().includes(q))) return true;
+      }
+
+      // 7. Unencrypted text fallback
+      if (msg.encryptedText && !msg.encryptedText.includes(':') && msg.encryptedText.toLowerCase().includes(q)) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [displayedMessages, messageSearchQuery, decryptedCache, profile?.uid]);
+
+  // Active sub-thread state for focused message replies
+  const [activeThreadMessage, setActiveThreadMessage] = useState<ChatMessage | null>(null);
+
+  // Group thread replies by threadRootId or replyToId
+  const threadRepliesMap = useMemo(() => {
+    const map: Record<string, ChatMessage[]> = {};
+    displayedMessages.forEach(msg => {
+      const rootId = msg.threadRootId || (msg.replyToId && displayedMessages.some(d => d.id === msg.replyToId) ? msg.replyToId : undefined);
+      if (rootId) {
+        if (!map[rootId]) map[rootId] = [];
+        map[rootId].push(msg);
+      }
+    });
+    return map;
+  }, [displayedMessages]);
+
   const [isPinnedDrawerOpen, setIsPinnedDrawerOpen] = useState(false);
   const [showVaultTransferModal, setShowVaultTransferModal] = useState<boolean>(false);
   const [vaultDefaultTab, setVaultDefaultTab] = useState<'p2p' | 'backup' | 'restore' | 'stats'>('backup');
@@ -1609,6 +1841,8 @@ export default function ChatSection({
       setEditGroupAdminApproval(currentChat.adminApprovalRequired !== undefined ? currentChat.adminApprovalRequired : false);
       setEditGroupAnonymous(currentChat.anonymousMode !== undefined ? currentChat.anonymousMode : false);
     }
+    setMessageSearchQuery('');
+    setActiveThreadMessage(null);
   }, [currentChat?.id]);
 
   // Save partially typed messages drafts to localStorage as typing progresses
@@ -2278,6 +2512,15 @@ export default function ChatSection({
         playGlitchClickSound();
         setIsShortcutModalOpen(prev => !prev);
       }
+
+      // Ctrl + F or Cmd + F to focus message search within active chat
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        if (currentChat) {
+          e.preventDefault();
+          messageSearchInputRef.current?.focus();
+          messageSearchInputRef.current?.select();
+        }
+      }
       
       // Close any active modal overlay when Esc is tapped
       if (e.key === 'Escape') {
@@ -2291,8 +2534,11 @@ export default function ChatSection({
           stopScanning();
         } else if (showQrShareModal) {
           setShowQrShareModal(false);
+        } else if (activeThreadMessage) {
+          setActiveThreadMessage(null);
         } else if (messageSearchQuery) {
           setMessageSearchQuery('');
+          messageSearchInputRef.current?.blur();
         }
       }
 
@@ -2332,7 +2578,9 @@ export default function ChatSection({
     showQrScanModal, 
     showQrShareModal, 
     messageSearchQuery, 
-    isV2TListening
+    isV2TListening,
+    currentChat,
+    activeThreadMessage
   ]);
 
   // Native back button listener to close ChatSection overlays & modals
@@ -2360,6 +2608,11 @@ export default function ChatSection({
         e.preventDefault();
         return;
       }
+      if (activeThreadMessage) {
+        setActiveThreadMessage(null);
+        e.preventDefault();
+        return;
+      }
       if (messageSearchQuery) {
         setMessageSearchQuery('');
         e.preventDefault();
@@ -2370,7 +2623,7 @@ export default function ChatSection({
     return () => {
       window.removeEventListener('faraflick-back-button', handleBackButton);
     };
-  }, [isShortcutModalOpen, isForwardModalOpen, showQrScanModal, showQrShareModal, messageSearchQuery]);
+  }, [isShortcutModalOpen, isForwardModalOpen, showQrScanModal, showQrShareModal, messageSearchQuery, activeThreadMessage]);
 
   // Sync peer coordinates on startup
   useEffect(() => {
@@ -2684,7 +2937,14 @@ export default function ChatSection({
   }, [currentChat?.id, selectedPeer?.uid, profile?.uid]);
 
   // Direct send implementation with unified dispatch and failure draft protection
-  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
+  const handleSendMessage = async (
+    e?: React.FormEvent, 
+    customText?: string,
+    options?: {
+      threadRootId?: string;
+      overrideReplyQuote?: { msgId: string; authorName: string; snippetText: string };
+    }
+  ) => {
     if (e) e.preventDefault();
     const rawText = customText !== undefined ? customText : text;
     const trimmedText = rawText.trim();
@@ -2697,14 +2957,19 @@ export default function ChatSection({
     setSending(true);
     setError(null);
     
+    const effectiveReplyQuote = options?.overrideReplyQuote || replyQuote;
+
     // Construct E2EE payload
     let textToSend = trimmedText;
     
     // Stringify replies or attachments under RSA ciphertext
-    const replyMeta = replyQuote ? {
-      quotedAuthor: replyQuote.authorName,
-      quotedSnippet: replyQuote.snippetText
-    } : {};
+    const replyMeta = {
+      ...(effectiveReplyQuote ? {
+        quotedAuthor: effectiveReplyQuote.authorName,
+        quotedSnippet: effectiveReplyQuote.snippetText
+      } : {}),
+      ...(options?.threadRootId ? { threadRootId: options.threadRootId } : {})
+    };
 
     if (selectedAttachment) {
       textToSend = JSON.stringify({
@@ -2714,7 +2979,7 @@ export default function ChatSection({
         attachmentName: selectedAttachment.name,
         ...replyMeta
       });
-    } else if (replyQuote) {
+    } else if (effectiveReplyQuote || options?.threadRootId) {
       textToSend = JSON.stringify({
         text: trimmedText,
         ...replyMeta
@@ -2727,7 +2992,9 @@ export default function ChatSection({
     }
     const attachmentRestoreValue = selectedAttachment;
     setSelectedAttachment(null);
-    setReplyQuote(null);
+    if (!options?.overrideReplyQuote) {
+      setReplyQuote(null);
+    }
 
     // Clear saved draft in local storage
     try {
@@ -2778,7 +3045,7 @@ export default function ChatSection({
 
         // Create user message in Firestore
         const userMessageId = doc(collection(db, 'chats', aiChatId, 'messages')).id;
-        const userMessageData = {
+        const userMessageData: any = {
           id: userMessageId,
           senderId: profile.uid,
           receiverId: 'my-ai-bot-uid',
@@ -2787,9 +3054,22 @@ export default function ChatSection({
           senderDisplayName: profile.displayName || 'You',
           createdAt: serverTimestamp(),
           clientTimestamp: Date.now(),
-          read: true
+          read: true,
+          ...(options?.threadRootId ? { threadRootId: options.threadRootId } : {}),
+          ...(effectiveReplyQuote?.msgId ? { 
+            replyToId: effectiveReplyQuote.msgId, 
+            replyToText: effectiveReplyQuote.snippetText, 
+            replyToSenderName: effectiveReplyQuote.authorName 
+          } : {})
         };
         await setDoc(doc(db, 'chats', aiChatId, 'messages', userMessageId), userMessageData);
+        if (options?.threadRootId) {
+          try {
+            updateDoc(doc(db, 'chats', aiChatId, 'messages', options.threadRootId), {
+              threadReplyCount: increment(1)
+            }).catch(() => {});
+          } catch {}
+        }
 
         operations.updateTask(taskId, { state: 'SERVER ACKNOWLEDGED', progress: 60 });
         playSendMessageSound();
@@ -2888,6 +3168,39 @@ export default function ChatSection({
         // Phase 3: CONNECTING
         operations.updateTask(taskId, { state: 'CONNECTING', progress: 30 });
 
+        const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+        if (isOffline) {
+          // Offline queue group message
+          operations.updateTask(taskId, { state: 'CONNECTING', progress: 85 });
+          await queueOfflineMessage({
+            chatId: currentChat.id,
+            senderId: profile.uid,
+            senderDisplayName: profile.displayName || 'Relay User',
+            receiverId: 'group',
+            isGroup: true,
+            plainText: textRestoreValue,
+            messageType,
+            mediaUrl: attachmentRestoreValue?.dataUrl || undefined,
+            mediaType: attachmentRestoreValue?.type || undefined,
+            mediaName: attachmentRestoreValue?.name || undefined,
+            replyToId: effectiveReplyQuote?.msgId || undefined,
+            replyToText: effectiveReplyQuote?.snippetText || undefined,
+            replyToSenderName: effectiveReplyQuote?.authorName || undefined,
+            threadRootId: options?.threadRootId || undefined,
+            pollData
+          });
+
+          operations.updateTask(taskId, { state: 'FINALIZING', progress: 95 });
+          playSendMessageSound();
+          setError(null);
+          showBrutalistToast('SAVED TO LOCAL VAULT', 'You are offline. Group message safely cached in IndexedDB vault.', 'warning', undefined, toastId);
+
+          operations.successTask(taskId);
+          setSending(false);
+          return;
+        }
+
         // Phase 4: UPLOADING (progress for file if any)
         if (hasAttachment && attachmentRestoreValue) {
           operations.updateTask(taskId, { state: 'UPLOADING', progress: 40 });
@@ -2905,9 +3218,10 @@ export default function ChatSection({
           mediaUrl: attachmentRestoreValue?.dataUrl || undefined,
           mediaType: attachmentRestoreValue?.type || undefined,
           mediaName: attachmentRestoreValue?.name || undefined,
-          replyToId: replyQuote?.msgId || undefined,
-          replyToText: replyQuote?.snippetText || undefined,
-          replyToSenderName: replyQuote?.authorName || undefined,
+          replyToId: effectiveReplyQuote?.msgId || undefined,
+          replyToText: effectiveReplyQuote?.snippetText || undefined,
+          replyToSenderName: effectiveReplyQuote?.authorName || undefined,
+          threadRootId: options?.threadRootId || undefined,
           pollData
         });
 
@@ -2940,13 +3254,17 @@ export default function ChatSection({
           plainText: textToSend,
           recipientPublicKeyJwk: selectedPeer.publicKey,
           senderPublicKeyJwk: profile.publicKey,
-          lifespanSeconds: calculatedLifespan
+          lifespanSeconds: calculatedLifespan,
+          replyToId: effectiveReplyQuote?.msgId || undefined,
+          replyToText: effectiveReplyQuote?.snippetText || undefined,
+          replyToSenderName: effectiveReplyQuote?.authorName || undefined,
+          threadRootId: options?.threadRootId || undefined
         });
         
         operations.updateTask(taskId, { state: 'FINALIZING', progress: 95 });
         playSendMessageSound();
         setError(null);
-        showBrutalistToast('ENCRYPTED & QUEUED', 'You are offline. Dialogue packet securely cached in local vault.', 'warning', undefined, toastId);
+        showBrutalistToast('SAVED TO LOCAL VAULT', 'You are offline. Dialogue packet securely cached in IndexedDB vault.', 'warning', undefined, toastId);
         
         operations.successTask(taskId);
       } else {
@@ -2960,7 +3278,11 @@ export default function ChatSection({
           plainText: textToSend,
           recipientPublicKeyJwk: selectedPeer.publicKey,
           senderPublicKeyJwk: profile.publicKey,
-          lifespanSeconds: calculatedLifespan
+          lifespanSeconds: calculatedLifespan,
+          replyToId: effectiveReplyQuote?.msgId || undefined,
+          replyToText: effectiveReplyQuote?.snippetText || undefined,
+          replyToSenderName: effectiveReplyQuote?.authorName || undefined,
+          threadRootId: options?.threadRootId || undefined
         });
         
         operations.updateTask(taskId, { state: 'FINALIZING', progress: 95 });
@@ -2970,6 +3292,68 @@ export default function ChatSection({
         operations.successTask(taskId);
       }
     } catch (err: any) {
+      const isNetErr = !navigator.onLine || 
+        /offline|network|failed to fetch|unavailable|client is offline|load failed|connection refused|timeout/i.test(err?.message || '');
+      
+      if (isNetErr) {
+        try {
+          if (currentChat?.isGroup) {
+            let fallbackPollData: any = undefined;
+            if (textRestoreValue.startsWith('📊 POLL_DATA:')) {
+              try {
+                const rawObj = textRestoreValue.replace('📊 POLL_DATA:', '');
+                const parsed = JSON.parse(rawObj);
+                fallbackPollData = {
+                  question: parsed.question,
+                  options: parsed.options,
+                  votes: {}
+                };
+              } catch (_) {}
+            }
+
+            await queueOfflineMessage({
+              chatId: currentChat.id,
+              senderId: profile.uid,
+              senderDisplayName: profile.displayName || 'Relay User',
+              receiverId: 'group',
+              isGroup: true,
+              plainText: textRestoreValue,
+              messageType: textRestoreValue.startsWith('📊 POLL_DATA:') ? 'poll' : 'text',
+              mediaUrl: attachmentRestoreValue?.dataUrl || undefined,
+              mediaType: attachmentRestoreValue?.type || undefined,
+              mediaName: attachmentRestoreValue?.name || undefined,
+              replyToId: effectiveReplyQuote?.msgId || undefined,
+              replyToText: effectiveReplyQuote?.snippetText || undefined,
+              replyToSenderName: effectiveReplyQuote?.authorName || undefined,
+              threadRootId: options?.threadRootId || undefined,
+              pollData: fallbackPollData
+            });
+          } else if (selectedPeer) {
+            await queueOfflineMessage({
+              chatId: currentChat.id,
+              senderId: profile.uid,
+              senderDisplayName: profile.displayName,
+              receiverId: selectedPeer.uid,
+              plainText: textToSend,
+              recipientPublicKeyJwk: selectedPeer.publicKey,
+              senderPublicKeyJwk: profile.publicKey,
+              lifespanSeconds: selfDestructSeconds > 0 ? selfDestructSeconds : undefined,
+              replyToId: effectiveReplyQuote?.msgId || undefined,
+              replyToText: effectiveReplyQuote?.snippetText || undefined,
+              replyToSenderName: effectiveReplyQuote?.authorName || undefined,
+              threadRootId: options?.threadRootId || undefined
+            });
+          }
+          playSendMessageSound();
+          setError(null);
+          showBrutalistToast('SAVED TO LOCAL VAULT', 'Network interrupted. Dialogue packet cached in IndexedDB and will auto-sync when online.', 'warning', undefined, toastId);
+          operations.successTask(taskId);
+          return;
+        } catch (queueErr) {
+          console.warn('Failed fallback to offline queue:', queueErr);
+        }
+      }
+
       if (customText === undefined) {
         setText(textRestoreValue);
         if (profile && currentChat) {
@@ -2989,6 +3373,23 @@ export default function ChatSection({
     } finally {
       setSending(false);
     }
+  };
+
+  // Dispatch a threaded reply specifically linked to activeThreadMessage
+  const handleSendThreadReply = async (replyText: string) => {
+    if (!activeThreadMessage || !replyText.trim() || !profile || !currentChat) return;
+
+    const parentAuthorName = activeThreadMessage.senderDisplayName || (activeThreadMessage.senderId === profile.uid ? 'You' : 'Peer');
+    const parentSnippet = (decryptedCache[activeThreadMessage.id] || activeThreadMessage.plainText || 'Root transmission').substring(0, 48);
+
+    await handleSendMessage(undefined, replyText, {
+      threadRootId: activeThreadMessage.id,
+      overrideReplyQuote: {
+        msgId: activeThreadMessage.id,
+        authorName: parentAuthorName,
+        snippetText: parentSnippet
+      }
+    });
   };
 
   // Voice-First Flick Transmission with local vault caching
@@ -3081,7 +3482,28 @@ export default function ChatSection({
         return;
       }
 
+      const calculatedLifespan = selfDestructSeconds > 0 ? selfDestructSeconds : undefined;
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
       if (currentChat.isGroup) {
+        if (isOffline) {
+          await queueOfflineMessage({
+            chatId: currentChat.id,
+            senderId: profile.uid,
+            senderDisplayName: profile.displayName || 'Relay User',
+            receiverId: 'group',
+            isGroup: true,
+            plainText: voiceNotePayload,
+            messageType: 'text',
+            mediaUrl: params.audioDataUrl,
+            mediaType: 'audio',
+            mediaName: `Voice Flick (${Math.floor(params.duration / 60)}:${(Math.floor(params.duration % 60)).toString().padStart(2, '0')})`,
+          });
+          playSendMessageSound();
+          showBrutalistToast('VOICE QUEUED', 'Offline detected. Voice flick safely saved in IndexedDB vault.', 'warning');
+          return;
+        }
+
         await sendGroupMessageService({
           chatId: currentChat.id,
           senderId: profile.uid,
@@ -3097,9 +3519,6 @@ export default function ChatSection({
         return;
       }
 
-      const calculatedLifespan = selfDestructSeconds > 0 ? selfDestructSeconds : undefined;
-      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-
       if (isOffline) {
         await queueOfflineMessage({
           chatId: currentChat.id,
@@ -3107,12 +3526,16 @@ export default function ChatSection({
           senderDisplayName: profile.displayName,
           receiverId: selectedPeer.uid,
           plainText: voiceNotePayload,
+          messageType: 'text',
+          mediaUrl: params.audioDataUrl,
+          mediaType: 'audio',
+          mediaName: `Voice Flick (${Math.floor(params.duration / 60)}:${(Math.floor(params.duration % 60)).toString().padStart(2, '0')})`,
           recipientPublicKeyJwk: selectedPeer.publicKey,
           senderPublicKeyJwk: profile.publicKey,
           lifespanSeconds: calculatedLifespan
         });
         playSendMessageSound();
-        showBrutalistToast('VOICE QUEUED', 'Encrypted and stored in local device vault.', 'warning');
+        showBrutalistToast('VOICE QUEUED', 'Encrypted and stored in IndexedDB vault. Auto-sync will send it when online.', 'warning');
       } else {
         await sendE2EEMessage({
           chatId: currentChat.id,
@@ -3128,6 +3551,49 @@ export default function ChatSection({
         showBrutalistToast('VOICE TRANSMITTED', 'Encrypted tunnel delivery complete.', 'success');
       }
     } catch (err: any) {
+      const isNetErr = !navigator.onLine || 
+        /offline|network|failed to fetch|unavailable|client is offline|load failed|connection refused|timeout/i.test(err?.message || '');
+      
+      if (isNetErr) {
+        try {
+          if (currentChat?.isGroup) {
+            await queueOfflineMessage({
+              chatId: currentChat.id,
+              senderId: profile.uid,
+              senderDisplayName: profile.displayName || 'Relay User',
+              receiverId: 'group',
+              isGroup: true,
+              plainText: voiceNotePayload,
+              messageType: 'text',
+              mediaUrl: params.audioDataUrl,
+              mediaType: 'audio',
+              mediaName: `Voice Flick (${Math.floor(params.duration / 60)}:${(Math.floor(params.duration % 60)).toString().padStart(2, '0')})`,
+            });
+          } else if (selectedPeer) {
+            await queueOfflineMessage({
+              chatId: currentChat.id,
+              senderId: profile.uid,
+              senderDisplayName: profile.displayName,
+              receiverId: selectedPeer.uid,
+              plainText: voiceNotePayload,
+              messageType: 'text',
+              mediaUrl: params.audioDataUrl,
+              mediaType: 'audio',
+              mediaName: `Voice Flick (${Math.floor(params.duration / 60)}:${(Math.floor(params.duration % 60)).toString().padStart(2, '0')})`,
+              recipientPublicKeyJwk: selectedPeer.publicKey,
+              senderPublicKeyJwk: profile.publicKey,
+              lifespanSeconds: selfDestructSeconds > 0 ? selfDestructSeconds : undefined
+            });
+          }
+          playSendMessageSound();
+          setError(null);
+          showBrutalistToast('VOICE QUEUED', 'Network interrupted. Voice packet cached in IndexedDB vault and will auto-sync when online.', 'warning');
+          return;
+        } catch (queueErr) {
+          console.warn('Voice offline queue fallback failed:', queueErr);
+        }
+      }
+
       const errMsg = "Voice transmission error: " + sanitizeErrorMessage(err);
       setError(errMsg);
       showBrutalistToast('TRANSMISSION ERROR', errMsg, 'error');
@@ -5098,22 +5564,41 @@ export default function ChatSection({
                   </button>
                 )}
 
-                <div className="relative flex items-center border border-[var(--neon-green)]/35 bg-[var(--color-surface)]/80 px-2 py-1">
-                  <Search className="w-3 h-3 text-[var(--neon-green)]/65 mr-1" />
+                <div 
+                  className={`relative flex items-center border transition-all duration-200 px-2 py-1 ${
+                    messageSearchQuery ? 'border-[var(--neon-green)] bg-[var(--color-surface)] shadow-[0_0_10px_rgba(34,197,94,0.15)]' : 'border-[var(--neon-green)]/35 bg-[var(--color-surface)]/80'
+                  }`}
+                  title="Search conversation history (Ctrl+F)"
+                >
+                  <Search className={`w-3 h-3 mr-1.5 shrink-0 transition-colors ${messageSearchQuery ? 'text-[var(--neon-green)]' : 'text-[var(--neon-green)]/65'}`} />
                   <input
+                    ref={messageSearchInputRef}
                     type="text"
-                    placeholder="SEARCH..."
+                    placeholder="SEARCH CONVERSATION..."
                     value={messageSearchQuery}
                     onChange={(e) => setMessageSearchQuery(e.target.value)}
-                    className="bg-transparent border-none outline-none text-[9px] text-[var(--neon-green)] placeholder-[var(--neon-green)]/35 tracking-wider w-16 sm:w-20 focus:w-28 transition-all duration-200"
+                    className="bg-transparent border-none outline-none text-[9px] text-[var(--neon-green)] placeholder-[var(--neon-green)]/40 tracking-wider w-20 sm:w-28 focus:w-32 sm:focus:w-44 transition-all duration-200 font-mono"
                   />
                   {messageSearchQuery && (
-                    <button
-                      onClick={() => setMessageSearchQuery('')}
-                      className="text-zinc-500 hover:text-[var(--color-text)] font-mono text-[9px] pl-1 cursor-pointer select-none font-bold"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center space-x-1 pl-1">
+                      <span 
+                        className="text-[8px] font-mono font-bold text-[var(--neon-green)] bg-[var(--neon-green)]/20 px-1 py-0.5 rounded leading-none shrink-0" 
+                        title={`${filteredMessages.length} matching transmissions`}
+                      >
+                        {filteredMessages.length}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMessageSearchQuery('');
+                          messageSearchInputRef.current?.focus();
+                        }}
+                        className="text-zinc-400 hover:text-[var(--color-text)] font-mono text-[9px] pl-0.5 cursor-pointer select-none font-bold transition-colors"
+                        title="Clear search filter (Esc)"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -5242,6 +5727,33 @@ export default function ChatSection({
               );
             })()}
 
+            {/* Active Local Conversation Search Status Banner */}
+            {messageSearchQuery.trim() && (
+              <div className="bg-[var(--color-surface)] border-b border-[var(--neon-green)]/30 px-3 py-1.5 flex items-center justify-between text-[10px] font-mono shrink-0 shadow-sm z-10 select-none">
+                <div className="flex items-center space-x-2 text-[var(--neon-green)] min-w-0">
+                  <Search className="w-3.5 h-3.5 shrink-0 text-[var(--neon-green)]" />
+                  <span className="font-bold tracking-wider uppercase truncate">
+                    FILTERING CONVERSATION: &ldquo;{messageSearchQuery}&rdquo;
+                  </span>
+                  <span className="text-zinc-400 text-[9px] shrink-0 font-normal">
+                    ({filteredMessages.length} of {displayedMessages.length} {displayedMessages.length === 1 ? 'message' : 'messages'})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessageSearchQuery('');
+                    messageSearchInputRef.current?.focus();
+                  }}
+                  className="px-2 py-0.5 border border-[var(--neon-green)]/40 hover:bg-[var(--neon-green)]/15 text-[var(--neon-green)] text-[9px] uppercase font-bold tracking-wider transition cursor-pointer flex items-center gap-1 shrink-0 ml-2"
+                  title="Clear filter and restore full conversation history (Esc)"
+                >
+                  <span>CLEAR FILTER</span>
+                  <span className="text-[10px]">✕</span>
+                </button>
+              </div>
+            )}
+
             {/* Messages Stream Wrapper with Info drawer sidebar layout */}
             <div className="flex-1 min-h-0 min-w-0 flex overflow-hidden relative">
               {/* Active Wallpaper Background Layer (Telegram & WhatsApp style) */}
@@ -5292,7 +5804,7 @@ export default function ChatSection({
                       Retrieving end-to-end encrypted packet stream from Firestore...
                     </p>
                   </div>
-                ) : messages.length === 0 ? (
+                ) : displayedMessages.length === 0 ? (
                   selectedPeer?.uid === 'my-ai-bot-uid' ? (
                     <div className="text-center py-6 text-zinc-500 text-[10px] uppercase tracking-wider font-mono animate-pulse">
                       🔮 DIRECT QUANTUM FEED ESTABLISHED WITH THE FATHER. INITIATE SACRED INQUIRY BELOW...
@@ -5303,28 +5815,39 @@ export default function ChatSection({
                     </div>
                   )
                 ) : (() => {
-                  const filtered = messages.filter(msg => {
-                    try {
-                      const deletedLocallyStr = localStorage.getItem(`flick_deleted_messages_local_${profile.uid}`) || "[]";
-                      const deletedLocally = JSON.parse(deletedLocallyStr) as string[];
-                      if (deletedLocally.includes(msg.id)) return false;
-                    } catch (e) {
-                      console.error(e?.message || e);
-                    }
-
-                    if (!messageSearchQuery) return true;
-                    const dec = decryptedCache[msg.id];
-                    if (!dec) return false;
-                    return dec.toLowerCase().includes(messageSearchQuery.toLowerCase());
-                  });
+                  if (filteredMessages.length === 0 && messageSearchQuery.trim()) {
+                    return (
+                      <div className="py-20 flex flex-col items-center justify-center text-center px-4 font-mono select-none">
+                        <div className="w-12 h-12 rounded-full border border-[var(--neon-green)]/30 flex items-center justify-center bg-[var(--color-surface)] mb-3 text-[var(--neon-green)]">
+                          <Search className="w-6 h-6 opacity-60" />
+                        </div>
+                        <p className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider mb-1">
+                          NO MESSAGES MATCH QUERY
+                        </p>
+                        <p className="text-[10px] text-zinc-500 max-w-xs mb-4">
+                          No transmissions found matching &ldquo;<span className="text-[var(--neon-green)]">{messageSearchQuery}</span>&rdquo; in this conversation history.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessageSearchQuery('');
+                            messageSearchInputRef.current?.focus();
+                          }}
+                          className="px-3 py-1.5 border border-[var(--neon-green)]/50 text-[var(--neon-green)] hover:bg-[var(--neon-green)]/15 text-[10px] font-bold uppercase tracking-wider transition cursor-pointer"
+                        >
+                          CLEAR SEARCH FILTER
+                        </button>
+                      </div>
+                    );
+                  }
 
                   return (
                     <AnimatePresence initial={false}>
-                      {filtered.map((msg, index) => {
+                      {filteredMessages.map((msg, index) => {
                         const isMe = msg.senderId === profile.uid;
                         
                         // Calculate consecutive message grouping sent within the same minute
-                        const prevMsg = index > 0 ? filtered[index - 1] : null;
+                        const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
                         const isSameSender = prevMsg && prevMsg.senderId === msg.senderId;
                         
                         let isSameMinute = false;
@@ -5431,6 +5954,8 @@ export default function ChatSection({
                               searchQuery={messageSearchQuery}
                               onVotePoll={castPollVote}
                               pollsData={pollsData}
+                              onOpenThread={(parentMsg) => setActiveThreadMessage(parentMsg)}
+                              threadReplyCount={threadRepliesMap[msg.id]?.length || msg.threadReplyCount || 0}
                             />
                           </div>
                           </motion.div>
@@ -5441,6 +5966,28 @@ export default function ChatSection({
                 })()}
                 <div ref={messagesEndRef} />
               </div>
+
+              {/* Sub-Thread View Drawer */}
+              <AnimatePresence>
+                {activeThreadMessage && (
+                  <ThreadView
+                    parentMessage={activeThreadMessage}
+                    replies={threadRepliesMap[activeThreadMessage.id] || []}
+                    currentUserId={profile.uid}
+                    currentUserDisplayName={profile.displayName || 'Relay User'}
+                    localPrivateKey={localPrivateKey}
+                    chatId={currentChat.id}
+                    isGroup={!!currentChat.isGroup}
+                    peerProfile={selectedPeer}
+                    onClose={() => setActiveThreadMessage(null)}
+                    onSendReply={handleSendThreadReply}
+                    decryptedCache={decryptedCache}
+                    onDecrypted={(msgId, text) => {
+                      setDecryptedCache(prev => ({ ...prev, [msgId]: text }));
+                    }}
+                  />
+                )}
+              </AnimatePresence>
 
               {/* Chat Info Panel / Drawer Sidebar */}
               <AnimatePresence>
@@ -6563,6 +7110,27 @@ export default function ChatSection({
                     className="w-full py-2 bg-[var(--neon-green)] hover:bg-white text-black font-extrabold uppercase text-[9px] text-center cursor-pointer transition"
                   >
                     DEPLOY POLL ARTIFACT
+                  </button>
+                </div>
+              )}
+
+              {/* IndexedDB Offline Queue banner for current chat tunnel */}
+              {offlineQueuedForChat.length > 0 && (
+                <div className="bg-amber-950/40 border border-amber-500/40 px-3 py-1.5 mx-2 mb-2 flex items-center justify-between text-xs font-mono text-amber-400 backdrop-blur-md shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Clock className={`w-3.5 h-3.5 text-amber-400 ${isOfflineQueueSyncing ? 'animate-spin' : 'animate-pulse'}`} />
+                    <span className="text-[9.5px] uppercase font-bold tracking-wider">
+                      {offlineQueuedForChat.length} message{offlineQueuedForChat.length > 1 ? 's' : ''} stored in IndexedDB offline vault
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleManualOfflineSync()}
+                    disabled={isOfflineQueueSyncing}
+                    className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[9px] uppercase font-extrabold flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-2.5 h-2.5 ${isOfflineQueueSyncing ? 'animate-spin' : ''}`} />
+                    {isOfflineQueueSyncing ? 'Syncing...' : 'Sync Now'}
                   </button>
                 </div>
               )}

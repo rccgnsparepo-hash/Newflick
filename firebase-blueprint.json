@@ -67,6 +67,8 @@
         "senderDisplayName": { "type": "string", "description": "Display name of sender" },
         "expiresAt": { "type": "string", "format": "date-time", "description": "Optional message self-destruct timestamp" },
         "read": { "type": "boolean", "description": "Delivery read confirmation flag" },
+        "threadRootId": { "type": "string", "description": "ID of the root parent message for threaded discussion sub-branches" },
+        "threadReplyCount": { "type": "number", "description": "Count of threaded sub-replies branching off this transmission" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Message creation timestamp" }
       },
       "required": ["id", "senderId", "receiverId", "participantIds", "createdAt"]

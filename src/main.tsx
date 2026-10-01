@@ -49,24 +49,22 @@ window.addEventListener('unhandledrejection', (e) => {
   }
 });
 
-// Async bootstrap initialization before rendering
-async function start() {
-  try {
-    await initBootstrap();
-  } catch (err) {
-    console.warn('[Bootstrap] Background sync warning:', err);
-  }
+import { ErrorBoundary } from './components/ErrorBoundary';
 
-  // Mount application root
-  const rootElement = document.getElementById('root');
-  if (rootElement) {
-    createRoot(rootElement).render(
-      <StrictMode>
+// Mount application root immediately to prevent any blank/white screen delays
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <ErrorBoundary>
         <App />
-      </StrictMode>,
-    );
-  }
+      </ErrorBoundary>
+    </StrictMode>,
+  );
 }
 
-start();
+// Background sync bootstrap
+initBootstrap().catch((err) => {
+  console.warn('[Bootstrap] Background sync warning:', err);
+});
 

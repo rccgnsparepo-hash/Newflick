@@ -121,6 +121,8 @@ export interface ChatMessage {
   replyToId?: string;
   replyToText?: string;
   replyToSenderName?: string;
+  threadRootId?: string;
+  threadReplyCount?: number;
   reactions?: { [userId: string]: string }; // map of userId -> emoji reactions
   pollData?: {
     question: string;
@@ -132,6 +134,8 @@ export interface ChatMessage {
   isDeleted?: boolean;
   deliveryStatus?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   optimisticId?: string;
+  isOfflineQueued?: boolean;
+  syncStatus?: 'queued' | 'syncing' | 'failed';
 }
 
 export interface InAppNotification {

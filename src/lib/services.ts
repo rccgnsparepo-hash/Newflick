@@ -577,8 +577,25 @@ export async function sendE2EEMessage(params: {
   recipientPublicKeyJwk: string;
   senderPublicKeyJwk: string;
   lifespanSeconds?: number;
+  replyToId?: string;
+  replyToText?: string;
+  replyToSenderName?: string;
+  threadRootId?: string;
 }): Promise<void> {
-  const { chatId, senderId, senderDisplayName, receiverId, plainText, recipientPublicKeyJwk, senderPublicKeyJwk, lifespanSeconds } = params;
+  const { 
+    chatId, 
+    senderId, 
+    senderDisplayName, 
+    receiverId, 
+    plainText, 
+    recipientPublicKeyJwk, 
+    senderPublicKeyJwk, 
+    lifespanSeconds,
+    replyToId,
+    replyToText,
+    replyToSenderName,
+    threadRootId
+  } = params;
   const messageId = doc(collection(db, 'chats', chatId, 'messages')).id;
   const path = `chats/${chatId}/messages/${messageId}`;
 
@@ -602,6 +619,11 @@ export async function sendE2EEMessage(params: {
       clientTimestamp: now
     };
 
+    if (replyToId) messageData.replyToId = replyToId;
+    if (replyToText) messageData.replyToText = replyToText;
+    if (replyToSenderName) messageData.replyToSenderName = replyToSenderName;
+    if (threadRootId) messageData.threadRootId = threadRootId;
+
     if (lifespanSeconds && lifespanSeconds > 0) {
       // Calculate active stamp in future
       messageData.expiresAt = new Date(Date.now() + lifespanSeconds * 1000);
@@ -620,6 +642,15 @@ export async function sendE2EEMessage(params: {
     
     // Post Message
     batch.set(messageRef, messageData);
+
+    if (threadRootId) {
+      try {
+        const parentRef = doc(db, 'chats', chatId, 'messages', threadRootId);
+        batch.update(parentRef, { threadReplyCount: increment(1) });
+      } catch (err) {
+        console.warn('Failed to increment threadReplyCount in batch:', err);
+      }
+    }
     
     // Update or create parent Chat snippet details
     let previewSnippet = "Message";
@@ -942,6 +973,7 @@ export async function sendGroupMessageService(params: {
   replyToText?: string;
   replyToSenderName?: string;
   pollData?: { question: string; options: string[]; votes: Record<string, number> };
+  threadRootId?: string;
 }): Promise<void> {
   const {
     chatId,
@@ -955,7 +987,8 @@ export async function sendGroupMessageService(params: {
     replyToId = '',
     replyToText = '',
     replyToSenderName = '',
-    pollData = null
+    pollData = null,
+    threadRootId
   } = params;
   const messageId = doc(collection(db, 'chats', chatId, 'messages')).id;
   const path = `chats/${chatId}/messages/${messageId}`;
@@ -989,6 +1022,8 @@ export async function sendGroupMessageService(params: {
         votes: pollData.votes
       } : null
     };
+
+    if (threadRootId) messageData.threadRootId = threadRootId;
 
     ChatMessageSchema.parse(messageData);
 
@@ -1041,6 +1076,14 @@ export async function sendGroupMessageService(params: {
       });
 
       transaction.set(messageRef, messageData);
+      if (threadRootId) {
+        try {
+          const parentMsgRef = doc(db, 'chats', chatId, 'messages', threadRootId);
+          transaction.update(parentMsgRef, { threadReplyCount: increment(1) });
+        } catch (tErr) {
+          console.warn('Failed to increment threadReplyCount in group transaction:', tErr);
+        }
+      }
       transaction.update(chatRef, {
         lastMessage: snippet,
         lastMessageText: snippet,

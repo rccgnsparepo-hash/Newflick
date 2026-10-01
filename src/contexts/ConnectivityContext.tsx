@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Wifi, WifiOff, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { playLikeSound, playGlitchClickSound } from '../lib/sounds';
 import { triggerVibration } from '../lib/haptics';
+import { syncOfflineMessages, getQueuedMessagesCount } from '../lib/offlineQueue';
 
 export type ConnectionType = 'wifi' | 'cellular' | 'ethernet' | 'none' | 'unknown';
 
@@ -25,6 +26,7 @@ interface ConnectivityContextType {
   isSlow: boolean;
   effectiveType?: string;
   pendingRequestsCount: number;
+  offlineMessagesCount: number;
   queueRequest: (callback: () => Promise<any> | any) => void;
   triggerSync: () => Promise<boolean>;
 }
@@ -53,7 +55,33 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // 2. Offline requests queue
   const [queuedRequests, setQueuedRequests] = useState<QueuedRequest[]>([]);
+  const [offlineMessagesCount, setOfflineMessagesCount] = useState<number>(0);
   const isSyncingRef = useRef<boolean>(false);
+
+  // Monitor IndexedDB offline message queue count
+  useEffect(() => {
+    const updateCount = async () => {
+      try {
+        const count = await getQueuedMessagesCount();
+        setOfflineMessagesCount(count);
+      } catch (_) {}
+    };
+
+    updateCount();
+
+    const handleQueueChange = () => updateCount();
+    window.addEventListener('flick-offline-queue-changed', handleQueueChange);
+    window.addEventListener('flick-offline-sync-completed', handleQueueChange);
+    window.addEventListener('online', handleQueueChange);
+    window.addEventListener('offline', handleQueueChange);
+
+    return () => {
+      window.removeEventListener('flick-offline-queue-changed', handleQueueChange);
+      window.removeEventListener('flick-offline-sync-completed', handleQueueChange);
+      window.removeEventListener('online', handleQueueChange);
+      window.removeEventListener('offline', handleQueueChange);
+    };
+  }, []);
 
   // 3. UI states for notifications
   const [showRestoredBanner, setShowRestoredBanner] = useState<boolean>(false);
@@ -228,8 +256,9 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setShowRestoredBanner(false);
         }, 3000);
 
-        // Replay offline mutations
+        // Replay offline mutations and IndexedDB offline message queue
         triggerSync();
+        syncOfflineMessages().catch((e) => console.warn('[ConnectivityContext] Auto-sync failed:', e));
 
         previousOnlineRef.current = true;
         return () => clearTimeout(timer);
@@ -304,6 +333,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isSlow: status.isSlow,
         effectiveType: status.effectiveType,
         pendingRequestsCount: queuedRequests.length,
+        offlineMessagesCount,
         queueRequest,
         triggerSync,
       }}
@@ -331,7 +361,7 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
                       ⚠️ No Internet Connection
                     </h3>
                     <p className="text-[9.5px] text-zinc-400 font-sans tracking-wide mt-1">
-                      Encryption tunnels temporarily suspended. Content queued offline.
+                      Encryption tunnels temporarily suspended. Messages safely cached in IndexedDB vault.
                     </p>
                   </div>
                 </div>
@@ -342,9 +372,9 @@ export const ConnectivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
                       {status.connectionType}
                     </span>
                   )}
-                  {queuedRequests.length > 0 && (
+                  {(queuedRequests.length > 0 || offlineMessagesCount > 0) && (
                     <span className="text-[8px] bg-red-500 text-black font-extrabold px-1.5 py-0.5 animate-pulse uppercase">
-                      {queuedRequests.length} QUEUED
+                      {queuedRequests.length + offlineMessagesCount} QUEUED
                     </span>
                   )}
                 </div>

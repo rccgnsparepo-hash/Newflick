@@ -5,7 +5,11 @@ import { initializeApp } from 'firebase/app';
 import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, setLogLevel } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { newsAggregator } from './server/newsAggregator';
+
+const currentFilename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
+const currentDirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(currentFilename);
 
 // Suppress Firestore verbose/warning logs (such as offline connection warnings)
 try {
@@ -739,6 +743,9 @@ async function startServer() {
         console.warn("[Backend] Failed to authenticate system backend user. Notification engine running in unauthenticated state.");
         initBackendPushEngine(db, false);
       }
+    }).catch((err) => {
+      console.warn("[Backend] Failed to authenticate system backend user, running push engine in fallback mode:", err);
+      initBackendPushEngine(db, false);
     });
   } else if (db) {
     initBackendPushEngine(db, false);
@@ -2518,17 +2525,27 @@ YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Vite middleware for development vs static asset serving for production
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    (typeof currentFilename !== "undefined" && currentFilename.endsWith(".cjs"));
+
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = fs.existsSync(path.join(process.cwd(), "dist", "index.html"))
+      ? path.join(process.cwd(), "dist")
+      : currentDirname;
+
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: "Endpoint not found" });
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
@@ -2541,6 +2558,9 @@ YOU MUST ALWAYS RESPOND IN THE FOLLOWING STRUCTURAL JSON FORMAT:
   }
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error("[Fatal Server Error] Failed to start server:", err);
+  process.exit(1);
+});
 
 export default app;
