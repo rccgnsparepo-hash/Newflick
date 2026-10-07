@@ -60,6 +60,7 @@ export interface Post {
 export interface DirectChat {
   id: string;
   participantIds: string[];
+  participantNames?: { [userId: string]: string };
   lastMessage: string;
   lastMessageAt: any;
   typing?: { [userId: string]: boolean };

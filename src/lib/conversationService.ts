@@ -3,6 +3,8 @@ import {
   doc, 
   query, 
   where, 
+  orderBy,
+  limit,
   onSnapshot, 
   updateDoc, 
   getDocs, 
@@ -350,23 +352,32 @@ export async function markConversationAsRead(chatId: string, userId: string): Pr
     try {
       const msgsQuery = query(
         collection(db, 'chats', chatId, 'messages'),
-        where('receiverId', '==', userId),
-        where('read', '==', false)
+        orderBy('createdAt', 'desc'),
+        limit(60)
       );
       const snap = await getDocs(msgsQuery);
       if (!snap.empty) {
         const batch = writeBatch(db);
+        let count = 0;
         snap.docs.forEach((d) => {
-          batch.update(d.ref, {
-            read: true,
-            readAt: serverTimestamp(),
-            readBy: arrayUnion(userId)
-          });
+          const m = d.data();
+          if (m.senderId !== userId) {
+            const alreadyRead = m.read || (m.readBy && m.readBy.includes(userId));
+            if (!alreadyRead) {
+              batch.update(d.ref, {
+                read: true,
+                readAt: serverTimestamp(),
+                readBy: arrayUnion(userId)
+              });
+              count++;
+            }
+          }
         });
-        await batch.commit();
+        if (count > 0) {
+          await batch.commit();
+        }
       }
     } catch (msgErr) {
-      // Subquery might require index or fail silently, non-critical
       console.debug('[ConversationService] Mark unread messages error:', msgErr);
     }
 

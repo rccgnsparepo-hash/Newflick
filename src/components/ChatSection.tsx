@@ -15,6 +15,7 @@ import {
   removeMessageReaction,
   subscribeToMessageReactions,
   markMessageAsRead,
+  markAllMessagesAsRead,
   subscribeToChats,
   setFirestoreTypingStatus,
   subscribeToChatTypingStatus,
@@ -49,7 +50,8 @@ import {
   QrCode, ScanLine, Camera, Upload, Copy, Pin, PinOff, Search, Sliders, Forward,
   Phone, PhoneCall, Video, UserX, UserCheck, ShieldAlert, FileText, Download, LockKeyhole, UnlockKeyhole,
   Wallpaper, BarChart2, MapPin, Group, Settings2, Trash2, Plus, Users, Star, Keyboard, Archive,
-  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield, Clock, AlertCircle, RefreshCw
+  UserPlus, ChevronLeft, CornerUpRight, Edit3, RotateCcw, HardDrive, Shield, Clock, AlertCircle, RefreshCw,
+  Image as ImageIcon, Sparkles, Wand2, ExternalLink
 } from 'lucide-react';
 import {
   getConversationUnreadCount,
@@ -587,6 +589,27 @@ function DecryptedMessageBubble({
     quotedSnippet = message.replyToText || "";
   }
 
+  // Detect image URLs within message text for automatic rich previews & AI placeholders
+  const detectedImageUrl = useMemo(() => {
+    if (attachmentType === 'image') return null; // already handled as main attachment
+    if (!caption || typeof caption !== 'string') return null;
+    const match = caption.match(/(https?:\/\/[^\s<>'"]+\.(?:png|jpg|jpeg|gif|webp|svg|avif)(?:\?[^\s<>'"]*)?|https?:\/\/(?:images\.unsplash\.com|i\.imgur\.com|media\.giphy\.com|image\.pollinations\.ai|picsum\.photos|cdn\.pixabay\.com|res\.cloudinary\.com)[^\s<>'"]*)/i);
+    return match ? match[0] : null;
+  }, [caption, attachmentType]);
+
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [useAiPlaceholder, setUseAiPlaceholder] = useState(false);
+
+  // Generate an AI placeholder prompt based on message text or fallback
+  const aiPlaceholderPrompt = useMemo(() => {
+    const cleanText = caption.replace(/https?:\/\/\S+/g, '').replace(/[^\w\s]/gi, '').trim();
+    return cleanText ? `cyberpunk ${cleanText.slice(0, 40)} neon digital painting` : 'futuristic cyber art visual digital hologram';
+  }, [caption]);
+
+  const aiPlaceholderUrl = useMemo(() => {
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(aiPlaceholderPrompt)}?width=700&height=450&nologo=true`;
+  }, [aiPlaceholderPrompt]);
+
   // Handle emoji reactions with Firestore persistence
   const toggleReaction = async (emoji: string) => {
     try {
@@ -973,6 +996,68 @@ function DecryptedMessageBubble({
                     </div>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* Automatic Rich Image Preview / AI-Generated Placeholder for Image Links */}
+            {detectedImageUrl && (
+              <div className="mt-2.5 mb-1 overflow-hidden border border-[var(--neon-green)]/35 bg-black/75 p-2 max-w-full rounded font-mono select-none">
+                <div className="flex items-center justify-between text-[8px] uppercase tracking-wider pb-1.5 mb-1.5 border-b border-[var(--neon-green)]/20 text-zinc-400">
+                  <span className="flex items-center gap-1 text-[var(--neon-green)] font-bold">
+                    <ImageIcon className="w-3 h-3 text-[var(--neon-green)]" />
+                    {imageLoadError || useAiPlaceholder ? 'AI-GENERATED PLACEHOLDER' : 'IMAGE LINK PREVIEW'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playGlitchClickSound();
+                        setUseAiPlaceholder(prev => !prev);
+                        setImageLoadError(false);
+                      }}
+                      className="text-[8px] px-1.5 py-0.5 border border-[var(--neon-green)]/40 hover:bg-[var(--neon-green)] hover:text-black text-[var(--neon-green)] transition cursor-pointer flex items-center gap-1"
+                      title="Toggle AI-generated placeholder for this link"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>{useAiPlaceholder ? 'SHOW ORIGINAL' : 'AI PLACEHOLDER'}</span>
+                    </button>
+                    <a
+                      href={detectedImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-zinc-500 hover:text-[var(--neon-green)] transition"
+                      title="Open original image URL"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                <div 
+                  className="relative group cursor-pointer overflow-hidden rounded bg-[var(--color-surface)]" 
+                  onClick={() => setZoomImg(useAiPlaceholder || imageLoadError ? aiPlaceholderUrl : detectedImageUrl)}
+                >
+                  <img
+                    src={useAiPlaceholder || imageLoadError ? aiPlaceholderUrl : detectedImageUrl}
+                    alt={aiPlaceholderPrompt}
+                    onError={() => {
+                      if (!imageLoadError && !useAiPlaceholder) {
+                        setImageLoadError(true);
+                      }
+                    }}
+                    className="max-h-60 w-full object-cover rounded border border-[var(--neon-green)]/20 hover:opacity-95 transition"
+                  />
+                  <div className="absolute top-2 right-2 bg-black/80 p-1 rounded opacity-0 group-hover:opacity-100 transition border border-[var(--neon-green)]/40">
+                    <ZoomIn className="w-3.5 h-3.5 text-[var(--neon-green)]" />
+                  </div>
+                  {(useAiPlaceholder || imageLoadError) && (
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/85 px-2 py-1 text-[8px] text-[var(--neon-green)] font-mono border border-[var(--neon-green)]/30 backdrop-blur-sm truncate">
+                      ✨ AI Generated: "{aiPlaceholderPrompt}"
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {/* Sub-Thread Pill Indicator */}
@@ -2453,6 +2538,12 @@ export default function ChatSection({
     snippetText: string;
   } | null>(null);
 
+  // Image URL pasting and AI-generated image placeholder studio states
+  const [isImageLinkModalOpen, setIsImageLinkModalOpen] = useState(false);
+  const [imageInputUrl, setImageInputUrl] = useState('');
+  const [aiPromptInput, setAiPromptInput] = useState('');
+  const [imageModalTab, setImageModalTab] = useState<'url' | 'ai'>('url');
+
   // Burning message mode selector
   const [selfDestructSeconds, setSelfDestructSeconds] = useState<number>(0); // 0 = standard unlimited message, >0 represent custom lifespan
   const [isRecording, setIsRecording] = useState(false);
@@ -2494,6 +2585,7 @@ export default function ChatSection({
   }, [searchQuery]);
   const [error, setError] = useState<string | null>(null);
 
+  const searchConversationsInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2506,6 +2598,20 @@ export default function ChatSection({
   // Listen for hardware-level brutalist hotkeys and keyboard shortcuts navigation binds
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Focus conversation search bar on Ctrl+K / Cmd+K or / (when not typing in an input)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        searchConversationsInputRef.current?.focus();
+        searchConversationsInputRef.current?.select();
+        return;
+      }
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        e.preventDefault();
+        searchConversationsInputRef.current?.focus();
+        searchConversationsInputRef.current?.select();
+        return;
+      }
+
       // Toggle Keyboard Shortcut guide modal on Alt + /
       if (e.altKey && e.key === '/') {
         e.preventDefault();
@@ -2522,7 +2628,7 @@ export default function ChatSection({
         }
       }
       
-      // Close any active modal overlay when Esc is tapped
+      // Close any active modal overlay or clear search when Esc is tapped
       if (e.key === 'Escape') {
         if (isShortcutModalOpen) {
           setIsShortcutModalOpen(false);
@@ -2539,6 +2645,9 @@ export default function ChatSection({
         } else if (messageSearchQuery) {
           setMessageSearchQuery('');
           messageSearchInputRef.current?.blur();
+        } else if (searchQuery && document.activeElement === searchConversationsInputRef.current) {
+          setSearchQuery('');
+          searchConversationsInputRef.current?.blur();
         }
       }
 
@@ -2754,6 +2863,11 @@ export default function ChatSection({
       const chat = await getOrCreateDirectChat(profile.uid, peer.uid);
       if (chat) {
         setCurrentChat(chat);
+        markConversationAsRead(chat.id, profile.uid).catch((e) => {
+          console.warn("markConversationAsRead on openChatRoom error:", e);
+        });
+      } else {
+        markConversationAsRead(deterministicChatId, profile.uid).catch(() => {});
       }
     } catch (err: any) {
       console.warn("Secure handshake note:", err);
@@ -3927,6 +4041,122 @@ export default function ChatSection({
     return true;
   });
 
+  // Real-time search filter for existing conversations by username, display name, or participant name
+  const searchedAndSortedConversations = useMemo(() => {
+    const rawQuery = searchQuery.trim().toLowerCase();
+    const cleanQuery = rawQuery.startsWith('@') ? rawQuery.slice(1) : rawQuery;
+
+    return filteredActiveTunnels.filter(chat => {
+      // 1. Filter by folder tabs if active
+      if (selectedFolder !== 'All') {
+        const folderChats = chatFolders[selectedFolder] || [];
+        if (!folderChats.includes(chat.id)) return false;
+      }
+
+      // 2. If no search query, keep conversation
+      if (!cleanQuery) return true;
+
+      if (chat.isGroup) {
+        // Match group title
+        if (chat.name && chat.name.toLowerCase().includes(cleanQuery)) return true;
+
+        // Match ANY participant in group by username, display name, email, or nickname
+        const hasMatchingParticipant = chat.participantIds?.some(pid => {
+          if (pid === profile?.uid) return false;
+          const u = users.find(usr => usr.uid === pid);
+          if (!u) {
+            const staticName = chat.participantNames?.[pid];
+            return staticName && staticName.toLowerCase().includes(cleanQuery);
+          }
+          const matchUName = (u.username || '').toLowerCase().includes(cleanQuery);
+          const matchDName = (u.displayName || '').toLowerCase().includes(cleanQuery);
+          const matchEmail = (u.email || '').toLowerCase().includes(cleanQuery);
+          const matchAlias = (renamedNicknames[pid] || '').toLowerCase().includes(cleanQuery);
+          return matchUName || matchDName || matchEmail || matchAlias;
+        });
+        if (hasMatchingParticipant) return true;
+
+        // Fallback match on last message content
+        const lastMsgMatch = (chat.lastMessageText || chat.lastMessage)?.toLowerCase().includes(cleanQuery);
+        return Boolean(lastMsgMatch);
+      } else {
+        // Direct chat: search peer's username, display name, email, nickname, and sender name
+        const peerId = chat.participantIds.find(id => id !== profile?.uid);
+        const peer = users.find(u => u.uid === peerId);
+        
+        const usernameMatch = (peer?.username || '').toLowerCase().includes(cleanQuery);
+        const displayNameMatch = (peer?.displayName || '').toLowerCase().includes(cleanQuery);
+        const emailMatch = (peer?.email || '').toLowerCase().includes(cleanQuery);
+        const aliasMatch = (renamedNicknames[peerId || ''] || '').toLowerCase().includes(cleanQuery);
+        const fallbackSenderMatch = (chat as any).lastMessageSenderName?.toLowerCase().includes(cleanQuery);
+        const lastMsgMatch = (chat.lastMessageText || chat.lastMessage)?.toLowerCase().includes(cleanQuery);
+
+        return Boolean(usernameMatch || displayNameMatch || emailMatch || aliasMatch || fallbackSenderMatch || lastMsgMatch);
+      }
+    }).sort((a, b) => {
+      // Pinned conversations always pin to top
+      const isPinnedA = pinnedChats.includes(a.id) || !!(a.pinnedFor && profile?.uid && a.pinnedFor[profile.uid]);
+      const isPinnedB = pinnedChats.includes(b.id) || !!(b.pinnedFor && profile?.uid && b.pinnedFor[profile.uid]);
+      if (isPinnedA && !isPinnedB) return -1;
+      if (isPinnedB && !isPinnedA) return 1;
+
+      // Strict conversation ordering by latest message timestamp DESC
+      const timeA = getChatTimestampMs(a);
+      const timeB = getChatTimestampMs(b);
+      return timeB - timeA;
+    });
+  }, [
+    filteredActiveTunnels,
+    selectedFolder,
+    chatFolders,
+    searchQuery,
+    users,
+    profile?.uid,
+    renamedNicknames,
+    pinnedChats
+  ]);
+
+  // Quicker navigation on Enter inside search bar: open first matching conversation
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (filterType === 'all-nodes') {
+        if (filteredUsers.length > 0) {
+          playGlitchClickSound();
+          openChatRoom(filteredUsers[0]);
+        }
+      } else {
+        if (searchedAndSortedConversations.length > 0) {
+          playGlitchClickSound();
+          const topChat = searchedAndSortedConversations[0];
+          if (topChat.isGroup) {
+            setSelectedGroup(topChat);
+            setSelectedPeer(null);
+            setCurrentChat(topChat);
+            setActiveConversationId(topChat.id);
+            if (profile?.uid) {
+              markConversationAsRead(topChat.id, profile.uid).catch(() => {});
+            }
+          } else {
+            const peerId = topChat.participantIds.find(id => id !== profile?.uid);
+            const peer = users.find(u => u.uid === peerId) || {
+              uid: peerId || 'unknown',
+              displayName: (topChat as any).lastMessageSenderName || 'Peer Node',
+              email: `${(peerId || 'peer').slice(0, 8)}@flick.local`,
+              photoURL: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${peerId || 'flick'}`,
+              status: 'offline',
+              publicKey: '',
+              updatedAt: new Date()
+            };
+            openChatRoom(peer);
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      setSearchQuery('');
+      searchConversationsInputRef.current?.blur();
+    }
+  };
+
   return (
     <div 
       style={{ paddingBottom: `${mobileBottomPadding}px` }}
@@ -4027,26 +4257,57 @@ export default function ChatSection({
           </div>
         </div>
 
-        {/* Real-time search to instantly filter contacts */}
+        {/* Real-time search to instantly filter contacts by username or participant name */}
         <div className="px-3 pb-2 pt-2 border-b border-zinc-950 bg-[var(--color-surface)]/30">
-          <div className="relative flex items-center border border-[var(--neon-green-border)] bg-[var(--color-surface)]/60 px-2.5 py-1.5">
-            <Search className="w-3.5 h-3.5 text-zinc-550 mr-2 shrink-0" />
+          <div className="relative flex items-center border border-[var(--neon-green-border)] focus-within:border-[var(--neon-green)] focus-within:ring-1 focus-within:ring-[var(--neon-green)]/30 bg-[var(--color-surface)]/70 px-2.5 py-1.5 transition">
+            <Search className="w-3.5 h-3.5 text-zinc-500 mr-2 shrink-0" />
             <input
+              ref={searchConversationsInputRef}
               type="text"
-              placeholder={filterType === 'all-nodes' ? "TYPE USERNAME OR EMAIL TO SEARCH..." : "SEARCH DIALOGUES & TRANSMISSIONS..."}
+              placeholder={filterType === 'all-nodes' ? "SEARCH APP DIRECTORY BY USERNAME..." : "FILTER CONVERSATIONS BY USERNAME OR NAME..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="bg-transparent border-none outline-none text-[9.5px] text-[var(--color-text)] placeholder-zinc-500 tracking-wider w-full uppercase font-mono"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-zinc-500 hover:text-[var(--color-text)] font-mono text-[9px] pl-1 cursor-pointer select-none font-bold"
-              >
-                ✕
-              </button>
+            {searchQuery ? (
+              <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                {filterType !== 'all-nodes' && (
+                  <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-bold uppercase ${
+                    searchedAndSortedConversations.length > 0 
+                      ? 'bg-[var(--neon-green)]/20 text-[var(--neon-green)] border border-[var(--neon-green)]/30' 
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {searchedAndSortedConversations.length} {searchedAndSortedConversations.length === 1 ? 'match' : 'matches'}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playGlitchClickSound();
+                    setSearchQuery('');
+                    searchConversationsInputRef.current?.focus();
+                  }}
+                  className="text-zinc-500 hover:text-[var(--neon-green)] font-mono text-[9px] p-0.5 cursor-pointer select-none font-bold transition"
+                  title="Clear filter (Esc)"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <span className="hidden sm:inline-block text-[8px] text-zinc-600 font-mono border border-zinc-850 px-1 py-0.2 rounded tracking-tighter shrink-0 select-none">
+                / or ⌘K
+              </span>
             )}
           </div>
+          {searchQuery.trim() !== '' && filterType !== 'all-nodes' && (
+            <div className="flex items-center justify-between text-[8px] font-mono mt-1 px-0.5 text-zinc-400">
+              <span className="truncate">
+                Filtering by: <span className="text-[var(--neon-green)] font-bold">"{searchQuery}"</span>
+              </span>
+              <span className="text-zinc-500 shrink-0 ml-2">↵ Enter to navigate</span>
+            </div>
+          )}
         </div>
 
         {/* Horizontal filter capsules - Clean Green/Monochrome Streamlined Layout */}
@@ -4801,43 +5062,7 @@ export default function ChatSection({
           ) : (
             /* Render unified active conversations (chats & groups) */
             <AnimatePresence initial={false}>
-            {filteredActiveTunnels.filter(chat => {
-              // Filter by folders
-              if (selectedFolder !== 'All') {
-                const folderChats = chatFolders[selectedFolder] || [];
-                if (!folderChats.includes(chat.id)) return false;
-              }
-
-              // Filter by search query
-              if (searchQuery.trim() !== '') {
-                const q = searchQuery.toLowerCase();
-                if (chat.isGroup) {
-                  const nameMatch = chat.name?.toLowerCase().includes(q);
-                  const lastMsgMatch = (chat.lastMessageText || chat.lastMessage)?.toLowerCase().includes(q);
-                  if (!nameMatch && !lastMsgMatch) return false;
-                } else {
-                  const peerId = chat.participantIds.find(id => id !== profile?.uid);
-                  const peer = users.find(u => u.uid === peerId);
-                  const nameMatch = peer?.displayName?.toLowerCase().includes(q);
-                  const emailMatch = peer?.email?.toLowerCase().includes(q);
-                  const aliasMatch = (renamedNicknames[peerId || ''] || '').toLowerCase().includes(q);
-                  const lastMsgMatch = (chat.lastMessageText || chat.lastMessage)?.toLowerCase().includes(q);
-                  if (!nameMatch && !emailMatch && !aliasMatch && !lastMsgMatch) return false;
-                }
-              }
-              return true;
-            }).sort((a, b) => {
-              // 1. Pinned conversations pin to top
-              const isPinnedA = pinnedChats.includes(a.id) || !!(a.pinnedFor && profile?.uid && a.pinnedFor[profile.uid]);
-              const isPinnedB = pinnedChats.includes(b.id) || !!(b.pinnedFor && profile?.uid && b.pinnedFor[profile.uid]);
-              if (isPinnedA && !isPinnedB) return -1;
-              if (isPinnedB && !isPinnedA) return 1;
-
-              // 2. Strict conversation ordering by latest message timestamp DESC
-              const timeA = getChatTimestampMs(a);
-              const timeB = getChatTimestampMs(b);
-              return timeB - timeA;
-            }).map((chat) => {
+            {searchedAndSortedConversations.map((chat) => {
               const isSelected = (currentChat?.id === chat.id) || (selectedPeer && !chat.isGroup && chat.participantIds?.includes(selectedPeer.uid)) || (selectedGroup && chat.isGroup && selectedGroup.id === chat.id);
               const isFavorite = favoriteChats.includes(chat.id);
               const isPinned = pinnedChats.includes(chat.id) || !!(chat.pinnedFor && profile?.uid && chat.pinnedFor[profile.uid]);
@@ -4951,8 +5176,23 @@ export default function ChatSection({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
                           <p className={`text-[13px] font-sans truncate ${unreadCount > 0 ? 'font-black text-[var(--color-text)]' : 'font-bold text-[var(--color-text)]'}`}>
-                            👥 {chatName}
+                            👥 {searchQuery ? <HighlightedText text={chatName} query={searchQuery.replace(/^@/, '')} /> : chatName}
                           </p>
+                          {searchQuery && (() => {
+                            const cleanQ = searchQuery.toLowerCase().replace(/^@/, '');
+                            const matchedMember = chat.participantIds?.map(pid => users.find(u => u.uid === pid)).find(u => {
+                              if (!u || u.uid === profile?.uid) return false;
+                              return (u.username || '').toLowerCase().includes(cleanQ) || (u.displayName || '').toLowerCase().includes(cleanQ);
+                            });
+                            if (matchedMember) {
+                              return (
+                                <span className="px-1.5 py-0.2 rounded text-[7.5px] font-mono bg-[var(--neon-green)]/15 text-[var(--neon-green)] border border-[var(--neon-green)]/30 shrink-0">
+                                  👤 {matchedMember.username ? `@${matchedMember.username}` : matchedMember.displayName}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
                           {isMuted && <VolumeX className="w-3 h-3 text-zinc-400 flex-shrink-0" />}
                           {folderLabel && (
@@ -5182,8 +5422,23 @@ export default function ChatSection({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
                           <p className={`text-[13px] font-sans truncate ${unreadCount > 0 ? 'font-black text-[var(--color-text)]' : 'font-bold text-[var(--color-text)]'}`}>
-                            {renamedNicknames[peer.uid] ? `${renamedNicknames[peer.uid]} *` : peer.displayName}
+                            {renamedNicknames[peer.uid] ? (
+                              `${renamedNicknames[peer.uid]} *`
+                            ) : searchQuery ? (
+                              <HighlightedText text={peer.displayName || 'Peer Node'} query={searchQuery.replace(/^@/, '')} />
+                            ) : (
+                              peer.displayName || 'Peer Node'
+                            )}
                           </p>
+                          {peer.username && (
+                            <span className="text-[9.5px] font-mono text-[var(--neon-green)]/80 truncate shrink-0">
+                              @{searchQuery ? (
+                                <HighlightedText text={peer.username} query={searchQuery.replace(/^@/, '')} />
+                              ) : (
+                                peer.username
+                              )}
+                            </span>
+                          )}
                           {isPinned && <Pin className="w-3 h-3 text-[var(--neon-green)] flex-shrink-0" />}
                           {isMuted && <VolumeX className="w-3 h-3 text-zinc-400 flex-shrink-0" />}
                           {folderLabel && (
@@ -5321,21 +5576,57 @@ export default function ChatSection({
             })}
             </AnimatePresence>
           )}
-          {filterType !== 'all-nodes' && filteredActiveTunnels.length === 0 && (
-            <div className="p-8 text-center text-zinc-555 select-none">
-              <Group className="w-8 h-8 text-zinc-600 mx-auto mb-2 animate-pulse" />
-              <p className="text-[10px] uppercase font-bold tracking-wider mb-1">
-                {filterType === 'trash' ? 'TRASH CONCOURSE EMPTY' : 
-                 filterType === 'archived' ? 'NO ARCHIVED CONVERGENCES' :
-                 filterType === 'muted' ? 'NO MUTED CONVERGENCES' :
-                 'NO ACTIVE CONVERGENCES FOUND'}
-              </p>
-              <p className="text-[8px] text-zinc-500 max-w-xs mx-auto uppercase font-mono">
-                {filterType === 'trash' ? 'Deleted conversations will reside here. You can restore them anytime.' :
-                 filterType === 'archived' ? 'Archived conversations reside here to keep your main concourse clean.' :
-                 'Toggle "NODES" above to discover peer frequencies and launch secure direct lines.'}
-              </p>
-            </div>
+          {filterType !== 'all-nodes' && searchedAndSortedConversations.length === 0 && (
+            searchQuery.trim() !== '' ? (
+              <div className="p-8 text-center text-zinc-500 font-mono select-none">
+                <div className="w-12 h-12 rounded-full border border-dashed border-zinc-700 bg-[var(--color-surface)] flex items-center justify-center text-zinc-400 mx-auto mb-3">
+                  <Search className="w-5 h-5 text-zinc-400" />
+                </div>
+                <p className="text-[11px] font-black uppercase tracking-wider text-zinc-300 mb-1">
+                  NO CONVERSATIONS FOUND FOR "{searchQuery}"
+                </p>
+                <p className="text-[9px] text-zinc-400 max-w-xs mx-auto mb-4 font-sans leading-relaxed">
+                  No existing chat matches that participant name or username. You can clear the search or find new users in the Directory.
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center items-center">
+                  <button
+                    onClick={() => {
+                      playGlitchClickSound();
+                      setSearchQuery('');
+                      searchConversationsInputRef.current?.focus();
+                    }}
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[9px] font-bold uppercase tracking-wider border border-zinc-700 rounded cursor-pointer transition"
+                  >
+                    CLEAR FILTER
+                  </button>
+                  <button
+                    onClick={() => {
+                      playGlitchClickSound();
+                      setFilterType('all-nodes');
+                    }}
+                    className="px-3 py-1.5 bg-[var(--neon-green)]/10 hover:bg-[var(--neon-green)]/20 text-[var(--neon-green)] text-[9px] font-bold uppercase tracking-wider border border-[var(--neon-green)]/40 rounded cursor-pointer transition flex items-center gap-1"
+                  >
+                    <span>SEARCH DIRECTORY FOR "{searchQuery}"</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-zinc-555 select-none">
+                <Group className="w-8 h-8 text-zinc-600 mx-auto mb-2 animate-pulse" />
+                <p className="text-[10px] uppercase font-bold tracking-wider mb-1">
+                  {filterType === 'trash' ? 'TRASH CONCOURSE EMPTY' : 
+                   filterType === 'archived' ? 'NO ARCHIVED CONVERGENCES' :
+                   filterType === 'muted' ? 'NO MUTED CONVERGENCES' :
+                   'NO ACTIVE CONVERGENCES FOUND'}
+                </p>
+                <p className="text-[8px] text-zinc-500 max-w-xs mx-auto uppercase font-mono">
+                  {filterType === 'trash' ? 'Deleted conversations will reside here. You can restore them anytime.' :
+                   filterType === 'archived' ? 'Archived conversations reside here to keep your main concourse clean.' :
+                   'Toggle "NODES" above to discover peer frequencies and launch secure direct lines.'}
+                </p>
+              </div>
+            )
           )}
         </div>
 

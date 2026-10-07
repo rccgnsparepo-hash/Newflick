@@ -1717,20 +1717,7 @@ export async function deleteStory(storyId: string): Promise<void> {
  * Mark a specific message as read in real-time
  */
 export async function markMessageAsRead(chatId: string, messageId: string, userId?: string): Promise<void> {
-  const path = `chats/${chatId}/messages/${messageId}`;
   try {
-    // Check if read receipts are disabled for either participant in this conversation
-    const chatRef = doc(db, 'chats', chatId);
-    const chatSnap = await getDoc(chatRef);
-    if (chatSnap.exists()) {
-      const chatData = chatSnap.data();
-      const disabledMap = chatData.disabledReadReceipts || {};
-      const isAnyDisabled = Object.values(disabledMap).some(val => val === true);
-      if (isAnyDisabled) {
-        return; // Respect privacy preference: do not update message to 'read'
-      }
-    }
-
     const ref = doc(db, 'chats', chatId, 'messages', messageId);
     const updatePayload: any = { 
       read: true, 
@@ -1742,6 +1729,32 @@ export async function markMessageAsRead(chatId: string, messageId: string, userI
     await updateDoc(ref, updatePayload);
   } catch (error) {
     console.warn("Failed marking message as read:", error);
+  }
+}
+
+/**
+ * Batch mark multiple messages as read in real-time
+ */
+export async function markAllMessagesAsRead(chatId: string, messageIds: string[], userId: string): Promise<void> {
+  if (!chatId || !messageIds.length || !userId) return;
+  try {
+    const batch = writeBatch(db);
+    let count = 0;
+    for (const msgId of messageIds) {
+      const ref = doc(db, 'chats', chatId, 'messages', msgId);
+      batch.update(ref, {
+        read: true,
+        readAt: serverTimestamp(),
+        readBy: arrayUnion(userId)
+      });
+      count++;
+      if (count >= 400) break;
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn("[Services] markAllMessagesAsRead error:", err);
   }
 }
 
