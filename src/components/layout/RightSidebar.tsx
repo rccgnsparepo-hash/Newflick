@@ -28,18 +28,30 @@ export default function RightSidebar({
   onSearchTag,
   onOpenChatWithUser
 }: RightSidebarProps) {
-  const { profile, user: currentUser } = useAuth();
-  const [suggestedUsers, setSuggestedUsers] = useState<UserProfile[]>([]);
+  const { profile } = useAuth();
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [peerSearchQuery, setPeerSearchQuery] = useState('');
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const unsub = subscribeToUsers((users) => {
-      // Filter out current user
-      const filtered = users.filter(u => u.uid !== currentUser?.uid).slice(0, 4);
-      setSuggestedUsers(filtered);
+      setAllUsers(users);
     });
     return () => unsub();
-  }, [currentUser?.uid]);
+  }, []);
+
+  const searchedPeers = React.useMemo(() => {
+    const q = peerSearchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const cleanQ = q.startsWith('@') ? q.slice(1) : q;
+    return allUsers.filter(u => {
+      if (u.uid === profile?.uid) return false;
+      const matchDisplay = (u.displayName || '').toLowerCase().includes(cleanQ);
+      const matchEmail = (u.email || '').toLowerCase().includes(cleanQ);
+      const matchUsername = (u.username || '').toLowerCase().includes(cleanQ);
+      return matchDisplay || matchEmail || matchUsername;
+    }).slice(0, 5);
+  }, [allUsers, peerSearchQuery, profile?.uid]);
 
   const handleToggleFollow = (userId: string, userName: string) => {
     playGlitchClickSound();
@@ -71,7 +83,7 @@ export default function RightSidebar({
         </div>
 
         <div className="flex items-center space-x-3 pt-1">
-          <div className="relative shrink-0 cursor-pointer group" onClick={() => currentUser?.uid && triggerViewProfile(currentUser.uid)}>
+          <div className="relative shrink-0 cursor-pointer group" onClick={() => profile?.uid && triggerViewProfile(profile.uid)}>
             <img
               src={profile?.photoURL || 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=120'}
               alt={profile?.displayName || 'User'}
@@ -83,7 +95,7 @@ export default function RightSidebar({
 
           <div className="min-w-0 flex-1">
             <h4
-              onClick={() => currentUser?.uid && triggerViewProfile(currentUser.uid)}
+              onClick={() => profile?.uid && triggerViewProfile(profile.uid)}
               className="text-xs font-mono font-black text-[var(--color-text)] truncate uppercase cursor-pointer hover:text-[var(--neon-green)] transition"
             >
               {profile?.displayName || 'OPERATOR'}
@@ -113,25 +125,49 @@ export default function RightSidebar({
         </div>
       </div>
 
-      {/* 2. SUGGESTED PEERS / WHO TO FOLLOW */}
+      {/* 2. SEARCH & CONNECT PEERS */}
       <div className="bg-[var(--color-surface)]/90 border border-[var(--neon-green-border)]/50 rounded-2xl p-4 shadow-lg space-y-3 transition-all duration-300 hover:scale-[1.01] hover:border-[var(--neon-green)]/70 hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <UserPlus className="w-4.5 h-4.5 text-[var(--neon-green)]" />
             <h4 className="text-xs font-mono font-black uppercase tracking-wider text-[var(--color-text)]">
-              SUGGESTED PEERS
+              FIND PEERS
             </h4>
           </div>
-          <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold">Live Registry</span>
+          <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold">Search Node</span>
         </div>
 
-        <div className="space-y-3 pt-1">
-          {suggestedUsers.length === 0 ? (
-            <p className="text-xs font-mono text-zinc-400 italic text-center py-2">
-              Scanning spectrum for peers...
+        {/* Search input */}
+        <div className="relative flex items-center border border-[var(--neon-green-border)]/50 bg-[var(--color-background)]/80 rounded-xl px-2.5 py-1.5 focus-within:border-[var(--neon-green)] transition">
+          <Search className="w-3.5 h-3.5 text-zinc-500 mr-2 shrink-0" />
+          <input
+            type="text"
+            placeholder="Search username or email..."
+            value={peerSearchQuery}
+            onChange={(e) => setPeerSearchQuery(e.target.value)}
+            className="bg-transparent border-none outline-none text-[10px] text-[var(--color-text)] placeholder-zinc-500 w-full font-mono"
+          />
+          {peerSearchQuery && (
+            <button
+              onClick={() => setPeerSearchQuery('')}
+              className="text-zinc-500 hover:text-white text-[9px] font-mono pl-1 cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2 pt-1">
+          {!peerSearchQuery.trim() ? (
+            <p className="text-[10px] font-mono text-zinc-500 italic text-center py-2">
+              Type a username above to find peers
+            </p>
+          ) : searchedPeers.length === 0 ? (
+            <p className="text-[10px] font-mono text-zinc-500 italic text-center py-2">
+              No matching node found
             </p>
           ) : (
-            suggestedUsers.map((usr) => {
+            searchedPeers.map((usr) => {
               const isFollowing = !!followingMap[usr.uid];
               return (
                 <div key={usr.uid} className="flex items-center justify-between gap-2 p-2 rounded-xl hover:bg-[var(--color-background)]/80 transition-all duration-200 border border-transparent hover:border-[var(--neon-green-border)]/50 hover:shadow-[0_0_12px_rgba(0,255,102,0.08)] hover:translate-x-0.5">
@@ -143,10 +179,10 @@ export default function RightSidebar({
                       <img
                         src={usr.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120'}
                         alt={usr.displayName}
-                        className="w-9 h-9 rounded-full object-cover border border-[var(--neon-green-border)] group-hover:scale-105 group-hover:border-[var(--neon-green)] transition-transform duration-200"
+                        className="w-8 h-8 rounded-full object-cover border border-[var(--neon-green-border)] group-hover:scale-105 group-hover:border-[var(--neon-green)] transition-transform duration-200"
                       />
                       {usr.isOnline && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border border-black rounded-full" />
+                        <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border border-black rounded-full" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -154,7 +190,7 @@ export default function RightSidebar({
                         {usr.displayName}
                       </h5>
                       <span className="text-[9px] font-mono text-zinc-400 block truncate">
-                        {usr.school || 'CSC Campus'}
+                        {usr.username ? `@${usr.username}` : usr.email}
                       </span>
                     </div>
                   </div>
@@ -171,7 +207,7 @@ export default function RightSidebar({
                     )}
                     <button
                       onClick={() => handleToggleFollow(usr.uid, usr.displayName)}
-                      className={`px-3 py-1 rounded-lg text-[9px] font-mono font-black uppercase transition-all duration-200 cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-[9px] font-mono font-black uppercase transition-all duration-200 cursor-pointer ${
                         isFollowing
                           ? 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'
                           : 'bg-[var(--neon-green)] text-black font-extrabold hover:scale-105 hover:shadow-[0_0_12px_rgba(0,255,102,0.35)]'

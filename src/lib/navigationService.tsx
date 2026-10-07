@@ -25,21 +25,21 @@ export interface NavigationContextType {
 
   // Overlays / Modal States
   isSettingsOpen: boolean;
-  setIsSettingsOpen: (open: boolean) => void;
+  setIsSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isFeedbackOpen: boolean;
-  setIsFeedbackOpen: (open: boolean) => void;
+  setIsFeedbackOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isShortcutsOpen: boolean;
-  setIsShortcutsOpen: (open: boolean) => void;
+  setIsShortcutsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isMobileMenuOpen: boolean;
-  setIsMobileMenuOpen: (open: boolean) => void;
+  setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   showOnboarding: boolean;
-  setShowOnboarding: (show: boolean) => void;
+  setShowOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
   isTourOpen: boolean;
-  setIsTourOpen: (open: boolean) => void;
+  setIsTourOpen: React.Dispatch<React.SetStateAction<boolean>>;
   showNotifDropdown: boolean;
-  setShowNotifDropdown: (open: boolean) => void;
+  setShowNotifDropdown: React.Dispatch<React.SetStateAction<boolean>>;
   isChatScreenOpen: boolean;
-  setIsChatScreenOpen: (open: boolean) => void;
+  setIsChatScreenOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Navigation History Operations
   pushToHistory: (state: NavigationState) => void;

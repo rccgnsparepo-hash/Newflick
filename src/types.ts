@@ -24,6 +24,11 @@ export interface UserProfile {
   followersCount?: number;
   followingCount?: number;
   blockedStatusViewers?: string[]; // List of user IDs blocked from seeing my status updates
+  username?: string;
+  statusBio?: string;
+  isOnline?: boolean;
+  school?: string;
+  coverPhotoURL?: string;
 }
 
 export interface PrivateUserInfo {
@@ -136,6 +141,7 @@ export interface ChatMessage {
   optimisticId?: string;
   isOfflineQueued?: boolean;
   syncStatus?: 'queued' | 'syncing' | 'failed';
+  content?: string;
 }
 
 export interface InAppNotification {
@@ -152,7 +158,7 @@ export interface InAppNotification {
 }
 
 export interface MessageReaction {
-  id: string; // userId (document ID is the userId to enforce 1 reaction type/user maximum)
+  id?: string; // userId (document ID is the userId to enforce 1 reaction type/user maximum)
   emoji: string;
   userId: string;
   userName: string;
@@ -205,10 +211,12 @@ export interface CallLogItem {
   receiverName?: string;
   receiverPhoto?: string;
   type: 'voice' | 'video';
-  status: 'active' | 'ended' | 'dialing' | 'ringing';
+  status: 'active' | 'ended' | 'dialing' | 'ringing' | 'missed' | 'rejected' | 'declined' | 'completed';
   endReason?: 'completed' | 'declined' | 'missed' | 'quick_replied' | 'cancelled';
   quickReplyText?: string;
   durationSeconds?: number;
+  duration?: number;
+  timestamp?: any;
   isGroup?: boolean;
   groupId?: string;
   groupName?: string;

@@ -40,6 +40,7 @@ export interface NewsArticle {
   duration?: string;
   readTime?: string;
   isBreaking?: boolean;
+  isVideo?: boolean;
   viewCount: number;
   shareCount: number;
   commentCount: number;

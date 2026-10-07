@@ -57,7 +57,6 @@ export default function BentoProfile({
   showBrutalistToast,
   onOpenUserProfile
 }: BentoProfileProps) {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'flicks' | 'followers' | 'following' | 'explore'>('flicks');
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);

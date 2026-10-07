@@ -1194,7 +1194,7 @@ function DecryptedMessageBubble({
                   <Clock className={`w-3.5 h-3.5 text-amber-400 ${message.syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
                 </div>
               ) : !message.createdAt ? (
-                <Check className="w-3.5 h-3.5 text-zinc-500 opacity-60 animate-pulse" title="Sending message..." />
+                <span title="Sending message..."><Check className="w-3.5 h-3.5 text-zinc-500 opacity-60 animate-pulse" /></span>
               ) : ((message.read || (message.readBy && message.readBy.length > 0)) && !(disabledReadReceipts && Object.values(disabledReadReceipts).some(val => val === true))) ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.6 }}
@@ -1207,10 +1207,10 @@ function DecryptedMessageBubble({
                   className="flex items-center gap-1 font-mono"
                 >
                   <span className="text-[7.5px] uppercase tracking-widest text-[var(--neon-green)]/70">read</span>
-                  <CheckCheck className="w-3.5 h-3.5 text-[var(--neon-green)]" title="Read status confirmed by peer" />
+                  <span title="Read status confirmed by peer"><CheckCheck className="w-3.5 h-3.5 text-[var(--neon-green)]" /></span>
                 </motion.div>
               ) : (
-                <CheckCheck className="w-3.5 h-3.5 text-zinc-500" title="Delivered successfully to receipt queue" />
+                <span title="Delivered successfully to receipt queue"><CheckCheck className="w-3.5 h-3.5 text-zinc-500" /></span>
               )}
             </div>
           )}
@@ -1975,7 +1975,7 @@ export default function ChatSection({
 
   const groups = activeChatTunnels.filter(chat => chat.isGroup || chat.id === 'global-node-concourse');
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
-  const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business' | 'trash'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'all-nodes' | 'archived' | 'muted' | 'blocked' | 'business' | 'trash' | 'active'>('all');
   const [guideHighlight, setGuideHighlight] = useState<string | null>(null);
   
   const [deletedChats, setDeletedChats] = useState<string[]>(() => {
@@ -2441,7 +2441,7 @@ export default function ChatSection({
   // Media attachments state
   const [selectedAttachment, setSelectedAttachment] = useState<{
     dataUrl: string;
-    type: 'image' | 'video' | 'audio';
+    type: 'image' | 'video' | 'audio' | string;
     name: string;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -3861,15 +3861,34 @@ export default function ChatSection({
     return activeChatTunnels.some(chat => chat.participantIds.includes(peerUid));
   };
 
-  // Category filters supporting active tunnel subset partitioning
+  // Category filters supporting active tunnel subset partitioning and private directory search
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
-    if (filterType === 'active') {
-      return hasActiveTunnel(u.uid);
+    // Exclude own user node
+    if (u.uid === profile?.uid) return false;
+
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    
+    // In Directory view ('all-nodes'), do not show all users by default; require search query
+    if (filterType === 'all-nodes') {
+      if (!trimmedQuery) return false;
+      const searchClean = trimmedQuery.startsWith('@') ? trimmedQuery.slice(1) : trimmedQuery;
+      const matchesDisplay = (u.displayName || '').toLowerCase().includes(searchClean);
+      const matchesEmail = (u.email || '').toLowerCase().includes(searchClean);
+      const matchesUsername = (u.username || '').toLowerCase().includes(searchClean);
+      return matchesDisplay || matchesEmail || matchesUsername;
     }
-    return true;
+
+    if (filterType === 'active') {
+      if (!hasActiveTunnel(u.uid)) return false;
+    }
+
+    if (!trimmedQuery) return false;
+
+    const searchClean = trimmedQuery.startsWith('@') ? trimmedQuery.slice(1) : trimmedQuery;
+    const matchesDisplay = (u.displayName || '').toLowerCase().includes(searchClean);
+    const matchesEmail = (u.email || '').toLowerCase().includes(searchClean);
+    const matchesUsername = (u.username || '').toLowerCase().includes(searchClean);
+    return matchesDisplay || matchesEmail || matchesUsername;
   });
 
   const unreadTunnelsCount = calculateTotalUnreadCount(activeChatTunnels, profile?.uid || '');
@@ -4014,7 +4033,7 @@ export default function ChatSection({
             <Search className="w-3.5 h-3.5 text-zinc-550 mr-2 shrink-0" />
             <input
               type="text"
-              placeholder={filterType === 'all-nodes' ? "SEARCH ALL SYSTEMS NODES..." : "SEARCH DIALOGUES & TRANSMISSIONS..."}
+              placeholder={filterType === 'all-nodes' ? "TYPE USERNAME OR EMAIL TO SEARCH..." : "SEARCH DIALOGUES & TRANSMISSIONS..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-[9.5px] text-[var(--color-text)] placeholder-zinc-500 tracking-wider w-full uppercase font-mono"
@@ -4641,102 +4660,144 @@ export default function ChatSection({
           )}
 
           {filterType === 'all-nodes' ? (
-            /* Render all registered users directory */
-            filteredUsers.map((u, index) => {
-              const isSelected = selectedPeer?.uid === u.uid;
-              const rtdbPresence = rtdbStatuses[u.uid];
-              const lastSeenMs = u.lastSeen 
-                ? (u.lastSeen.toDate ? u.lastSeen.toDate().getTime() : (typeof u.lastSeen === 'number' ? u.lastSeen : Date.parse(u.lastSeen)))
-                : 0;
-              const hasRecentHeartbeat = lastSeenMs > 0 && (Date.now() - lastSeenMs) <= 60000;
-              const isOnline = (rtdbPresence ? (rtdbPresence.state === 'online') : (u.status === 'online')) || hasRecentHeartbeat;
-              
-              const statusText = isOnline 
-                ? 'ONLINE' 
-                : (rtdbPresence?.lastChanged 
-                  ? `${formatLastSeen(rtdbPresence.lastChanged).toUpperCase()}` 
-                  : (u.lastSeen 
-                    ? `LAST SEEN ${formatLastSeen(u.lastSeen).toUpperCase()}`
-                    : 'OFFLINE'));
-
-              const unreadFromPeer = notifications.filter(n => n.type === 'message' && (n.senderId === u.uid || n.senderName === u.displayName)).length;
-
-              return (
-                <button
-                  key={`${u.uid}-${index}`}
-                  onClick={() => openChatRoom(u)}
-                  className={`w-full flex items-center space-x-3 p-3.5 text-left transition duration-150 cursor-pointer ${
-                    isSelected 
-                      ? 'bg-[var(--neon-green)] text-black font-extrabold border-l-4 border-black' 
-                      : 'hover:bg-[var(--neon-green)]/10 text-[var(--color-text)]'
-                  }`}
-                >
-                  <div className="relative flex-shrink-0">
-                    {u.uid === 'my-ai-bot-uid' ? (
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerVibration('light');
-                          playGlitchClickSound();
-                          triggerViewProfile(u.uid);
-                        }}
-                        className={`w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-surface)] border overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${isSelected ? 'border-black shadow-[0_0_15px_rgba(0,0,0,0.6)]' : 'border-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.6)]'}`}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
-                        <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
-                        <div className="absolute inset-1.5 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-mono text-[10px] select-none">
-                          🔮
-                        </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={u.photoURL}
-                        alt={u.displayName}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerVibration('light');
-                          playGlitchClickSound();
-                          triggerViewProfile(u.uid);
-                        }}
-                        className={`w-9 h-9 rounded-full border object-cover cursor-pointer hover:scale-105 transition-all ${isSelected ? 'border-black' : 'border-[var(--neon-green)]/35'}`}
-                        referrerPolicy="no-referrer"
-                      />
-                    )}
-                    <span
-                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${
-                        isOnline ? 'bg-[var(--neon-green)]' : 'bg-red-500'
-                      }`}
-                    />
+            /* Render registered users only when searched */
+            filteredUsers.length === 0 ? (
+              !searchQuery.trim() ? (
+                <div className="py-20 px-6 text-center flex flex-col items-center justify-center space-y-4 font-mono select-none">
+                  <div className="w-14 h-14 rounded-full border border-dashed border-[var(--neon-green)]/40 bg-[var(--color-surface)] flex items-center justify-center text-[var(--neon-green)] shadow-[0_0_20px_rgba(0,255,102,0.1)]">
+                    <Search className="w-6 h-6 animate-pulse" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
-                        <p className={`text-xs font-bold truncate ${isSelected ? 'text-black' : 'text-[var(--color-text)]'}`}>
-                          {renamedNicknames[u.uid] ? `${renamedNicknames[u.uid]} *` : u.displayName}
-                        </p>
-                        {unreadFromPeer > 0 && (
-                          <span 
-                            className={`animate-pulse px-1.5 py-0.5 text-[8px] font-black leading-none rounded-none border ${
-                              isSelected 
-                                ? 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]' 
-                                : 'bg-[var(--neon-green)] text-black border-black'
-                            }`}
-                          >
-                            {unreadFromPeer} NEW
-                          </span>
-                        )}
-                      </div>
-                      <span className={`text-[8px] font-mono tracking-tighter capitalize ${isSelected ? 'text-black/80 font-black' : 'text-zinc-500'}`}>
-                        {statusText}
-                      </span>
-                    </div>
-                    <p className={`text-[8.5px] truncate font-mono mt-0.5 ${isSelected ? 'text-black/60' : 'text-zinc-500'}`}>
-                      {u.email}
+                  <div className="space-y-1.5 max-w-xs">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-[var(--color-text)]">
+                      SEARCH USERNAME TO START CHAT
+                    </p>
+                    <p className="text-[9.5px] text-zinc-400 font-sans leading-relaxed">
+                      The directory is private and empty by default. Enter an existing user's username, display name, or email above to find them and initiate an encrypted conversation.
                     </p>
                   </div>
-                </button>
-              );
-            })
+                </div>
+              ) : (
+                <div className="py-20 px-6 text-center flex flex-col items-center justify-center space-y-3 font-mono select-none">
+                  <div className="w-12 h-12 rounded-full border border-zinc-800 bg-[var(--color-surface)] flex items-center justify-center text-zinc-500">
+                    <UserX className="w-5 h-5" />
+                  </div>
+                  <p className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                    NO USER FOUND MATCHING "{searchQuery}"
+                  </p>
+                  <p className="text-[9px] text-zinc-400 font-sans max-w-xs leading-relaxed">
+                    Verify that the username or email is spelled correctly and that the user is registered on Flick.
+                  </p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="mt-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-[var(--neon-green)] text-[9px] font-bold uppercase tracking-wider border border-[var(--neon-green)]/30 rounded cursor-pointer transition"
+                  >
+                    CLEAR SEARCH
+                  </button>
+                </div>
+              )
+            ) : (
+              <div className="divide-y divide-zinc-900">
+                <div className="px-3.5 py-2 bg-[var(--color-surface)]/80 text-[8.5px] font-mono font-bold text-[var(--neon-green)] uppercase tracking-wider flex items-center justify-between border-b border-zinc-900">
+                  <span>FOUND {filteredUsers.length} {filteredUsers.length === 1 ? 'NODE' : 'NODES'}</span>
+                  <span className="text-zinc-500">SELECT TO OPEN CHAT</span>
+                </div>
+                {filteredUsers.map((u, index) => {
+                  const isSelected = selectedPeer?.uid === u.uid;
+                  const rtdbPresence = rtdbStatuses[u.uid];
+                  const lastSeenMs = u.lastSeen 
+                    ? (u.lastSeen.toDate ? u.lastSeen.toDate().getTime() : (typeof u.lastSeen === 'number' ? u.lastSeen : Date.parse(u.lastSeen)))
+                    : 0;
+                  const hasRecentHeartbeat = lastSeenMs > 0 && (Date.now() - lastSeenMs) <= 60000;
+                  const isOnline = (rtdbPresence ? (rtdbPresence.state === 'online') : (u.status === 'online')) || hasRecentHeartbeat;
+                  
+                  const statusText = isOnline 
+                    ? 'ONLINE' 
+                    : (rtdbPresence?.lastChanged 
+                      ? `${formatLastSeen(rtdbPresence.lastChanged).toUpperCase()}` 
+                      : (u.lastSeen 
+                        ? `LAST SEEN ${formatLastSeen(u.lastSeen).toUpperCase()}`
+                        : 'OFFLINE'));
+
+                  const unreadFromPeer = notifications.filter(n => n.type === 'message' && (n.senderId === u.uid || n.senderName === u.displayName)).length;
+
+                  return (
+                    <button
+                      key={`${u.uid}-${index}`}
+                      onClick={() => openChatRoom(u)}
+                      className={`w-full flex items-center space-x-3 p-3.5 text-left transition duration-150 cursor-pointer ${
+                        isSelected 
+                          ? 'bg-[var(--neon-green)] text-black font-extrabold border-l-4 border-black' 
+                          : 'hover:bg-[var(--neon-green)]/10 text-[var(--color-text)]'
+                      }`}
+                    >
+                      <div className="relative flex-shrink-0">
+                        {u.uid === 'my-ai-bot-uid' ? (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerVibration('light');
+                              playGlitchClickSound();
+                              triggerViewProfile(u.uid);
+                            }}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-surface)] border overflow-hidden hover:scale-105 transition-all cursor-pointer relative shrink-0 ${isSelected ? 'border-black shadow-[0_0_15px_rgba(0,0,0,0.6)]' : 'border-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.6)]'}`}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 opacity-80 blur-[2px] animate-pulse" />
+                            <div className="absolute inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-indigo-500 animate-spin" style={{ animationDuration: '6s' }} />
+                            <div className="absolute inset-1.5 rounded-full bg-[var(--color-surface)] flex items-center justify-center font-mono text-[10px] select-none">
+                              🔮
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={u.photoURL}
+                            alt={u.displayName}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerVibration('light');
+                              playGlitchClickSound();
+                              triggerViewProfile(u.uid);
+                            }}
+                            className={`w-9 h-9 rounded-full border object-cover cursor-pointer hover:scale-105 transition-all ${isSelected ? 'border-black' : 'border-[var(--neon-green)]/35'}`}
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
+                        <span
+                          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${
+                            isOnline ? 'bg-[var(--neon-green)]' : 'bg-red-500'
+                          }`}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
+                            <p className={`text-xs font-bold truncate ${isSelected ? 'text-black' : 'text-[var(--color-text)]'}`}>
+                              {renamedNicknames[u.uid] ? `${renamedNicknames[u.uid]} *` : u.displayName}
+                            </p>
+                            {unreadFromPeer > 0 && (
+                              <span 
+                                className={`animate-pulse px-1.5 py-0.5 text-[8px] font-black leading-none rounded-none border ${
+                                  isSelected 
+                                    ? 'bg-[var(--color-surface)] text-[var(--neon-green)] border-[var(--neon-green)]' 
+                                    : 'bg-[var(--neon-green)] text-black border-black'
+                                }`}
+                              >
+                                {unreadFromPeer} NEW
+                              </span>
+                            )}
+                          </div>
+                          <span className={`text-[8px] font-mono tracking-tighter capitalize ${isSelected ? 'text-black/80 font-black' : 'text-zinc-500'}`}>
+                            {statusText}
+                          </span>
+                        </div>
+                        <p className={`text-[8.5px] truncate font-mono mt-0.5 ${isSelected ? 'text-black/60' : 'text-zinc-500'}`}>
+                          {u.username ? `@${u.username} • ${u.email}` : u.email}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )
           ) : (
             /* Render unified active conversations (chats & groups) */
             <AnimatePresence initial={false}>
