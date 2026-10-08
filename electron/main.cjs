@@ -301,7 +301,36 @@ function createWindow() {
     }
   });
 
+  // Enhanced window open handler: Permit in-app OAuth child popups for Google/Firebase Auth
+  // while opening all regular external links in system browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    const isAuthPopup = 
+      url.includes('/__/auth/handler') ||
+      url.includes('accounts.google.com') ||
+      url.includes('apis.google.com') ||
+      url.includes('firebaseapp.com/__/auth') ||
+      url.includes('gen-lang-client-0982710068.firebaseapp.com');
+
+    if (isAuthPopup) {
+      console.log('[Electron Auth] Allowing dedicated OAuth authentication window:', url.slice(0, 90));
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 520,
+          height: 680,
+          modal: false,
+          parent: mainWindow,
+          autoHideMenuBar: true,
+          backgroundColor: '#080a0f',
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: false,
+          }
+        }
+      };
+    }
+
     shell.openExternal(url);
     return { action: 'deny' };
   });
@@ -802,6 +831,11 @@ app.whenReady().then(() => {
   // Explicitly configure session-level permission request and check handlers
   // This prevents Chromium in Electron from silently denying audio / media / microphone access
   if (session && session.defaultSession) {
+    // Strip Electron from User-Agent string so Google OAuth doesn't reject embedded webview with "disallowed_useragent"
+    const rawUserAgent = session.defaultSession.getUserAgent();
+    const cleanUserAgent = rawUserAgent.replace(/Electron\/\S+\s*/i, '');
+    session.defaultSession.setUserAgent(cleanUserAgent);
+
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
       const allowed = ['media', 'microphone', 'camera', 'audioCapture', 'notifications', 'mediaKeySystem'];
       if (allowed.includes(permission)) {
@@ -826,6 +860,16 @@ app.whenReady().then(() => {
       return true;
     });
   }
+
+  // Ensure any newly created popup window also has clean User-Agent
+  app.on('browser-window-created', (event, createdWin) => {
+    if (createdWin && createdWin.webContents) {
+      const raw = createdWin.webContents.userAgent;
+      if (raw && raw.includes('Electron')) {
+        createdWin.webContents.setUserAgent(raw.replace(/Electron\/\S+\s*/i, ''));
+      }
+    }
+  });
 
   createSplash();
   createWindow();

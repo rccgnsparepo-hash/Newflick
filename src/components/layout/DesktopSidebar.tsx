@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Sliders,
   User,
   PlusCircle,
@@ -74,23 +75,8 @@ export default function DesktopSidebar({
     <aside className={`flex flex-col justify-between shrink-0 h-full z-40 select-none border-r border-[var(--neon-green-border)]/30 bg-[#0a0a0c] py-5 transition-all duration-300 ease-in-out relative ${
       isEffectiveExpanded ? 'w-64 px-4' : 'w-20 px-2'
     }`}>
-      {/* Toggle Collapse Button on right margin */}
-      <button
-        onClick={() => {
-          playGlitchClickSound();
-          triggerVibration('light');
-          const next = !sidebarExpanded;
-          setSidebarExpanded(next);
-          localStorage.setItem('flick_sidebar_expanded', String(next));
-        }}
-        className="absolute -right-3 top-7 w-6 h-6 rounded-full bg-[var(--color-surface)] border border-[var(--neon-green-border)] flex items-center justify-center text-zinc-400 hover:text-[var(--color-text)] hover:border-[var(--neon-green)] hover:scale-110 hover:shadow-[0_0_10px_rgba(0,255,102,0.3)] transition-all duration-200 cursor-pointer shadow-md z-[60]"
-        title={isEffectiveExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
-      >
-        <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${isEffectiveExpanded ? 'rotate-180 text-red-500' : 'text-[var(--neon-green)]'}`} />
-      </button>
-
-      {/* TOP BLOCK: LOGO & PROFILE CAPSULE */}
-      <div className="w-full space-y-4">
+      {/* TOP BLOCK: LOGO & RESPONSIVE COLLAPSE TOGGLE */}
+      <div className="w-full space-y-3">
         {/* Cyber Logo Capsule */}
         <div className={`flex items-center gap-3 bg-[var(--color-surface)] rounded-2xl border border-[var(--neon-green-border)] p-2 shadow-sm hover:border-[var(--neon-green)]/60 hover:shadow-[0_0_12px_rgba(0,255,102,0.12)] transition-all duration-300 ${
           isEffectiveExpanded ? 'px-3.5 py-3' : 'justify-center'
@@ -99,12 +85,48 @@ export default function DesktopSidebar({
             F
           </div>
           {isEffectiveExpanded && (
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-mono font-black text-[var(--color-text)] block tracking-widest leading-none uppercase">FLICK SOCIAL</span>
-              <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest block mt-1">E2EE NETWORK</span>
-            </div>
+            <>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-mono font-black text-[var(--color-text)] block tracking-widest leading-none uppercase">FLICK SOCIAL</span>
+                <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest block mt-1">E2EE NETWORK</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  setSidebarExpanded(false);
+                  localStorage.setItem('flick_sidebar_expanded', 'false');
+                }}
+                className="w-7 h-7 rounded-lg border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] bg-[var(--color-surface)] flex items-center justify-center text-zinc-400 hover:text-[var(--neon-green)] transition-all cursor-pointer shrink-0 ml-auto"
+                title="Collapse Sidebar"
+                aria-label="Collapse Sidebar"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
+
+        {/* When collapsed, responsive Expand Button */}
+        {!isEffectiveExpanded && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                playGlitchClickSound();
+                triggerVibration('light');
+                setSidebarExpanded(true);
+                localStorage.setItem('flick_sidebar_expanded', 'true');
+              }}
+              className="w-8 h-8 rounded-lg border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] bg-[var(--color-surface)] flex items-center justify-center text-zinc-400 hover:text-[var(--neon-green)] transition-all cursor-pointer"
+              title="Expand Sidebar"
+              aria-label="Expand Sidebar"
+            >
+              <ChevronRight className="w-4 h-4 text-[var(--neon-green)]" />
+            </button>
+          </div>
+        )}
 
         {/* User Profile Card Capsule */}
         <button

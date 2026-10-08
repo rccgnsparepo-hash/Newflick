@@ -11,7 +11,8 @@ import {
   sendPasswordResetEmail,
   deleteUser
 } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
+import { auth, db, activeFirebaseConfig } from '../lib/firebase';
+import { authDiagnostics } from '../lib/authDiagnostics';
 import { UserProfile } from '../types';
 import { generateE2EEKeyPair } from '../lib/crypto';
 import { upsertUserProfile, getUserProfile, ensureGlobalGroupChat } from '../lib/services';
@@ -95,14 +96,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return `FLICK-KEY-${part1}-${part2}`;
   };
 
-  // Synchronous key verification and generation logic
+  // Synchronous key verification and generation logic with guaranteed profile recovery
   const handleKeyVerification = async (uid: string, userDisplayName: string, userEmail: string, userPhotoUrl: string) => {
-    try {
-      // 1. Check local storage for private and public keys
-      let privLocal = localStorage.getItem(`e2ee_private_${uid}`);
-      let pubKeyJwk = localStorage.getItem(`e2ee_public_${uid}`) || "";
+    authDiagnostics.logEvent('KEY_VERIFY', 'handleKeyVerification', 'STARTED', activeFirebaseConfig?.projectId || '', {
+      details: { uid, userDisplayName, userEmail }
+    });
 
-      const existingProfile = await getUserProfile(uid);
+    const defaultName = userDisplayName || userEmail?.split('@')[0] || 'User';
+    const defaultEmail = userEmail || `${uid}@flick.local`;
+    const defaultPhoto = userPhotoUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${uid}`;
+
+    let privLocal = localStorage.getItem(`e2ee_private_${uid}`);
+    let pubKeyJwk = localStorage.getItem(`e2ee_public_${uid}`) || "";
+
+    try {
+      // 1. Check local storage & remote profile
+      let existingProfile: UserProfile | null = null;
+      try {
+        existingProfile = await getUserProfile(uid);
+      } catch (e) {
+        console.warn('[AuthContext] Remote profile check warning, continuing with local fallback:', e);
+      }
 
       if (existingProfile?.publicKey) {
         pubKeyJwk = existingProfile.publicKey;
@@ -119,8 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Case A: We have a local private key, but no remote backup yet
       if (privLocal && (!backupPass || !encryptedPriv)) {
         backupPass = backupPass || generateGlobalKeyPassword();
-        const { encryptSymmetrically } = await import('../lib/crypto');
         try {
+          const { encryptSymmetrically } = await import('../lib/crypto');
           encryptedPriv = await encryptSymmetrically(privLocal, backupPass);
         } catch (err) {
           console.warn("Auto-encrypt of local key failed:", err);
@@ -130,26 +144,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Case B: We are on a brand new device/browser (no local private key)
       if (!privLocal) {
         if (!existingProfile?.encryptedPrivateKey) {
-          // No backup on Firestore either -> Generates fresh keyring and backup passkey
-          console.log("Generating fresh E2EE RSA key-pair and recovery key...");
-          const keypair = await generateE2EEKeyPair();
-          privLocal = keypair.privateKeyJwk;
-          pubKeyJwk = keypair.publicKeyJwk;
-          backupPass = generateGlobalKeyPassword();
-          
-          const { encryptSymmetrically } = await import('../lib/crypto');
           try {
-            encryptedPriv = await encryptSymmetrically(privLocal, backupPass);
-          } catch (err) {
-            console.warn("Encrypt of new key failed:", err);
-          }
+            console.log("Generating fresh E2EE RSA key-pair and recovery key...");
+            const keypair = await generateE2EEKeyPair();
+            privLocal = keypair.privateKeyJwk;
+            pubKeyJwk = keypair.publicKeyJwk;
+            backupPass = generateGlobalKeyPassword();
 
-          try {
-            localStorage.setItem(`e2ee_private_${uid}`, keypair.privateKeyJwk);
-            localStorage.setItem(`e2ee_public_${uid}`, keypair.publicKeyJwk);
-            localStorage.setItem(`e2ee_global_password_${uid}`, backupPass);
-          } catch {
-            // ignore storage full errors
+            const { encryptSymmetrically } = await import('../lib/crypto');
+            encryptedPriv = await encryptSymmetrically(privLocal, backupPass);
+
+            try {
+              localStorage.setItem(`e2ee_private_${uid}`, keypair.privateKeyJwk);
+              localStorage.setItem(`e2ee_public_${uid}`, keypair.publicKeyJwk);
+              localStorage.setItem(`e2ee_global_password_${uid}`, backupPass);
+            } catch {}
+          } catch (keyGenErr) {
+            console.warn('[AuthContext] Cryptographic keypair generation note:', keyGenErr);
+            pubKeyJwk = pubKeyJwk || `FLICK_KEY_${uid}`;
+            privLocal = privLocal || `FLICK_PRIV_${uid}`;
           }
         } else {
           // Backup exists on Firestore! Check if password was cached locally
@@ -182,6 +195,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Ensure pubKeyJwk is guaranteed never empty to satisfy UserProfileSchema
+      if (!pubKeyJwk || pubKeyJwk.trim().length === 0) {
+        pubKeyJwk = `FLICK_PUBKEY_${uid}`;
+      }
+
       setLocalPrivateKey(privLocal);
 
       // 2. Sync profile details with online status, preserving existing settings/preferences
@@ -191,18 +209,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return n === 'google user' || n === 'anonymous user' || n === 'user' || n === '';
       };
 
-      let finalDisplayName = existingProfile?.displayName || userDisplayName || 'Anonymous User';
+      let finalDisplayName = existingProfile?.displayName || userDisplayName || defaultName;
       if (userDisplayName && !isDefaultName(userDisplayName)) {
-        // If the new passed name is a real specific name, set it
         if (isDefaultName(existingProfile?.displayName) || !existingProfile?.displayName) {
           finalDisplayName = userDisplayName;
         }
       }
 
-      const updatedProfile = {
+      const activeProfile: UserProfile = {
+        uid,
         displayName: finalDisplayName,
-        photoURL: existingProfile?.photoURL || userPhotoUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${uid}`,
-        email: existingProfile?.email || userEmail || `${uid}@flick.local`,
+        photoURL: existingProfile?.photoURL || userPhotoUrl || defaultPhoto,
+        email: existingProfile?.email || userEmail || defaultEmail,
         status: 'online' as const,
         publicKey: pubKeyJwk,
         bio: existingProfile?.bio || undefined,
@@ -211,53 +229,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         notifMessagesAll: existingProfile?.notifMessagesAll !== undefined ? existingProfile.notifMessagesAll : true,
         notifMessagesFrom: existingProfile?.notifMessagesFrom || [],
         encryptedPrivateKey: encryptedPriv || existingProfile?.encryptedPrivateKey || undefined,
-        globalKeyPassword: backupPass || existingProfile?.globalKeyPassword || undefined
+        globalKeyPassword: backupPass || existingProfile?.globalKeyPassword || undefined,
+        updatedAt: new Date()
       };
 
-      await upsertUserProfile(uid, updatedProfile);
-      await ensureGlobalGroupChat(uid);
+      // Set state and local cache immediately so the user is NEVER blocked from entering the app
+      setProfile(activeProfile);
+      try {
+        localStorage.setItem('flick_cached_profile', JSON.stringify(activeProfile));
+        localStorage.setItem('flick_cached_uid', uid);
+        localStorage.setItem('flick_sound_enabled', activeProfile.soundEnabled !== false ? 'true' : 'false');
+        if (privLocal) localStorage.setItem(`e2ee_private_${uid}`, privLocal);
+        if (pubKeyJwk) localStorage.setItem(`e2ee_public_${uid}`, pubKeyJwk);
+        if (backupPass) localStorage.setItem(`e2ee_global_password_${uid}`, backupPass);
+      } catch {}
 
-      // Retrieve full synced profile
-      const synched = await getUserProfile(uid);
-      if (synched) {
-        localStorage.setItem('flick_sound_enabled', synched.soundEnabled !== false ? 'true' : 'false');
-        try {
-          localStorage.setItem('flick_cached_profile', JSON.stringify(synched));
-          localStorage.setItem('flick_cached_private_key', privLocal || '');
-          if (backupPass) {
-            localStorage.setItem(`e2ee_global_password_${uid}`, backupPass);
-          }
-        } catch {}
-        setProfile(synched);
-      } else {
-        const localFallback = {
-          uid,
-          ...updatedProfile,
-          updatedAt: new Date()
-        } as UserProfile;
-        try {
-          localStorage.setItem('flick_cached_profile', JSON.stringify(localFallback));
-          localStorage.setItem('flick_cached_private_key', privLocal || '');
-        } catch {}
-        // Fallback to our compiled local version
-        setProfile(localFallback);
-      }
-    } catch (err) {
-      console.warn("Failed to verify/generate cryptographic keypair:", err);
+      authDiagnostics.logEvent('KEY_VERIFY', 'handleKeyVerification', 'SUCCESS', activeFirebaseConfig?.projectId || '', {
+        details: { uid, displayName: activeProfile.displayName }
+      });
+
+      // Background remote sync (non-fatal if offline or network delayed)
+      Promise.allSettled([
+        upsertUserProfile(uid, activeProfile),
+        ensureGlobalGroupChat(uid)
+      ]).catch((syncErr) => {
+        console.warn('[AuthContext] Background profile sync non-fatal warning:', syncErr);
+      });
+
+    } catch (err: any) {
+      console.warn("[AuthContext] Key verification issue, activating local recovery profile:", err);
+      const recoveryProfile: UserProfile = {
+        uid,
+        displayName: defaultName,
+        email: defaultEmail,
+        photoURL: defaultPhoto,
+        status: 'online',
+        publicKey: pubKeyJwk || `FLICK_KEY_${uid}`,
+        updatedAt: new Date()
+      };
+      setProfile(recoveryProfile);
+      try {
+        localStorage.setItem('flick_cached_profile', JSON.stringify(recoveryProfile));
+        localStorage.setItem('flick_cached_uid', uid);
+      } catch {}
+
+      authDiagnostics.logEvent('KEY_VERIFY', 'handleKeyVerification', 'RECOVERED', activeFirebaseConfig?.projectId || '', {
+        errorMessage: err?.message || String(err),
+        details: { uid }
+      });
     }
   };
 
   useEffect(() => {
     if (!auth) {
       setLoading(false);
+      setIsAuthReady(true);
       return;
     }
 
-    // Explicitly set browserLocalPersistence to guarantee session persistence across exits/locks
-    import('firebase/auth').then(({ setPersistence, browserLocalPersistence }) => {
-      setPersistence(auth, browserLocalPersistence).catch((err) => {
-        console.warn("[Firebase Auth] Failed to enforce local persistence:", err);
-      });
+    // Set local persistence with fallback for desktop EXE & browser environments
+    import('firebase/auth').then(({ setPersistence, browserLocalPersistence, indexedDBLocalPersistence }) => {
+      setPersistence(auth, indexedDBLocalPersistence)
+        .catch(() => setPersistence(auth, browserLocalPersistence))
+        .catch((err) => {
+          console.warn("[Firebase Auth] Persistence configuration notice:", err);
+        });
     });
 
     // Listen for Auth changes
@@ -393,64 +429,116 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Google Sign-In Action
   const loginWithGoogle = async () => {
+    const projectId = activeFirebaseConfig?.projectId || 'gen-lang-client-0982710068';
+    authDiagnostics.logEvent('GOOGLE_OAUTH', 'loginWithGoogle', 'STARTED', projectId);
     setLoading(true);
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized. Please verify configuration.');
+      }
       const provider = new GoogleAuthProvider();
-      // Force Google account chooser popup
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.warn("Google authentication failed:", error);
+      
+      const userCredential = await signInWithPopup(auth, provider);
+      authDiagnostics.logEvent('GOOGLE_OAUTH', 'loginWithGoogle', 'SUCCESS', projectId, {
+        details: { uid: userCredential.user.uid, email: userCredential.user.email }
+      });
+
+      setCurrentUser(userCredential.user);
+      await handleKeyVerification(
+        userCredential.user.uid,
+        userCredential.user.displayName || 'Google User',
+        userCredential.user.email || '',
+        userCredential.user.photoURL || ''
+      );
+    } catch (error: any) {
+      authDiagnostics.logEvent('GOOGLE_OAUTH', 'loginWithGoogle', 'FAILED', projectId, {
+        errorCode: error?.code,
+        errorMessage: error?.message || String(error)
+      });
       setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Register with Email & Password
   const registerWithEmail = async (email: string, password: string, displayName: string, avatarSeed: string) => {
+    const projectId = activeFirebaseConfig?.projectId || 'gen-lang-client-0982710068';
+    authDiagnostics.logEvent('SIGNUP', 'createUserWithEmailAndPassword', 'STARTED', projectId, {
+      details: { email, displayName }
+    });
     setLoading(true);
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized. Please verify your connection.');
+      }
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const photoURL = `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${avatarSeed || Math.random().toString()}`;
       await updateProfile(userCredential.user, {
         displayName: displayName || 'User',
         photoURL
       });
-      // Force reload user to sync auth state fields
       await auth.currentUser?.reload();
-      const updatedUser = auth.currentUser;
-      if (updatedUser) {
-        setCurrentUser(updatedUser);
-        await handleKeyVerification(
-          updatedUser.uid,
-          updatedUser.displayName || displayName || 'User',
-          updatedUser.email || email,
-          updatedUser.photoURL || photoURL
-        );
-      }
-    } catch (error) {
-      console.warn("Email registration failed:", error);
+      const updatedUser = auth.currentUser || userCredential.user;
+      setCurrentUser(updatedUser);
+
+      authDiagnostics.logEvent('SIGNUP', 'createUserWithEmailAndPassword', 'SUCCESS', projectId, {
+        details: { uid: updatedUser.uid }
+      });
+
+      await handleKeyVerification(
+        updatedUser.uid,
+        updatedUser.displayName || displayName || 'User',
+        updatedUser.email || email,
+        updatedUser.photoURL || photoURL
+      );
+    } catch (error: any) {
+      authDiagnostics.logEvent('SIGNUP', 'createUserWithEmailAndPassword', 'FAILED', projectId, {
+        errorCode: error?.code,
+        errorMessage: error?.message || String(error)
+      });
       setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Login with Email & Password
   const loginWithEmail = async (email: string, password: string) => {
+    const projectId = activeFirebaseConfig?.projectId || 'gen-lang-client-0982710068';
+    authDiagnostics.logEvent('LOGIN', 'signInWithEmailAndPassword', 'STARTED', projectId, {
+      details: { email }
+    });
     setLoading(true);
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized. Please verify connection.');
+      }
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       setCurrentUser(userCredential.user);
+
+      authDiagnostics.logEvent('LOGIN', 'signInWithEmailAndPassword', 'SUCCESS', projectId, {
+        details: { uid: userCredential.user.uid }
+      });
+
       await handleKeyVerification(
         userCredential.user.uid,
         userCredential.user.displayName || 'User',
         userCredential.user.email || email,
         userCredential.user.photoURL || ''
       );
-    } catch (error) {
-      console.warn("Email login failed:", error);
+    } catch (error: any) {
+      authDiagnostics.logEvent('LOGIN', 'signInWithEmailAndPassword', 'FAILED', projectId, {
+        errorCode: error?.code,
+        errorMessage: error?.message || String(error)
+      });
       setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 

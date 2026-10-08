@@ -13,6 +13,7 @@ import {
   Search,
   Sliders,
   ChevronRight,
+  ChevronLeft,
   Volume2,
   VolumeX,
   PlusCircle,
@@ -152,28 +153,8 @@ export function UnifiedNavigation({
           sidebarExpanded ? 'w-64 px-4' : 'w-20 px-2.5'
         } ${className}`}
       >
-        {/* Toggle Collapse Arrow - strictly anchored to the sidebar rail edge */}
-        <button
-          onClick={() => {
-            playGlitchClickSound();
-            triggerVibration('light');
-            const next = !sidebarExpanded;
-            setSidebarExpanded(next);
-            localStorage.setItem('flick_sidebar_expanded', String(next));
-          }}
-          className="absolute -right-3.5 top-6 w-7 h-7 rounded-full bg-[var(--color-background)] border-2 border-[var(--neon-green-border)] hover:border-[var(--neon-green)] flex items-center justify-center text-zinc-300 hover:text-[var(--neon-green)] transition-all duration-200 cursor-pointer shadow-md z-50 hover:scale-110 active:scale-95"
-          title={sidebarExpanded ? 'Collapse Navigation Rail' : 'Expand Navigation Rail'}
-          aria-label={sidebarExpanded ? 'Collapse Navigation Rail' : 'Expand Navigation Rail'}
-        >
-          <ChevronRight
-            className={`w-4 h-4 transition-transform duration-300 ${
-              sidebarExpanded ? 'rotate-180 text-rose-400' : 'text-[var(--neon-green)]'
-            }`}
-          />
-        </button>
-
-        {/* TOP SECTION: BRAND LOGO */}
-        <div className="w-full space-y-4">
+        {/* TOP SECTION: BRAND LOGO & RESPONSIVE COLLAPSE TOGGLE */}
+        <div className="w-full space-y-3">
           <div
             className={`flex items-center gap-3 glass-panel p-2.5 transition-all duration-300 ${
               sidebarExpanded ? 'px-3.5 py-3' : 'justify-center'
@@ -183,16 +164,53 @@ export function UnifiedNavigation({
               F
             </div>
             {sidebarExpanded && (
-              <div className="min-w-0 flex-1">
-                <span className="text-sm font-shamgod tracking-wider text-[var(--color-text)] block leading-none">
-                  FLICK SOCIAL
-                </span>
-                <span className="text-[9px] font-mono text-emerald-400/80 uppercase tracking-widest block mt-0.5">
-                  ENCRYPTED MESH
-                </span>
-              </div>
+              <>
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-shamgod tracking-wider text-[var(--color-text)] block leading-none">
+                    FLICK SOCIAL
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-400/80 uppercase tracking-widest block mt-0.5">
+                    ENCRYPTED MESH
+                  </span>
+                </div>
+                {/* Responsive Collapse Arrow cleanly contained inside sidebar header - No overlay! */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    playGlitchClickSound();
+                    triggerVibration('light');
+                    setSidebarExpanded(false);
+                    localStorage.setItem('flick_sidebar_expanded', 'false');
+                  }}
+                  className="w-7 h-7 rounded-lg border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] bg-[var(--color-surface)]/80 hover:bg-[var(--neon-green)]/15 flex items-center justify-center text-zinc-400 hover:text-[var(--neon-green)] transition-all cursor-pointer shrink-0 ml-auto"
+                  title="Collapse Navigation Rail"
+                  aria-label="Collapse Navigation Rail"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
+
+          {/* When collapsed, responsive Expand Button neatly centered inside rail */}
+          {!sidebarExpanded && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  playGlitchClickSound();
+                  triggerVibration('light');
+                  setSidebarExpanded(true);
+                  localStorage.setItem('flick_sidebar_expanded', 'true');
+                }}
+                className="w-8 h-8 rounded-lg border border-[var(--neon-green-border)] hover:border-[var(--neon-green)] bg-[var(--color-surface)]/80 hover:bg-[var(--neon-green)]/15 flex items-center justify-center text-zinc-400 hover:text-[var(--neon-green)] transition-all cursor-pointer"
+                title="Expand Navigation Rail"
+                aria-label="Expand Navigation Rail"
+              >
+                <ChevronRight className="w-4 h-4 text-[var(--neon-green)]" />
+              </button>
+            </div>
+          )}
 
           {/* QUICK SEARCH BUTTON */}
           <button

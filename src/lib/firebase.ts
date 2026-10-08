@@ -1,9 +1,10 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, doc, setLogLevel } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 import { getBootstrapConfig } from './bootstrap';
+import { authDiagnostics } from './authDiagnostics';
 
 // Suppress Firestore verbose/warning logs (such as offline connection warnings)
 try {
@@ -12,7 +13,7 @@ try {
   console.warn("Failed to set Firestore log level:", e);
 }
 
-const DEFAULT_FIREBASE_CONFIG = {
+export const DEFAULT_FIREBASE_CONFIG = {
   projectId: "gen-lang-client-0982710068",
   appId: "1:894267205842:web:2b954f0529e7da032c250b",
   apiKey: "AIzaSyCJSgmRQ2Mwf5rN8ao2buNm56U-M_ZY2I8",
@@ -45,10 +46,12 @@ export let rtdb: any = null;
 export let storage: any = null;
 export let isFirebaseConfigured = false;
 export let firebaseInitError: string | null = null;
+export { config as activeFirebaseConfig };
 
 try {
   if (config && config.apiKey) {
-    app = initializeApp(config);
+    const apps = getApps();
+    app = apps.length > 0 ? getApp() : initializeApp(config);
     db = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     }, config.firestoreDatabaseId || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2");
@@ -61,14 +64,25 @@ try {
       console.warn("[Firebase Storage] Initialization warning:", storageErr);
     }
     isFirebaseConfigured = true;
-    console.log("[Firebase Client] Initialized successfully.");
+    authDiagnostics.logEvent('INIT', 'initializeFirebase', 'SUCCESS', config.projectId, {
+      details: {
+        appId: config.appId,
+        authDomain: config.authDomain,
+        firestoreDatabaseId: config.firestoreDatabaseId,
+        hasApiKey: !!config.apiKey
+      }
+    });
   } else {
-    firebaseInitError = "Missing Firebase API Key. Please provide your FIREBASE_API_KEY environment variable on Vercel or your hosting platform.";
-    console.warn("[Firebase Client] API Key is missing. Firebase is not configured.");
+    firebaseInitError = "Missing Firebase API Key. Please provide your FIREBASE_API_KEY environment variable.";
+    authDiagnostics.logEvent('INIT', 'initializeFirebase', 'FAILED', config?.projectId || 'unknown', {
+      errorMessage: firebaseInitError
+    });
   }
 } catch (err: any) {
   firebaseInitError = err.message || String(err);
-  console.warn("[Firebase Client] Fatal initialization error:", err);
+  authDiagnostics.logEvent('INIT', 'initializeFirebase', 'FAILED', config?.projectId || 'unknown', {
+    errorMessage: firebaseInitError
+  });
 }
 
 export function reinitializeFirebaseWithConfig(newConfig: any): boolean {
@@ -98,13 +112,15 @@ export function reinitializeFirebaseWithConfig(newConfig: any): boolean {
     }
     isFirebaseConfigured = true;
     firebaseInitError = null;
-    console.log("[Firebase Client] Re-initialized successfully with dynamic config.");
+    authDiagnostics.logEvent('INIT', 'reinitializeFirebaseWithConfig', 'SUCCESS', newConfig.projectId);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('faraflick-firebase-initialized', { detail: newConfig }));
     }
     return true;
   } catch (err: any) {
-    console.warn("[Firebase Client] Dynamic initialization error:", err);
+    authDiagnostics.logEvent('INIT', 'reinitializeFirebaseWithConfig', 'FAILED', newConfig.projectId, {
+      errorMessage: err?.message || String(err)
+    });
     return false;
   }
 }

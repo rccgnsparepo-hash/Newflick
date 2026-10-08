@@ -1,4 +1,4 @@
-import { reinitializeFirebaseWithConfig } from './firebase';
+import { reinitializeFirebaseWithConfig, DEFAULT_FIREBASE_CONFIG } from './firebase';
 
 export interface BootstrapConfig {
   firebaseConfig: {
@@ -130,16 +130,16 @@ export async function initBootstrap(): Promise<BootstrapConfig> {
       const viteProjectId = env.VITE_FIREBASE_PROJECT_ID;
       const viteApiKey = env.VITE_FIREBASE_API_KEY;
       
-      let fallbackFirebaseConfig = null;
+      let fallbackFirebaseConfig = DEFAULT_FIREBASE_CONFIG;
       if (viteProjectId && viteApiKey) {
         fallbackFirebaseConfig = {
           projectId: viteProjectId,
           apiKey: viteApiKey,
-          appId: env.VITE_FIREBASE_APP_ID || "",
+          appId: env.VITE_FIREBASE_APP_ID || DEFAULT_FIREBASE_CONFIG.appId,
           authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || `${viteProjectId}.firebaseapp.com`,
-          firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2",
+          firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || DEFAULT_FIREBASE_CONFIG.firestoreDatabaseId,
           storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || `${viteProjectId}.appspot.com`,
-          messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+          messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
           measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || ""
         };
       }
@@ -176,13 +176,16 @@ export function getBootstrapConfig(): BootstrapConfig {
     fallbackConfig = {
       projectId: viteProjectId,
       apiKey: viteApiKey,
-      appId: env.VITE_FIREBASE_APP_ID || "",
+      appId: env.VITE_FIREBASE_APP_ID || DEFAULT_FIREBASE_CONFIG.appId,
       authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || `${viteProjectId}.firebaseapp.com`,
-      firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-e2eechatandsocia-3f0e07d3-583e-41cd-9f39-778730aa16a2",
+      firestoreDatabaseId: env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || DEFAULT_FIREBASE_CONFIG.firestoreDatabaseId,
       storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || `${viteProjectId}.appspot.com`,
-      messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+      messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
       measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || ""
     };
+  }
+  if (!fallbackConfig) {
+    fallbackConfig = DEFAULT_FIREBASE_CONFIG;
   }
 
   return {
