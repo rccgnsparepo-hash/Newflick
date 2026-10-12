@@ -436,6 +436,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!auth) {
         throw new Error('Firebase Auth is not initialized. Please verify configuration.');
       }
+      if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
+        throw new Error('Google OAuth requires an HTTP/HTTPS domain origin and cannot run directly from file:// protocol in desktop mode. Please sign in with Email & Password.');
+      }
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       

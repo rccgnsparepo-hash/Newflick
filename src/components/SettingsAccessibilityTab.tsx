@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Shield, Laptop, Cpu, Type, Sparkles, Check, Smartphone, Zap } from 'lucide-react';
+import { Eye, Shield, Laptop, Cpu, Type, Sparkles, Check, Smartphone, Zap, Sun, Moon } from 'lucide-react';
 import { BrutalistTheme, APP_FONTS, UIAppFont, applyFont, getSavedFont, applyTheme } from '../lib/theme';
 import {
   VibrationIntensity,
@@ -60,7 +60,7 @@ export function SettingsAccessibilityTab({
   isTaskMonitorEnabled,
   setIsTaskMonitorEnabled
 }: AccessibilityTabProps) {
-  const { accentColor, setAccentColor } = useTheme();
+  const { accentColor, setAccentColor, colorScheme, setColorScheme } = useTheme();
 
   const [activeFont, setActiveFont] = useState<UIAppFont>(() => getSavedFont());
   const [isElectron, setIsElectron] = useState(false);
@@ -117,6 +117,94 @@ export function SettingsAccessibilityTab({
       <h3 className="text-xs uppercase tracking-widest font-bold text-[var(--neon-green)] font-mono flex items-center gap-2">
         <Eye className="w-4 h-4" /> AESTHETICS & TYPOGRAPHY SETTINGS
       </h3>
+
+      {/* Theme Mode & Contrast (Default Dark Mode vs High-Contrast Light Theme) */}
+      <div className="space-y-3 glass-panel p-4 border border-[var(--glass-border)]">
+        <div className="flex items-center justify-between">
+          <label className="text-xs uppercase tracking-wider font-extrabold text-white font-mono flex items-center gap-2">
+            <Sun className="w-4 h-4 text-[var(--neon-green)]" /> Theme Mode & Visual Contrast
+          </label>
+          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-bold uppercase">
+            ACTIVE: {colorScheme === 'light' || (colorScheme as string) === 'high-contrast-light' ? 'HIGH-CONTRAST LIGHT' : 'DEFAULT DARK'}
+          </span>
+        </div>
+
+        <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+          Switch between the default dark stealth aesthetic and an accessible high-contrast light theme engineered for maximum readability in bright environments.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Default Dark Mode Card */}
+          <button
+            type="button"
+            id="theme-mode-dark"
+            data-testid="theme-toggle-dark"
+            aria-label="Default Dark Mode"
+            onClick={() => {
+              setColorScheme('dark');
+              playGlitchClickSound();
+              if (vibeEnabled) triggerVibration('light');
+            }}
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative ${
+              colorScheme === 'dark' || (colorScheme as string) === 'highcontrast'
+                ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-white shadow-[0_0_16px_rgba(0,255,102,0.18)]'
+                : 'border-[var(--glass-border)] bg-black/30 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-[var(--neon-green)]">
+                  <Moon className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-bold font-mono uppercase tracking-wide text-white">
+                  Default Dark Mode
+                </span>
+              </div>
+              {(colorScheme === 'dark' || (colorScheme as string) === 'highcontrast') && (
+                <Check className="w-4 h-4 text-[var(--neon-green)]" />
+              )}
+            </div>
+            <p className="text-[10.5px] font-sans text-zinc-400 leading-snug">
+              Deep obsidian background (#080a0f) with glowing emerald accents and stealth message channels.
+            </p>
+          </button>
+
+          {/* High-Contrast Light Theme Card */}
+          <button
+            type="button"
+            id="theme-mode-light"
+            data-testid="theme-toggle-light"
+            aria-label="High-Contrast Light Theme"
+            onClick={() => {
+              setColorScheme('light');
+              playGlitchClickSound();
+              if (vibeEnabled) triggerVibration('light');
+            }}
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative ${
+              colorScheme === 'light' || (colorScheme as string) === 'high-contrast-light'
+                ? 'border-[var(--neon-green)] bg-[var(--neon-green)]/15 text-white shadow-[0_0_16px_rgba(0,255,102,0.18)]'
+                : 'border-[var(--glass-border)] bg-black/30 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white border border-zinc-300 flex items-center justify-center text-zinc-900">
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                </div>
+                <span className="text-xs font-bold font-mono uppercase tracking-wide text-white">
+                  High-Contrast Light
+                </span>
+              </div>
+              {(colorScheme === 'light' || (colorScheme as string) === 'high-contrast-light') && (
+                <Check className="w-4 h-4 text-[var(--neon-green)]" />
+              )}
+            </div>
+            <p className="text-[10.5px] font-sans text-zinc-400 leading-snug">
+              Crisp white surfaces (#ffffff) with pitch-black text (#09090b) meeting WCAG AAA high-contrast standards.
+            </p>
+          </button>
+        </div>
+      </div>
 
       {/* Font Family Selector */}
       <div className="space-y-3 glass-panel p-4 border border-[var(--glass-border)]">

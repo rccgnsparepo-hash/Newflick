@@ -17,7 +17,6 @@ import { applyFont, getSavedFont } from './lib/theme';
 import { initGSAPScrollTriggers, refreshScrollTrigger } from './lib/gsapAnimations';
 import FeedbackModal from './components/FeedbackModal';
 import OnboardingIntro from './components/OnboardingIntro';
-import { CinematicIntroModal } from './components/CinematicIntroModal';
 import AppTour from './components/AppTour';
 import ProfileSettingsModal from './components/ProfileSettingsModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
@@ -126,7 +125,6 @@ function Dashboard() {
   }, []);
 
   const [ongoingCall, setOngoingCall] = useState<any | null>(null);
-  const [showCinematicIntro, setShowCinematicIntro] = useState(false);
   const [isCallHistoryOpen, setIsCallHistoryOpen] = useState(false);
   const [isMicDiagnosticsOpen, setIsMicDiagnosticsOpen] = useState(false);
 
@@ -138,7 +136,6 @@ function Dashboard() {
     isMicDiagnosticsOpen ||
     viewedProfileId !== null || 
     showOnboarding || 
-    showCinematicIntro ||
     isTourOpen || 
     isCallHistoryOpen ||
     ongoingCall !== null;
@@ -189,15 +186,11 @@ function Dashboard() {
     const handleTriggerOnboarding = () => {
       setShowOnboarding(true);
     };
-    const handleTriggerCinematic = () => {
-      setShowCinematicIntro(true);
-    };
     const handleOpenCallHistory = () => {
       setIsCallHistoryOpen(true);
     };
     window.addEventListener('faraflick-view-profile', handleViewProfileEvent);
     window.addEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
-    window.addEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
     window.addEventListener('faraflick-open-call-history', handleOpenCallHistory);
 
     // Clean up zoom styles if any were set previously
@@ -209,7 +202,6 @@ function Dashboard() {
     return () => {
       window.removeEventListener('faraflick-view-profile', handleViewProfileEvent);
       window.removeEventListener('faraflick-trigger-onboarding', handleTriggerOnboarding);
-      window.removeEventListener('faraflick-trigger-cinematic', handleTriggerCinematic);
       window.removeEventListener('faraflick-open-call-history', handleOpenCallHistory);
     };
   }, []);
@@ -1126,8 +1118,89 @@ function Dashboard() {
     setShowNotifDropdown(false);
   };
 
+  // Floating In-App Fallback Toasts Renderer accessible across all auth/loading screens
+  const renderFloatingToasts = () => {
+    if (toasts.length === 0) return null;
+    return (
+      <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3.5 max-w-sm w-full pointer-events-none font-mono">
+        {toasts.map((toast) => {
+          const isError = toast.type === 'error';
+          const isSuccess = toast.type === 'success';
+          const isWarning = toast.type === 'warning';
+          const isLoading = toast.type === 'loading';
+
+          let borderColor = 'border-[var(--neon-green)]';
+          let textColor = 'text-[var(--neon-green)]';
+          let bgColor = 'bg-[#060a08]/95';
+          let iconChar = '⚡';
+
+          if (isError) {
+            borderColor = 'border-[#ff0055]';
+            textColor = 'text-[#ff0055]';
+            bgColor = 'bg-[#120206]/95';
+            iconChar = '×';
+          } else if (isSuccess) {
+            borderColor = 'border-[#00ff66]';
+            textColor = 'text-[#00ff66]';
+            bgColor = 'bg-[#021206]/95';
+            iconChar = '✓';
+          } else if (isWarning) {
+            borderColor = 'border-[#eab308]';
+            textColor = 'text-[#eab308]';
+            bgColor = 'bg-[#140f02]/95';
+            iconChar = '!';
+          } else if (isLoading) {
+            borderColor = 'border-[#00ccff]';
+            textColor = 'text-[#00ccff]';
+            bgColor = 'bg-[#010b10]/95';
+            iconChar = '↻';
+          }
+
+          return (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto border-3 ${borderColor} ${bgColor} p-4 shadow-[6px_6px_0px_0px_#000000] flex items-start space-x-3.5 transition-all duration-300 transform translate-y-0 rounded-none`}
+            >
+              {toast.icon ? (
+                <img
+                  src={toast.icon}
+                  alt=""
+                  className={`w-10 h-10 object-cover border-2 ${borderColor} flex-shrink-0`}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className={`w-10 h-10 bg-[var(--color-surface)] flex items-center justify-center font-serif text-xl font-black border-2 ${borderColor} flex-shrink-0 ${textColor} ${isLoading ? 'animate-spin' : ''}`}>
+                  {iconChar}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className={`text-[10px] font-black tracking-wider uppercase leading-none ${textColor} flex items-center justify-between pb-2 border-b border-white/10 mb-2`}>
+                  <span>{toast.title}</span>
+                  <button
+                    onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                    className="text-[var(--color-text)] hover:text-rose-500 text-[10px] font-sans cursor-pointer pl-2.5 opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    ✕
+                  </button>
+                </p>
+                <p className="text-[11px] text-[var(--color-text)] leading-normal font-sans uppercase font-bold">
+                  {toast.body}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (!isFirebaseConfigured) {
-    return <FirebaseSetupGuide error={firebaseInitError} />;
+    return (
+      <>
+        <FirebaseSetupGuide error={firebaseInitError} />
+        {renderFloatingToasts()}
+      </>
+    );
   }
 
   if (loading) {
@@ -1149,12 +1222,18 @@ function Dashboard() {
             </p>
           </div>
         </div>
+        {renderFloatingToasts()}
       </div>
     );
   }
 
   if (!profile) {
-    return <AuthScreen />;
+    return (
+      <>
+        <AuthScreen />
+        {renderFloatingToasts()}
+      </>
+    );
   }
 
   const unreadE2EECount = chatUnreadCount;
@@ -1190,7 +1269,6 @@ function Dashboard() {
             connectionType={connectionType}
             batteryLevel={batteryLevel}
             isCharging={isCharging}
-            setShowCinematicIntro={setShowCinematicIntro}
             setIsSettingsOpen={setIsSettingsOpen}
             setIsShortcutsOpen={setIsShortcutsOpen}
             handleNotificationClick={handleNotificationClick}
@@ -1291,11 +1369,6 @@ function Dashboard() {
         }}
       />
 
-      <CinematicIntroModal 
-        isOpen={showCinematicIntro} 
-        onClose={() => setShowCinematicIntro(false)} 
-      />
-
       {showOnboarding && (
         <OnboardingIntro 
           onComplete={() => {
@@ -1322,75 +1395,7 @@ function Dashboard() {
       />
 
       {/* Floating In-App Fallback Toasts Container */}
-      <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3.5 max-w-sm w-full pointer-events-none font-mono">
-        {toasts.map((toast) => {
-          const isError = toast.type === 'error';
-          const isSuccess = toast.type === 'success';
-          const isWarning = toast.type === 'warning';
-          const isLoading = toast.type === 'loading';
-
-          let borderColor = 'border-[var(--neon-green)]';
-          let textColor = 'text-[var(--neon-green)]';
-          let bgColor = 'bg-[#060a08]/95';
-          let iconChar = '⚡';
-
-          if (isError) {
-            borderColor = 'border-[#ff0055]';
-            textColor = 'text-[#ff0055]';
-            bgColor = 'bg-[#120206]/95';
-            iconChar = '×';
-          } else if (isSuccess) {
-            borderColor = 'border-[#00ff66]';
-            textColor = 'text-[#00ff66]';
-            bgColor = 'bg-[#021206]/95';
-            iconChar = '✓';
-          } else if (isWarning) {
-            borderColor = 'border-[#eab308]';
-            textColor = 'text-[#eab308]';
-            bgColor = 'bg-[#140f02]/95';
-            iconChar = '!';
-          } else if (isLoading) {
-            borderColor = 'border-[#00ccff]';
-            textColor = 'text-[#00ccff]';
-            bgColor = 'bg-[#010b10]/95';
-            iconChar = '↻';
-          }
-
-          return (
-            <div
-              key={toast.id}
-              className={`pointer-events-auto border-3 ${borderColor} ${bgColor} p-4 shadow-[6px_6px_0px_0px_#000000] flex items-start space-x-3.5 transition-all duration-300 transform translate-y-0 rounded-none`}
-            >
-              {toast.icon ? (
-                <img
-                  src={toast.icon}
-                  alt=""
-                  className={`w-10 h-10 object-cover border-2 ${borderColor} flex-shrink-0`}
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className={`w-10 h-10 bg-[var(--color-surface)] flex items-center justify-center font-serif text-xl font-black border-2 ${borderColor} flex-shrink-0 ${textColor} ${isLoading ? 'animate-spin' : ''}`}>
-                  {iconChar}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className={`text-[10px] font-black tracking-wider uppercase leading-none ${textColor} flex items-center justify-between pb-2 border-b border-white/10 mb-2`}>
-                  <span>{toast.title}</span>
-                  <button
-                    onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-                    className="text-[var(--color-text)] hover:text-rose-500 text-[10px] font-sans cursor-pointer pl-2.5 opacity-60 hover:opacity-100 transition-opacity"
-                  >
-                    ✕
-                  </button>
-                </p>
-                <p className="text-[11px] text-[var(--color-text)] leading-normal font-sans uppercase font-bold">
-                  {toast.body}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {renderFloatingToasts()}
 
       {ongoingCall && (
         <AnimatePresence>

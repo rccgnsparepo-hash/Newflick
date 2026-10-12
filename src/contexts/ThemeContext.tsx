@@ -11,7 +11,7 @@ export type DesignSystemTheme =
   | 'neobrutalism' 
   | 'softui';
 
-export type ColorScheme = 'dark' | 'light' | 'auto' | 'highcontrast';
+export type ColorScheme = 'dark' | 'light' | 'high-contrast-light' | 'auto' | 'highcontrast';
 export type AccentColor = 'green' | 'monochrome' | 'white';
 
 interface ThemeContextType {
@@ -64,14 +64,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       activeScheme = isSystemDark ? 'dark' : 'light';
     }
 
-    // Toggle dark class for Tailwind
+    // Toggle dark/light classes for Tailwind
     if (activeScheme === 'dark' || activeScheme === 'highcontrast') {
       root.classList.add('dark');
+      root.classList.remove('light');
     } else {
       root.classList.remove('dark');
+      root.classList.add('light');
     }
 
-    // Update body data-attributes for live theme styling
+    // Update root and body data-attributes for live theme styling
+    root.setAttribute('data-color-scheme', activeScheme);
+    root.setAttribute('data-theme', theme);
+    root.setAttribute('data-accent', accentColor);
+
     body.setAttribute('data-theme', theme);
     body.setAttribute('data-color-scheme', activeScheme);
     body.setAttribute('data-accent', accentColor);
@@ -144,16 +150,24 @@ function applyThemeVariables(theme: DesignSystemTheme, scheme: ColorScheme, acce
     root.style.setProperty('--color-surface', '#000000');
     root.style.setProperty('--color-text', '#ffffff');
     root.style.setProperty('--border-width-card', '3px');
-  } else if (scheme === 'light') {
-    root.style.setProperty('--color-background', theme === 'neumorphism' ? '#e0e2e6' : theme === 'claymorphism' ? '#f0f4f8' : '#f4f4f7');
+  } else if (scheme === 'light' || (scheme as string) === 'high-contrast-light') {
+    // High-Contrast Light Theme
+    root.style.setProperty('--color-background', '#f4f5f8');
     root.style.setProperty('--color-surface', '#ffffff');
-    root.style.setProperty('--color-text', '#1c1917');
-    root.style.setProperty('--border-width-card', theme === 'minimalism' ? '1px' : '2px');
+    root.style.setProperty('--color-text', '#09090b');
+    root.style.setProperty('--border-width-card', '2px');
+    root.style.setProperty('--neon-green', accent === 'green' ? '#047857' : colors.primary);
+    root.style.setProperty('--neon-green-rgb', accent === 'green' ? '4, 120, 87' : colors.rgb);
+    root.style.setProperty('--neon-green-glow', 'rgba(4, 120, 87, 0.15)');
+    root.style.setProperty('--neon-green-border', 'rgba(4, 120, 87, 0.35)');
+    root.style.setProperty('--glass-base', 'rgba(255, 255, 255, 0.95)');
+    root.style.setProperty('--glass-border', 'rgba(0, 0, 0, 0.16)');
+    root.style.setProperty('--glass-shadow', '0 4px 20px rgba(0, 0, 0, 0.06)');
   } else {
-    // Dark mode
-    root.style.setProperty('--color-background', theme === 'neumorphism' ? '#1e1e24' : theme === 'claymorphism' ? '#1c1e22' : '#050505');
+    // Default Dark Mode
+    root.style.setProperty('--color-background', theme === 'neumorphism' ? '#1e1e24' : theme === 'claymorphism' ? '#1c1e22' : '#080a0f');
     root.style.setProperty('--color-surface', theme === 'glassmorphism' ? 'rgba(15, 15, 20, 0.45)' : theme === 'neumorphism' ? '#1e1e24' : '#0d0d0d');
-    root.style.setProperty('--color-text', '#f4f4f5');
+    root.style.setProperty('--color-text', '#f3f4f6');
     root.style.setProperty('--border-width-card', theme === 'minimalism' ? '1px' : '2px');
   }
 

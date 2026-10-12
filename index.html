@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-color-scheme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Flick</title>
-    <meta name="description" content="Flick - Voice-First, Local-First Decentralized Audio Communication Platform with End-to-End Encrypted Tunnels and Local Device Audio Vaults." />
+    <meta name="description" content="Flick - Desktop E2EE Messenger with Status Stories, Encrypted Direct Tunnels, Real News, and Local Peer Architecture." />
     <meta property="og:title" content="Flick" />
-    <meta property="og:description" content="Flick - Voice-First, Local-First Decentralized Audio Communication Platform with End-to-End Encrypted Tunnels and Local Device Audio Vaults." />
+    <meta property="og:description" content="Flick - Desktop E2EE Messenger with Status Stories, Encrypted Direct Tunnels, Real News, and Local Peer Architecture." />
     
     <!-- PWA configuration links -->
     <link rel="manifest" href="/manifest.json" />
@@ -23,7 +23,7 @@
     <!-- OneSignal Web SDK v16 -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   </head>
-  <body class="bg-[#080a0f] text-[#f3f4f6]" style="background-color: #080a0f; color: #f3f4f6; margin: 0; padding: 0;">
+  <body class="bg-[var(--color-background)] text-[var(--color-text)]" style="margin: 0; padding: 0;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

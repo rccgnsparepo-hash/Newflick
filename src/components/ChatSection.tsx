@@ -2264,26 +2264,7 @@ export default function ChatSection({
     setIsChatsLoading(true);
     const unsub = subscribeToChats(profile.uid, (chats) => {
       setIsChatsLoading(false);
-      const aiChatId = `chat_my-ai-bot-uid_${profile.uid}`;
-      const myAIChat: DirectChat = {
-        id: aiChatId,
-        participantIds: [profile.uid, 'my-ai-bot-uid'],
-        lastMessage: localStorage.getItem(`flick_my_ai_last_message_${profile.uid}`) || 'Hi! I am your AI buddy. Ask me anything! 🌟',
-        lastMessageAt: { toDate: () => new Date() } as any,
-        isGroup: false
-      };
-      
-      if (!chats.some(c => c.id === aiChatId)) {
-        setActiveChatTunnels([myAIChat, ...chats]);
-      } else {
-        // Maintain the latest message from Firestore/local persistence
-        const existingMyAI = chats.find(c => c.id === aiChatId);
-        if (existingMyAI) {
-          setActiveChatTunnels(chats);
-        } else {
-          setActiveChatTunnels([myAIChat, ...chats]);
-        }
-      }
+      setActiveChatTunnels(chats);
     }, (err) => {
       console.warn("Chats sync stream warning:", err);
       setIsChatsLoading(false);

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield, Volume2, Smartphone } from 'lucide-react';
+import { User, Bell, Eye, HardDrive, Layout, BookOpen, UserPlus, HelpCircle, Terminal, Check, Info, Loader2, QrCode, Shield, Volume2, Smartphone, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOperations } from '../contexts/OperationContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { showBrutalistToast } from '../lib/toast';
 import { sanitizeErrorMessage } from '../lib/errorSanitizer';
 import { upsertUserProfile, subscribeToUsers } from '../lib/services';
@@ -35,6 +36,7 @@ interface ProfileSettingsModalProps {
 export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, onTestPush }: ProfileSettingsModalProps) {
   const { profile, reloadProfile } = useAuth();
   const { isTaskMonitorEnabled, setIsTaskMonitorEnabled } = useOperations();
+  const { colorScheme, setColorScheme } = useTheme();
   
   const [selectedTheme, setSelectedTheme] = useState<BrutalistTheme>(() => getSavedTheme());
   const [vibeEnabled, setVibeEnabled] = useState(() => isVibrationEnabled());
@@ -444,8 +446,8 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="glass-panel border border-[var(--glass-border)] w-full max-w-4xl relative z-10 shadow-2xl p-6 sm:p-8 rounded-2xl overflow-y-auto max-h-[92vh] text-[var(--color-text)]"
           >
-            {/* Headline block */}
-            <div className="flex items-center justify-between border-b border-[var(--neon-green)]/35 pb-4 mb-6">
+            {/* Headline block with Theme Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--neon-green)]/35 pb-4 mb-6 gap-3">
               <div>
                 <h2 className="font-serif text-xl font-black uppercase text-[var(--color-text)] flex items-center gap-2">
                   <User className="w-5 h-5 text-[var(--neon-green)]" />
@@ -456,13 +458,66 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 px-3 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition font-mono text-[9px] uppercase cursor-pointer"
-              >
-                Close Control Panel
-              </button>
+              <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+                {/* Theme Mode Toggle (Default Dark vs High-Contrast Light) */}
+                <div 
+                  role="radiogroup" 
+                  aria-label="Theme Mode Selection" 
+                  className="flex items-center bg-black/60 dark:bg-black/80 border border-[var(--neon-green-border)] p-1 rounded-full shadow-inner"
+                >
+                  <button
+                    type="button"
+                    id="theme-toggle-dark"
+                    data-testid="theme-toggle-dark"
+                    aria-label="Default Dark Mode"
+                    title="Switch to Default Dark Mode"
+                    onClick={() => {
+                      setColorScheme('dark');
+                      playGlitchClickSound();
+                      if (vibeEnabled) triggerVibration('light');
+                      showBrutalistToast('THEME: DARK', 'Default Dark Mode activated', 'info');
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded-full transition-all cursor-pointer font-bold ${
+                      colorScheme === 'dark' || (colorScheme as string) === 'highcontrast'
+                        ? 'bg-[var(--neon-green)] text-black shadow-sm'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Moon className="w-3 h-3" />
+                    <span>Dark</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="theme-toggle-light"
+                    data-testid="theme-toggle-light"
+                    aria-label="High-Contrast Light Theme"
+                    title="Switch to High-Contrast Light Theme"
+                    onClick={() => {
+                      setColorScheme('light');
+                      playGlitchClickSound();
+                      if (vibeEnabled) triggerVibration('light');
+                      showBrutalistToast('THEME: LIGHT', 'High-Contrast Light Theme activated', 'info');
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded-full transition-all cursor-pointer font-bold ${
+                      colorScheme === 'light' || (colorScheme as string) === 'high-contrast-light'
+                        ? 'bg-[var(--neon-green)] text-black shadow-sm'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Sun className="w-3 h-3" />
+                    <span>High Contrast Light</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1 px-3 border border-[var(--neon-green)]/40 text-[var(--neon-green)] hover:bg-[var(--neon-green)] hover:text-black transition font-mono text-[9px] uppercase cursor-pointer whitespace-nowrap"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">

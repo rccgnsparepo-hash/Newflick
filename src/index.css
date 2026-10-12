@@ -368,7 +368,9 @@ body {
 }
 
 [data-color-scheme="light"] .brutalist-button-green,
-[data-color-scheme="light"] .theme-button {
+[data-color-scheme="high-contrast-light"] .brutalist-button-green,
+[data-color-scheme="light"] .theme-button,
+[data-color-scheme="high-contrast-light"] .theme-button {
   color: #1a1a1a !important;
 }
 
@@ -477,11 +479,41 @@ body {
   border-radius: var(--border-radius-button) !important;
 }
 
-/* Light Mode Overrides for Specific Themes */
-[data-color-scheme="light"] {
-  --color-text: #1c1917;
-  --color-background: #f4f4f5;
+/* Light Mode Overrides for Specific Themes & High-Contrast Light Theme */
+[data-color-scheme="light"],
+[data-color-scheme="high-contrast-light"] {
+  --color-text: #09090b;
+  --color-background: #f4f5f8;
   --color-surface: #ffffff;
+  --glass-base: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.16);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --neon-green: #047857;
+  --neon-green-rgb: 4, 120, 87;
+  --neon-green-glow: rgba(4, 120, 87, 0.15);
+  --neon-green-border: rgba(4, 120, 87, 0.35);
+  --neon-green-glow-intense: rgba(4, 120, 87, 0.5);
+  --brutalist-black: #ffffff;
+  color-scheme: light;
+}
+
+[data-color-scheme="light"] body,
+body[data-color-scheme="light"],
+[data-color-scheme="high-contrast-light"] body,
+body[data-color-scheme="high-contrast-light"] {
+  background-color: #f4f5f8 !important;
+  background-image: none !important;
+  color: #09090b !important;
+}
+
+[data-color-scheme="light"] .glass-panel,
+[data-color-scheme="high-contrast-light"] .glass-panel,
+[data-color-scheme="light"] .theme-card,
+[data-color-scheme="high-contrast-light"] .theme-card {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.16) !important;
+  color: #09090b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
 }
 
 [data-theme="neumorphism"][data-color-scheme="light"] {
@@ -601,7 +633,9 @@ button.px-3.py-2.border {
 }
 
 [data-color-scheme="light"] button.brutalist-button-green,
-[data-color-scheme="light"] .brutalist-button-green {
+[data-color-scheme="high-contrast-light"] button.brutalist-button-green,
+[data-color-scheme="light"] .brutalist-button-green,
+[data-color-scheme="high-contrast-light"] .brutalist-button-green {
   color: #1a1a1a !important;
 }
 

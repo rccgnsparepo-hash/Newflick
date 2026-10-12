@@ -121,7 +121,6 @@ interface AppHeaderProps {
   connectionType: string;
   batteryLevel: number | null;
   isCharging: boolean;
-  setShowCinematicIntro: (show: boolean) => void;
   setIsSettingsOpen: (open: boolean) => void;
   setIsShortcutsOpen: (open: boolean) => void;
   handleNotificationClick: (n: NotificationItem) => void;
@@ -142,7 +141,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   connectionType,
   batteryLevel,
   isCharging,
-  setShowCinematicIntro,
   setIsSettingsOpen,
   setIsShortcutsOpen,
   handleNotificationClick,
@@ -161,9 +159,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         
         {/* Logo and branding */}
         <div 
-          onClick={() => setShowCinematicIntro(true)} 
+          onClick={() => setActiveTab('feed')} 
           className="flex items-center space-x-6 select-none group/logo cursor-pointer"
-          title="Fara Flick Sovereign Net"
+          title="Flick"
         >
           <div className="flex items-center space-x-3.5">
             <div className="w-10 h-10 border-2 border-[var(--neon-green)] flex items-center justify-center font-serif text-2xl font-black bg-[var(--color-surface)] text-[var(--neon-green)] shadow-[3px_3px_0px_var(--neon-green)] transition-all duration-100 container-glitch-hover">
