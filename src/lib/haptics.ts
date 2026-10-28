@@ -1,24 +1,28 @@
 /**
  * Secure Tactile Haptics Manager 
  * Employs high-fidelity web custom vibration sequences with granular per-event trigger controls
+ * and configurable vibration intensity for messages, incoming calls, button clicks, and reactions.
  */
 
-export type VibrationIntensity = 'off' | 'light' | 'medium' | 'heavy' | 'double';
+export type VibrationIntensity = 'off' | 'subtle' | 'light' | 'medium' | 'heavy' | 'double';
 export type VibrationPattern = 'off' | 'subtle' | 'light' | 'medium' | 'heavy' | 'double' | 'triple' | 'pulse' | 'sos';
 export type MessageType = 'direct' | 'group' | 'system';
+
+export type HapticAction = 'message' | 'call_incoming' | 'button_click' | 'like' | 'global';
 
 export type HapticTriggerEvent =
   | 'message_received'
   | 'message_sent'
+  | 'call_incoming'
+  | 'button_click'
   | 'like'
   | 'reaction'
-  | 'long_press'
-  | 'button_click'
-  | 'call_incoming';
+  | 'long_press';
 
 export interface HapticTriggerMetadata {
   id: HapticTriggerEvent;
   label: string;
+  category: 'messages' | 'calls' | 'interactions';
   description: string;
   defaultEnabled: boolean;
   defaultPattern: VibrationPattern;
@@ -27,7 +31,8 @@ export interface HapticTriggerMetadata {
 export const HAPTIC_TRIGGER_DEFINITIONS: HapticTriggerMetadata[] = [
   {
     id: 'message_received',
-    label: 'Message Received',
+    label: 'Inbound Message Arrival',
+    category: 'messages',
     description: 'Distinctive tactile pulse when an inbound encrypted transmission arrives in chat.',
     defaultEnabled: true,
     defaultPattern: 'double'
@@ -35,13 +40,31 @@ export const HAPTIC_TRIGGER_DEFINITIONS: HapticTriggerMetadata[] = [
   {
     id: 'message_sent',
     label: 'Message Dispatched',
+    category: 'messages',
     description: 'Subtle tactile confirmation when a message is successfully encrypted & sent.',
     defaultEnabled: true,
     defaultPattern: 'subtle'
   },
   {
+    id: 'call_incoming',
+    label: 'Incoming Call Cadence',
+    category: 'calls',
+    description: 'Rhythmic pulsing pattern during incoming peer-to-peer WebRTC calls.',
+    defaultEnabled: true,
+    defaultPattern: 'pulse'
+  },
+  {
+    id: 'button_click',
+    label: 'Button & Keypress Clicks',
+    category: 'interactions',
+    description: 'Micro-haptic click when tapping brutalist switches, icons, or navigation buttons.',
+    defaultEnabled: true,
+    defaultPattern: 'subtle'
+  },
+  {
     id: 'like',
-    label: 'Like & Favorite Action',
+    label: 'Likes & Favorites',
+    category: 'interactions',
     description: 'Crisp tactile snap when liking social dispatches, stories, or profiles.',
     defaultEnabled: true,
     defaultPattern: 'light'
@@ -49,6 +72,7 @@ export const HAPTIC_TRIGGER_DEFINITIONS: HapticTriggerMetadata[] = [
   {
     id: 'reaction',
     label: 'Message Reaction (Emoji)',
+    category: 'interactions',
     description: 'Tactile pop upon applying or toggling an emoji reaction to a chat bubble.',
     defaultEnabled: true,
     defaultPattern: 'medium'
@@ -56,23 +80,10 @@ export const HAPTIC_TRIGGER_DEFINITIONS: HapticTriggerMetadata[] = [
   {
     id: 'long_press',
     label: 'Bubble Long-Press Trigger',
+    category: 'interactions',
     description: 'Immediate tactile kick when holding a message bubble to open the reaction dock.',
     defaultEnabled: true,
     defaultPattern: 'medium'
-  },
-  {
-    id: 'button_click',
-    label: 'Cyber Button & Keypress',
-    description: 'Micro-haptic click when tapping brutalist switches, icons, or navigation buttons.',
-    defaultEnabled: true,
-    defaultPattern: 'subtle'
-  },
-  {
-    id: 'call_incoming',
-    label: 'Incoming Call Cadence',
-    description: 'Rhythmic pulsing pattern during incoming peer-to-peer WebRTC calls.',
-    defaultEnabled: true,
-    defaultPattern: 'pulse'
   }
 ];
 
@@ -112,17 +123,38 @@ export function getHapticTriggersConfig(): Record<HapticTriggerEvent, boolean> {
   return config;
 }
 
-export function getVibrationIntensity(event: 'message' | 'like'): VibrationIntensity {
+/**
+ * Gets configured intensity for a specific action or global fallback.
+ */
+export function getVibrationIntensity(action: HapticAction | string): VibrationIntensity {
   if (typeof window === 'undefined') return 'off';
-  const val = localStorage.getItem(`flick_vibration_intensity_${event}`);
+  const val = localStorage.getItem(`flick_vibration_intensity_${action}`);
   if (val) return val as VibrationIntensity;
-  // Defaults: medium for message, light for like
-  return event === 'message' ? 'medium' : 'light';
+  
+  // Default values per action
+  switch (action) {
+    case 'call_incoming':
+      return 'heavy';
+    case 'message':
+    case 'message_received':
+      return 'medium';
+    case 'button_click':
+      return 'subtle';
+    case 'like':
+    case 'reaction':
+      return 'light';
+    case 'global':
+    default:
+      return 'medium';
+  }
 }
 
-export function setVibrationIntensity(event: 'message' | 'like', intensity: VibrationIntensity): void {
+/**
+ * Sets configured intensity for a specific action.
+ */
+export function setVibrationIntensity(action: HapticAction | string, intensity: VibrationIntensity): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(`flick_vibration_intensity_${event}`, intensity);
+  localStorage.setItem(`flick_vibration_intensity_${action}`, intensity);
   window.dispatchEvent(new Event('flick_haptics_updated'));
 }
 
@@ -143,6 +175,13 @@ export function setHapticPatternForMessageType(type: MessageType, pattern: Vibra
   if (typeof window === 'undefined') return;
   localStorage.setItem(`flick_haptic_pattern_${type}`, pattern);
   window.dispatchEvent(new Event('flick_haptics_updated'));
+}
+
+export function triggerMessageTypeVibration(type: MessageType): void {
+  if (!isHapticTriggerEnabled('message_received')) return;
+  const pattern = getHapticPatternForMessageType(type);
+  if (pattern === 'off') return;
+  triggerPatternVibration(pattern);
 }
 
 export function triggerPatternVibration(pattern: VibrationPattern): void {
@@ -184,22 +223,20 @@ export function triggerPatternVibration(pattern: VibrationPattern): void {
   }
 }
 
-export function triggerMessageTypeVibration(type: MessageType): void {
-  if (!isHapticTriggerEnabled('message_received')) return;
-  const pattern = getHapticPatternForMessageType(type);
-  if (pattern === 'off') return;
-  triggerPatternVibration(pattern);
-}
-
-export function triggerVibration(type: 'light' | 'medium' | 'heavy' | 'double'): void {
+export function triggerVibration(type: VibrationIntensity | 'light' | 'medium' | 'heavy' | 'double'): void {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
   if (!navigator.vibrate) return;
   if (!isVibrationEnabled()) return;
 
   try {
     switch (type) {
+      case 'off':
+        break;
+      case 'subtle':
+        navigator.vibrate(12);
+        break;
       case 'light':
-        navigator.vibrate(18);
+        navigator.vibrate(20);
         break;
       case 'medium':
         navigator.vibrate(45);
@@ -225,22 +262,50 @@ export function triggerEventVibration(event: 'message' | 'like'): void {
 }
 
 /**
- * High-level trigger function that strictly honors individual haptic trigger toggles
+ * High-level trigger function that strictly honors individual haptic trigger toggles and intensity
  */
 export function triggerEventHaptic(
   event: HapticTriggerEvent,
-  customPattern?: VibrationPattern | VibrationIntensity
+  customPatternOrIntensity?: VibrationPattern | VibrationIntensity
 ): void {
+  if (!isVibrationEnabled()) return;
   if (!isHapticTriggerEnabled(event)) return;
 
-  const def = HAPTIC_TRIGGER_DEFINITIONS.find(t => t.id === event);
-  const pattern = customPattern || (def ? def.defaultPattern : 'light');
+  // Determine action intensity mapping
+  let actionKey: HapticAction = 'global';
+  if (event === 'message_received' || event === 'message_sent') {
+    actionKey = 'message';
+  } else if (event === 'call_incoming') {
+    actionKey = 'call_incoming';
+  } else if (event === 'button_click') {
+    actionKey = 'button_click';
+  } else if (event === 'like' || event === 'reaction') {
+    actionKey = 'like';
+  }
 
-  if (pattern === 'light' || pattern === 'medium' || pattern === 'heavy' || pattern === 'double') {
-    triggerVibration(pattern);
+  const configuredIntensity = getVibrationIntensity(actionKey);
+  if (configuredIntensity === 'off') return;
+
+  if (customPatternOrIntensity) {
+    if (customPatternOrIntensity === 'off') return;
+    if (['subtle', 'light', 'medium', 'heavy', 'double'].includes(customPatternOrIntensity)) {
+      triggerVibration(customPatternOrIntensity as VibrationIntensity);
+    } else {
+      triggerPatternVibration(customPatternOrIntensity as VibrationPattern);
+    }
+    return;
+  }
+
+  // Trigger based on configured action intensity
+  if (actionKey === 'call_incoming') {
+    if (configuredIntensity === 'double') {
+      triggerPatternVibration('double');
+    } else if (configuredIntensity === 'heavy') {
+      triggerPatternVibration('pulse');
+    } else {
+      triggerVibration(configuredIntensity);
+    }
   } else {
-    triggerPatternVibration(pattern as VibrationPattern);
+    triggerVibration(configuredIntensity);
   }
 }
-
-

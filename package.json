@@ -9,6 +9,10 @@
   "version": "0.0.0",
   "type": "module",
   "main": "electron/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Faratech/flick.git"
+  },
   "build": {
     "appId": "com.faratech.flick",
     "productName": "Flick",
@@ -24,8 +28,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json",
-      "node_modules/**/*"
+      "package.json"
     ],
     "fileAssociations": [
       {

@@ -11,7 +11,7 @@ import {
   playGlitchClickSound, playLikeSound, playSendMessageSound,
   startRingtoneSound, stopRingtoneSound, playCallConnectedSound, playCallEndSound 
 } from '../lib/sounds';
-import { triggerVibration } from '../lib/haptics';
+import { triggerVibration, triggerEventHaptic } from '../lib/haptics';
 import { showBrutalistToast } from '../lib/toast';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -158,7 +158,7 @@ export default function CallOverlay({ call, onEndCall, onAcceptCall }: CallOverl
   useEffect(() => {
     if (status === 'dialing' || status === 'ringing') {
       startRingtoneSound();
-      triggerVibration('heavy');
+      triggerEventHaptic('call_incoming');
     } else if (status === 'active') {
       stopRingtoneSound();
       playCallConnectedSound();

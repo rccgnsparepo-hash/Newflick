@@ -531,7 +531,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onReplayTour, on
                     { id: 'privacy', label: 'Privacy', icon: Eye },
                     { id: 'security', label: 'Security', icon: Shield },
                     { id: 'audio', label: 'Audio', icon: Volume2 },
-                    { id: 'haptics', label: 'Haptic Triggers', icon: Smartphone },
+                    { id: 'haptics', label: 'Haptic Feedback', icon: Smartphone },
                     { id: 'notifications', label: 'Notifications', icon: Bell },
                     { id: 'accessibility', label: 'Appearance', icon: Layout },
                     { id: 'storage', label: 'Storage', icon: HardDrive },
